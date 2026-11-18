@@ -1,0 +1,17 @@
+- id: "1"
+  title: Tighter rows without numbers
+  description: >-
+    Drop the window number from tab rows and move group and tab rows left
+    (SPEC.md CAP-3, CAP-4; columns in row-layout.md).
+  invoke_dev_with: >-
+    Clicks map rows only (input.rs, drag.rs); keep the row list in step with
+    the lines.
+- id: "2"
+  title: Readable command and ssh names
+  description: >-
+    Strip leading VAR=value from command names and name ssh tabs after the
+    remote's user, host, folder or running application (SPEC.md CAP-1, CAP-2).
+  invoke_dev_with: >-
+    name.rs is 60 lines; ssh naming likely needs its own file (AGENTS.md:
+    under 100 lines, split by job). Fake the remote with a stand-in ssh on a
+    tmux -L server, never a real host.

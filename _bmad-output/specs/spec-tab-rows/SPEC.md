@@ -19,10 +19,10 @@ Pain, for the one user of the sidebar. Their shell alias `ssh='TERM=xterm-256col
 
 - **CAP-1**
   - **intent:** A tab named after its running command shows the command without leading `VAR=value` assignments, for any command.
-  - **success:** Title `TERM=xterm-256color ssh app01` shows `ssh app01`; `FOO=1 BAR=2 make test` shows `make test`.
+  - **success:** Title `TERM=xterm-256color htop` shows `htop`; `FOO=1 BAR=2 make test` shows `make test`.
 - **CAP-2**
-  - **intent:** While connected, an ssh tab shows the remote user, host and folder.
-  - **success:** A remote shell titling `lde@app01: ~/src/infra` gives `lde@app01 infra`; at the remote home, `lde@app01 ~`; before the remote sets a title, `ssh app01`; after ssh exits, the tab is named as any local tab again.
+  - **intent:** While connected, an ssh tab shows where it is: remote user, host and folder at a shell prompt, the application and its file while one runs, the hostname when the remote reports nothing.
+  - **success:** Remote title `lde@app01: ~/src/infra` gives `lde@app01 infra`; at the remote home, `lde@app01 ~`; remote vim titling `nginx.conf (/etc/nginx) - VIM` gives `vim nginx.conf`; no remote title (yet) gives `app01`; after ssh exits, the tab is named as any local tab again.
 - **CAP-3**
   - **intent:** Tab rows show no window number.
   - **success:** No row contains the window index; tab order, click-to-switch and drag-to-move behave as before.
@@ -37,6 +37,7 @@ Pain, for the one user of the sidebar. Their shell alias `ssh='TERM=xterm-256col
 - No remote-side setup: work from the titles remote shells already send. Prod hosts are not edited.
 - Tab order, drag targets and click rows unchanged; the window index stays the ordering key, only its display goes.
 - Verification never ssh-es to a real host: simulate the remote with a stand-in `ssh` that prints an OSC 2 title and waits, on a throwaway tmux server.
+- Remote folder is its last path component (`~` for home), after `user@host` and a space, like local tabs.
 - `README.md` is the behaviour reference: its example and tab-name description change with this work.
 
 ## Non-goals
@@ -52,10 +53,4 @@ On a throwaway tmux server running tabrail, a tab that runs `TERM=xterm-256color
 
 ## Assumptions
 
-- Remote folder shown like local tabs: last path component, `~` for home, separated from `user@host` by a space.
-- Losing the visual cue for prefix+N window selection is accepted.
-
-## Open Questions
-
-- A remote title not in `user@host:path` form (remote vim, htop, a remote oh-my-zsh command title): show it, or keep the last `user@host folder`?
-- A remote that never sets a title: is `ssh app01` enough, or should `user@host` come from the ssh destination?
+- Hostname is the ssh destination without user and domain (`lde@app01.example.ch` gives `app01`; an ssh-config alias as typed); the file is its basename.

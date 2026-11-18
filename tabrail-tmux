@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Housekeeping for tabrail, the tmux sidebar (target/release/tabrail, built from src/ with cargo),
+# called from tabrail.tmux hooks and by hand; what its menus do is in tabrail-act:
+#   ensure [WINDOW]  give every tab (or WINDOW) a sidebar pane on the left, and a group by its folder
+#   refresh          make every sidebar redraw now
+#   restart          restart every sidebar (after cargo build)
+#   reap             close tabs where only the sidebar is left
+#   group DIR        print the group of a folder
+D=$(dirname "$(readlink -f "$0")")
+CONF=$(tmux show -gv @tabrail_groups 2>/dev/null)   # the groups: the file tmux.conf names, else ours
+CONF=${CONF:-$D/groups.conf}
+WIDTH=26
+
+# Every sidebar's control connection reports a changed paste buffer at once (%paste-buffer-changed),
+# so touching a named one is the cheapest way to make them all redraw
+refresh() { tmux set-buffer -b sidebar-refresh x 2>/dev/null; true; }
+
+group() {
+  local name tint icon dir
+  while read -r name tint icon dirs; do
+    [[ -z $name || $name == \#* ]] && continue
+    for dir in $dirs; do
+      dir=${dir/#\~/$HOME}
+      [[ $1 == "$dir" || $1 == "$dir"/* ]] && { echo "$name"; return; }
+    done
+  done < "$CONF"
+  echo Default
+}
+
+ensure() {
+  # During a restore (resurrect) tabs come back one by one, their saved sidebars with them: wait until
+  # it is done, and a moment for the restored sidebars to start ([t] keeps pgrep off this script)
+  local win id
+  if pgrep -f '[t]mux-resurrect/scripts/restore.sh' >/dev/null; then
+    while pgrep -f '[t]mux-resurrect/scripts/restore.sh' >/dev/null; do sleep 0.5; done
+    sleep 2
+  fi
+  exec 9> "/tmp/tabrail-$UID.lock"   # one ensure at a time, or two can add a sidebar each
+  flock 9
+  for win in ${1:-$(tmux list-windows -a -F '#{window_id}')}; do
+    if [[ -z $(tmux show -wv -t "$win" @group 2>/dev/null) ]]; then
+      tmux set -w -t "$win" @group "$(group "$(tmux display -p -t "$win" '#{pane_current_path}')")"
+    fi
+    if ! tmux list-panes -t "$win" -F '#{@sidebar}' | grep -q 1; then
+      id=$(tmux split-window -hbf -d -l "$WIDTH" -t "$win" -P -F '#{pane_id}' "$D/target/release/tabrail")
+      tmux set -p -t "$id" @sidebar 1
+    fi
+  done
+  refresh
+}
+
+restart() {
+  local id
+  for id in $(tmux list-panes -a -F '#{pane_id} #{@sidebar}' | awk '$2 == 1 { print $1 }'); do
+    tmux respawn-pane -k -t "$id" "$D/target/release/tabrail"
+  done
+}
+
+reap() {
+  local win
+  for win in $(tmux list-windows -a -F '#{window_id}'); do
+    tmux list-panes -t "$win" -F '#{@sidebar}' | grep -qv 1 || tmux kill-window -t "$win"
+  done
+}
+
+case $1 in
+  ensure | refresh | restart | reap | group) "$@" ;;
+  *) echo "usage: tabrail-tmux ensure [WINDOW] | refresh | restart | reap | group DIR" >&2; exit 2 ;;
+esac

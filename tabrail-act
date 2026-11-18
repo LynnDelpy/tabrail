@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# What tabrail's right-click menus do (src/menu.rs); also usable by hand:
+#   new GROUP PANE           a new tab in GROUP's first folder (home if none), in PANE's session
+#   dup WINDOW               a new tab right after WINDOW, same folder and group
+#   fold GROUP               fold or unfold a group in every sidebar
+#   rename-group OLD NEW     in groups.conf, on its tabs and in the fold state
+#   new-group NAME TARGET    a line in groups.conf with a tint and an icon not used yet; TARGET a
+#                            tab (@id) moves into it, a sidebar pane (pID for %ID) gets a new tab in it
+D=$(dirname "$(readlink -f "$0")")
+CONF=$(tmux show -gv @tabrail_groups 2>/dev/null)   # the groups: the file tmux.conf names, else ours
+CONF=${CONF:-$D/groups.conf}
+TINTS=('#283147' '#3b2f2a' '#2a3b2f' '#3b2a3a' '#2a383b' '#3b392a' '#2f2a3b')
+ICONS=(◆ ▲ ● ■ ★ ✦ ♦ ✚)
+
+refresh() { tmux set-buffer -b sidebar-refresh x 2>/dev/null; true; }   # see tabrail-tmux
+
+new() {
+  local dir id
+  dir=$(awk -v g="$1" '!/^#/ && $1 == g { print $4; exit }' "$CONF")
+  dir=${dir:-\~}
+  id=$(tmux new-window -t "$(tmux display -p -t "$2" '#{session_id}'):" -P -F '#{window_id}' -c "${dir/#\~/$HOME}")
+  tmux set -w -t "$id" @group "$1"
+}
+
+dup() {
+  local id
+  id=$(tmux new-window -a -t "$1" -P -F '#{window_id}' -c "$(tmux display -p -t "$1" '#{pane_current_path}')")
+  tmux set -w -t "$id" @group "$(tmux show -wv -t "$1" @group)"
+}
+
+fold() {
+  local folded
+  folded=$(tmux show -gv @sidebar_fold 2>/dev/null | tr '|' '\n' | grep -v '^$')
+  if grep -qxF -- "$1" <<<"$folded"; then folded=$(grep -vxF -- "$1" <<<"$folded")
+  else folded=$(printf '%s\n%s' "$folded" "$1"); fi
+  tmux set -g @sidebar_fold "$(grep -v '^$' <<<"$folded" | paste -sd'|')"
+  refresh
+}
+
+rename_group() {
+  local old=$1 new=${2// /-} win   # one word: groups.conf splits on spaces
+  [[ -z $new || $old == Default || $new == Default ]] && return
+  awk -v o="$old" -v n="$new" '!/^#/ && $1 == o { $0 = n substr($0, length(o) + 1) } 1' \
+    "$CONF" > "$CONF.new" && mv "$CONF.new" "$CONF"
+  for win in $(tmux list-windows -a -F '#{window_id}'); do
+    [[ $(tmux show -wv -t "$win" @group 2>/dev/null) == "$old" ]] && tmux set -w -t "$win" @group "$new"
+  done
+  tmux set -g @sidebar_fold "$(tmux show -gv @sidebar_fold 2>/dev/null | tr '|' '\n' |
+    awk -v o="$old" -v n="$new" '$0 == o { $0 = n } 1' | paste -sd'|')"
+  refresh
+}
+
+new_group() {
+  local name=${1// /-} used tint icon
+  [[ -z $name || $name == Default ]] && return
+  if ! awk -v g="$name" '!/^#/ && $1 == g { found = 1 } END { exit !found }' "$CONF"; then
+    used=$(awk '!/^#/ { print $2, $3 }' "$CONF")
+    for tint in "${TINTS[@]}"; do grep -qF -- "$tint" <<<"$used" || break; done
+    for icon in "${ICONS[@]}"; do grep -qF -- " $icon" <<<"$used" || break; done
+    printf '%-9s %s  %s\n' "$name" "$tint" "$icon" >> "$CONF"
+  fi
+  case $2 in
+    @*) tmux set -w -t "$2" @group "$name"; refresh ;;
+    p*) new "$name" "%${2#p}" ;;
+  esac
+}
+
+case $1 in
+  new | dup | fold) "$@" ;;
+  rename-group) shift; rename_group "$@" ;;
+  new-group) shift; new_group "$@" ;;
+  *) echo "usage: tabrail-act new GROUP PANE | dup WINDOW | fold GROUP | rename-group OLD NEW" \
+          "| new-group NAME TARGET" >&2; exit 2 ;;
+esac

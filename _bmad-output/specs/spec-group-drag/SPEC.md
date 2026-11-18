@@ -26,6 +26,7 @@ Pain for the sidebar's user: group order is the line order of the groups file, s
 ## Constraints
 
 - The order stays where it lives today, the groups file's line order (the file `@tabrail_groups` names, else `groups.conf`); a reorder keeps comments and every untouched line byte for byte.
+- One order: that line order is also the new-tab match priority (first group whose folder holds the tab), so a reorder changes both; no separate priority.
 - A failed or interrupted write never leaves the groups file broken or empty: it is the user's config.
 - Tab dragging, tab drop targets and the right-click menus behave as before.
 - `README.md` is the behaviour reference: its mouse and groups text change with this work.
@@ -44,7 +45,3 @@ On a throwaway tmux server with three groups holding tabs, an SGR drag from the 
 
 - Default is not in the groups file: it stays last, cannot be dragged, and nothing lands below it.
 - Dropping on any row of group H (its header or one of its tabs) counts as dropping on H; moving up lands above H, moving down below H, as tab drops do.
-
-## Open Questions
-
-- File order also decides which group a new tab joins when two groups' folders overlap: should reordering change that too, or should match priority stay separate from display order?

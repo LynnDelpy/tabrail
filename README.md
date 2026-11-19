@@ -4,12 +4,12 @@ A vertical tab rail for tmux: a sidebar on the left of every tab that lists all 
 grouped by project, with what each one is doing.
 
 ```
- ▾ ◆ Website
-  ❯ 1 Fix login redirect ⚙ 2m      Claude's topic, running a command for 2 min
-    2 website·release-2 ◇          folder and git branch; Claude idle
- ▾ ▲ Infra
-    3 ssh app01 ⏱ 4m               a command running for 4 min
-    4 infra ✗ 2                    the last command failed
+▾ ◆ Website
+ ❯ Fix login redirect ⚙ 2m         Claude's topic, running a command for 2 min
+   website·release-2 ◇             folder and git branch; Claude idle
+▾ ▲ Infra
+   ssh app01 ⏱ 4m                  a command running for 4 min
+   infra ✗ 2                       the last command failed
             14:41  Wed 18.11.
 ```
 

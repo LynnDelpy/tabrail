@@ -61,7 +61,7 @@ pub fn screen(tabs: &[Tab], groups: &[(String, String, String)], folded: &HashSe
             continue;
         }
         let fold = folded.contains(name);
-        let mut head = format!(" {} {icon} {name}", if fold { "▸" } else { "▾" });
+        let mut head = format!("{} {icon} {name}", if fold { "▸" } else { "▾" });
         if fold {
             head += &format!("  {} tab{}", members.len(), if members.len() == 1 { "" } else { "s" });
         }
@@ -74,7 +74,7 @@ pub fn screen(tabs: &[Tab], groups: &[(String, String, String)], folded: &HashSe
             let mark = if tab.current { '❯' } else { ' ' };
             let gap = if state.is_empty() { 0 } else { 1 };
             let room = width.saturating_sub(state.chars().count() + gap);
-            let label: String = format!("  {mark} {} {}", tab.index, tab.name).chars().take(room).collect();
+            let label: String = format!(" {mark} {}", tab.name).chars().take(room).collect();
             let rest = width.saturating_sub(label.chars().count() + gap + state.chars().count());
             let style = if tab.current { fg("current") + "\x1b[1m" } else { fg("tab") };
             lines.push(format!("{style}{label}\x1b[0m{}{}{state}\x1b[0m{}", " ".repeat(gap), fg(kind), " ".repeat(rest)));

@@ -1,8 +1,9 @@
 # Project groups for tabrail. Copy to groups.conf next to tabrail.tmux, or point the tmux option
 # @tabrail_groups at a file of your own. A new tab joins the first group one of whose folders it was
 # opened in or below; prefix M, a drag or the right-click menu moves it. Tabs in none: Default. The
-# menu's "New group…" adds lines here. Columns: name (one word), tint behind the group's row, icon,
-# folders (optional; a new tab of the group opens in the first).
+# menu's "New group…" adds lines here; dragging a group's row in the sidebar reorders them. Columns:
+# name (one word), tint behind the group's row, icon, folders (optional; a new tab of the group
+# opens in the first).
 Website   #283147  ◆  ~/src/website ~/src/website-staging
 Infra     #3b2f2a  ▲  ~/src/infra
 Notes     #2a3b2f  ●

@@ -1,7 +1,7 @@
 //! tabrail, the tmux sidebar, running in the left pane of every tab (`tabrail-tmux ensure` starts it):
 //! all tabs of the session grouped by project (groups.conf, or the file in tmux option @tabrail_groups) and what each is doing. Left button: go to a tab,
-//! fold a group, drag a tab (drag.rs); right button: a menu (menu.rs). Redraws when tmux reports a
-//! change over its control connection, and every second for the timers and the clock.
+//! fold a group, drag a tab or group (drag.rs); right button: a menu (menu.rs). Redraws when tmux
+//! reports a change over its control connection, and every second for the timers and the clock.
 mod control;
 mod drag;
 mod draw;
@@ -43,7 +43,7 @@ fn main() {
     let fields = model::FIELDS.map(|f| format!("#{{{f}}}")).join("\t");
     let mut out = std::io::stdout();
     let _ = write!(out, "\x1b]2;sidebar\x1b\\\x1b[?25l\x1b[?1000h\x1b[?1006h");
-    // the tab a left press started on; the lines on screen and their size; the menu file for each row
+    // the tab or group a left press started on; the lines on screen and their size; each row's menu file
     let (mut drag, mut shown, mut drawn, mut written) = (None, Vec::new(), (0, 0), Vec::<String>::new());
     // while tmux shows a right-click menu over the sidebar, drawing would paint over it: paused from
     // the right press until the next change or click after the menu's first moment, 10 s at most
@@ -83,7 +83,7 @@ fn main() {
                 t.ask(&format!("last-pane -t {pane}"));
                 menu_open = Some(Instant::now());
             } else if !click.right {
-                for cmd in drag::left(&click, screen.rows.get(click.row), &tabs, &folded, &mut drag) {
+                for cmd in drag::left(&click, screen.rows.get(click.row), &tabs, &folded, &helper, &mut drag) {
                     t.ask(&cmd);
                 }
             }

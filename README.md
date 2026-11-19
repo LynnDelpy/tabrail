@@ -14,7 +14,9 @@ grouped by project, with what each one is doing.
             14:41  Wed 18.11.
 ```
 
-- Groups by folder (groups.conf), each with a faint tint and an icon; fold them with a click.
+- Groups by folder (groups.conf), each with a faint tint and an icon; fold them with a click, reorder
+  them by dragging. The order is the groups file's line order, which is also the order a new tab's
+  folder is matched in (the first group whose folder holds it); Default is always last.
 - Tab names: a name given by hand, else Claude Code's topic, the running command (without `VAR=value`
   in front), or folder and branch. An ssh tab shows the remote's `user@host folder`, vim's file
   (`vim nginx.conf`), else what the remote titles, or the host until the remote sends a title.
@@ -27,8 +29,10 @@ grouped by project, with what each one is doing.
 - Status: Claude's state with its time while `claude` is the tab's foreground program (`… ✎ ⚙ ◎ ⌕ ⧉`
   working, `● waits`, `✓ 3m` done, `◇` idle), `⏱` for a command running 3 s or more, `✗` for a failed
   one, `✓` when something finished out of sight.
-- Mouse: click a tab to go there, drag it onto another tab or a group, right-click for menus (new tab,
-  new group, rename, duplicate, move to group, close, fold).
+- Mouse: click a tab to go there, drag it onto another tab or a group; click a group's row to fold it,
+  drag it onto another group's row or one of its tabs to move its line in the groups file there (above
+  that group moving up, below it moving down); right-click for menus (new tab, new group, rename,
+  duplicate, move to group, close, fold).
 - One width: every tab's sidebar keeps the same width through terminal resizes and layout commands;
   drag any sidebar's border (or `resize-pane` it) to change it for all tabs until tmux stops.
 - Fast: each sidebar keeps one tmux control-mode connection and redraws when tmux reports a change;
@@ -71,7 +75,7 @@ Optional inputs, shown when present:
 | `src/` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus, `width.rs` one width for all |
 | `tabrail.tmux` | What tmux.conf loads: mouse bindings, hooks, prefix M |
 | `tabrail-tmux` | Housekeeping from the hooks: a sidebar for every tab, restart, close tabs with only a sidebar |
-| `tabrail-act` | What the menus do: new tab, duplicate, fold, new group, rename group |
+| `tabrail-act` | What the menus and group drags do: new tab, duplicate, fold, new group, rename group, move group |
 | `tabrail-move`, `tabrail-pick` | Move a tab to a group in a picker; the picker (Claude Code's option-list style, fzf), or a name field with `-q` |
 | `tabrail-name` | The menus' Rename, Rename group and New group…: a name field in a popup, Esc cancels whatever `status-keys` is |
 | `groups.conf.example` | The groups file format |

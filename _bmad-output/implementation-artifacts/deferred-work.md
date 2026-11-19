@@ -110,3 +110,35 @@ source_spec: `specs/spec-sidebar-width/stories/2-one-sidebar-width-set-by-draggi
 severity: low
 reason: Verified only by hand on throwaway tmux servers. Same owner call as DW-3/DW-5/DW-8/DW-10.
 status: open
+
+### DW-15: No automated test pins group drag: fold on release and `reorder` in `drag::left`, and `tabrail-act move-group`'s line move, Default target, symlink write-through and failure cleanup; only a scratch `rustc --test` crate and a scratch bash script check them.
+origin: bmad-build review, dispatch
+location: src/drag.rs, tabrail-act
+source_spec: `implementation-artifacts/spec-group-drag.md`
+severity: low
+reason: Fold-on-press, a dropped Default guard, swapped `<`/`>` in the awk or a dropped `readlink -f` all build and pass unnoticed. Same owner call as DW-3/DW-5/DW-8/DW-10/DW-14.
+status: open
+
+### DW-16: `tabrail-act rename-group` turns a symlinked groups file into a regular file, while `move-group` writes through the link.
+origin: bmad-build review, dispatch
+location: tabrail-act:45-46
+source_spec: `implementation-artifacts/spec-group-drag.md`
+severity: low
+reason: `rename_group` writes `$CONF.new` and `mv`s it onto `$CONF` unresolved; after a rename, later moves edit the copy, not the link target. Predates spec-group-drag, whose Code Map left it alone.
+status: open
+
+### DW-17: A group name containing `'` breaks the fold command, and one containing `|` folds as two names.
+origin: bmad-build review, dispatch
+location: src/drag.rs `fold`
+source_spec: `implementation-artifacts/spec-group-drag.md`
+severity: low
+reason: `fold` writes raw names into `set -g @sidebar_fold '…'` joined by `|`; moved verbatim from the old press branch. `tabrail-act fold` handles any name.
+status: open
+
+### DW-18: The menus' New tab and Fold items pass group names to `sh` unquoted, so a group named `R&D` runs `tabrail-act new R` in the background and then `D …`.
+origin: bmad-build review, dispatch
+location: src/menu.rs:26, :55
+source_spec: `implementation-artifacts/spec-group-drag.md`
+severity: low
+reason: `run-shell -b '{h} new {group} {pane}'` and `'{h} fold {name}'`; `clean` drops quotes and `$` but not `& | < > ( ) * ?` or backticks, and New group… allows them. Group drag quotes its names since spec-group-drag review R5.
+status: open

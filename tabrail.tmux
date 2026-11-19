@@ -8,7 +8,7 @@ set -gF @tabrail_dir "#{d:current_file}"
 %hidden MENUS="$XDG_RUNTIME_DIR/tabrail"
 
 # A click into a sidebar goes to the sidebar but does not move the keyboard there; letting go of the
-# button goes to the program under it too (the sidebar drags tabs with it)
+# button goes to the program under it too (the sidebar drags tabs and groups with it)
 bind -n MouseDown1Pane if -F -t = "#{@sidebar}" "send-keys -M -t =" "select-pane -t = ; send-keys -M -t ="
 bind -n MouseUp1Pane send-keys -M -t =
 bind -n MouseDragEnd1Pane send-keys -M -t =

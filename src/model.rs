@@ -1,6 +1,6 @@
 //! What the sidebar shows: the session's tabs (one `list-panes` reply), the project groups from
 //! groups.conf, and what each tab is doing.
-use crate::name;
+use crate::{name, program};
 use std::collections::BTreeMap;
 
 pub const FIELDS: [&str; 21] = [
@@ -15,6 +15,7 @@ pub struct Tab {
     pub id: String,
     pub index: u32,
     pub name: String,
+    pub program: String, // after the name: `· vim`, `✳` for claude, or nothing
     pub current: bool,
     pub group: String,
     f: Vec<String>,
@@ -35,10 +36,11 @@ pub fn tabs(lines: &[String]) -> Vec<Tab> {
         }
         let group = if f[4].is_empty() { "Default".into() } else { f[4].clone() };
         let name = name::label(&name::Facts {
-            window: &f[2], renamed: f[19] == "0", claude: !f[7].is_empty() || f[17] == "claude",
+            window: &f[2], renamed: f[19] == "0", claude: f[17] == "claude",
             title: &f[16], command: &f[17], running: f[11] == "1", path: &f[18], host: &f[20],
         });
-        let tab = Tab { id: f[0].clone(), index, name, current: f[3] == "1", group, f };
+        let program = program::mark(&name, &f[17]);
+        let tab = Tab { id: f[0].clone(), index, name, program, current: f[3] == "1", group, f };
         by_window.insert(index, tab);
     }
     by_window.into_values().collect()
@@ -73,7 +75,9 @@ pub fn status(tab: &Tab, now: i64) -> (String, &'static str) {
         "writing" => "✎", "running" => "⚙", "reading" => "◎", "searching" => "⌕",
         "delegating" => "⧉", _ => "…",
     };
-    match tab.f[7].as_str() {
+    // Claude's state only while claude runs: a crashed Claude leaves its @claude behind
+    let claude = if tab.f[17] == "claude" { tab.f[7].as_str() } else { "" };
+    match claude {
         "waiting" => return ("● waits".into(), "wait"),
         "done" => return (format!("✓ {}", tab.f[9]), "done"),
         "idle" => return ("◇".into(), "dim"),

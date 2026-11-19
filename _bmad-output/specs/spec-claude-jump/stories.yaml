@@ -1,0 +1,19 @@
+- id: "1"
+  title: Alt+0 to the longest-waiting Claude
+  description: >-
+    A helper and the Alt+0 binding in tabrail.tmux: waiting before done, each
+    oldest first, cycling, live claude only, this session (SPEC.md CAP-1..3).
+  invoke_dev_with: >-
+    Helper in its own file under 100 lines. Test with @claude and
+    @claude_waits set by hand and a stand-in script named claude on a tmux -L
+    server, never the user's tmux.
+- id: "2"
+  title: Record when Claude starts waiting
+  description: >-
+    tmux-claude-state sets @claude_waits on Notification (waiting) and Stop
+    (done); README documents the new option (SPEC.md CAP-4).
+  invoke_dev_with: >-
+    The hook is ~/Dev/vmConfig/tmux-claude-state, a separate git repo: commit
+    there on an lde/ branch. Every running Claude calls it: test by piping hook
+    JSON into it with TMUX and TMUX_PANE pointing at a tmux -L test server,
+    never the default socket.

@@ -26,7 +26,7 @@ grouped by project, with what each one is doing.
 
 ## Setup
 
-Needs tmux (tested with 3.8), `fzf` for the pickers, and Rust to build.
+Needs tmux (tested with 3.8), `fzf` for the pickers and name fields, and Rust to build.
 
 ```bash
 cargo build --release --offline
@@ -59,5 +59,6 @@ Optional inputs, shown when present:
 | `tabrail.tmux` | What tmux.conf loads: mouse bindings, hooks, prefix M |
 | `tabrail-tmux` | Housekeeping from the hooks: a sidebar for every tab, restart, close tabs with only a sidebar |
 | `tabrail-act` | What the menus do: new tab, duplicate, fold, new group, rename group |
-| `tabrail-move`, `tabrail-pick` | Move a tab to a group in a picker; the picker (Claude Code's option-list style, fzf) |
+| `tabrail-move`, `tabrail-pick` | Move a tab to a group in a picker; the picker (Claude Code's option-list style, fzf), or a name field with `-q` |
+| `tabrail-name` | The menus' Rename, Rename group and New group…: a name field in a popup, Esc cancels whatever `status-keys` is |
 | `groups.conf.example` | The groups file format |

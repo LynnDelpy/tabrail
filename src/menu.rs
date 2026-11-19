@@ -12,6 +12,7 @@ pub struct Place<'a> {
     pub pane: &'a str,   // the sidebar's pane, for the session of a new tab
     pub helper: &'a str, // tabrail-act
     pub mover: &'a str,  // tabrail-move
+    pub namer: &'a str,  // tabrail-name
 }
 
 /// Names go into quoted tmux strings: drop what could end the quote or the command.
@@ -23,11 +24,12 @@ pub fn clean(s: &str) -> String {
 pub fn for_row(row: Option<&Row>, tabs: &[Tab], folded: &HashSet<String>, p: &Place) -> String {
     let h = p.helper;
     let new_tab = |group: &str| format!("'New tab' n {{ run-shell -b '{h} new {} {}' }}", clean(group), p.pane);
-    // a new group: a tab (@id) moves into it, from elsewhere a new tab opens in it (the sidebar's pane
-    // as p12: command-prompt would read %1 in %12 as its first answer)
-    let new_group = |target: &str| format!("'New group…' g {{ command-prompt -p 'New group:' \
-                                            {{ run-shell -b \"{h} new-group '%%' {}\" }} }}",
-                                           target.replace('%', "p"));
+    // names are typed in tabrail-name's popup: KIND TARGET CLIENT and the name it starts with
+    let namer = |kind: &str, target: &str, text: &str| format!("{{ run-shell -b \"{} {kind} '{target}' \
+                                                                '#{{client_name}}' '{text}'\" }}", p.namer);
+    // a new group: a tab (@id) moves into it, from elsewhere a new tab opens in it (the sidebar's pane,
+    // %12 written p12 as tabrail-act new-group takes it)
+    let new_group = |target: &str| format!("'New group…' g {}", namer("new", &target.replace('%', "p"), ""));
     let (title, items) = match row {
         Some(Row::Tab(id)) => {
             let tab = tabs.iter().find(|t| &t.id == id);
@@ -35,7 +37,7 @@ pub fn for_row(row: Option<&Row>, tabs: &[Tab], folded: &HashSet<String>, p: &Pl
             (name.clone(), vec![
                 new_tab(tab.map(|t| t.group.as_str()).unwrap_or("Default")),
                 "''".into(),
-                format!("Rename r {{ command-prompt -I '{name}' -p 'Rename tab:' {{ rename-window -t {id} '%%' }} }}"),
+                format!("Rename r {}", namer("tab", id, &name)),
                 format!("Duplicate d {{ run-shell -b '{h} dup {id}' }}"),
                 format!("'Move to group…' m {{ run-shell -b \"{} {id} '#{{client_name}}'\" }}", p.mover),
                 new_group(id),
@@ -47,8 +49,7 @@ pub fn for_row(row: Option<&Row>, tabs: &[Tab], folded: &HashSet<String>, p: &Pl
             let name = clean(name);
             let mut items = vec![new_tab(&name), new_group(p.pane)];
             if name != "Default" {
-                items.push(format!("'Rename group' r {{ command-prompt -I '{name}' -p 'Rename group:' \
-                                    {{ run-shell -b \"{h} rename-group {name} '%%'\" }} }}"));
+                items.push(format!("'Rename group' r {}", namer("group", &name, &name)));
             }
             let fold = if folded.contains(&name) { "Unfold" } else { "Fold" };
             items.push(format!("{fold} f {{ run-shell -b '{h} fold {name}' }}"));

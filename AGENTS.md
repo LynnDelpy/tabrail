@@ -22,8 +22,9 @@ tmux.conf loads. `README.md` is the reference for behaviour and setup. BMAD plan
 
 - Files under 100 lines; split by job (see README's Files table).
 - tmux options the sidebar uses: pane `@sidebar` (this pane is a sidebar), window `@group`, `@claude*`,
-  `@finished`, global `@sidebar_fold`, `@tabrail_groups`, `@tabrail_dir`. The buffer `sidebar-refresh`
-  is the "redraw now" signal. Keep these names: running sidebars find each other by them.
+  `@finished`, `@sidebar_relayout`, global `@sidebar_fold`, `@sidebar_width`, `@tabrail_groups`,
+  `@tabrail_dir`. The buffer `sidebar-refresh` is the "redraw now" signal. Keep these names: running
+  sidebars find each other by them.
 
 ## tmux pitfalls (each cost a debugging round)
 

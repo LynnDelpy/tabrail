@@ -94,3 +94,19 @@ source_spec: `spec-tab-program.md`
 severity: low
 reason: zsh reports 148 after a suspend and tmux.zsh sends it as the OSC 133 exit status, so `status` takes the fail arm. Before spec-tab-program a stale `@claude` masked it for Claude; vim and others already showed it. Treating 148 as no failure would fix it.
 status: open
+
+### DW-13: SPEC.md and stories.yaml of spec-sidebar-width disagree with what story 2 built.
+origin: bmad-build review, oneshot
+location: _bmad-output/specs/spec-sidebar-width/SPEC.md, stories.yaml
+source_spec: `specs/spec-sidebar-width/stories/2-one-sidebar-width-set-by-dragging.md`
+severity: low
+reason: SPEC assumes a keyboard `resize-pane` is undone (story 2 adopts it like a drag); open question 2 is half answered (a layout command restores the width; a layout that moves the sidebar off the left column is left alone); stories.yaml calls `MouseDragEnd1Border` free, but ~/Dev/vmConfig/tmux-mouse.conf binds it after tabrail.tmux. Spec edits go through bmad-spec.
+status: open
+
+### DW-14: No automated test pins `width::Width::keep`, a state machine with zoomed, off-column, first-frame, clamp re-baseline, relayout, moved and adopt branches.
+origin: bmad-build review, oneshot
+location: src/width.rs
+source_spec: `specs/spec-sidebar-width/stories/2-one-sidebar-width-set-by-dragging.md`
+severity: low
+reason: Verified only by hand on throwaway tmux servers. Same owner call as DW-3/DW-5/DW-8/DW-10.
+status: open

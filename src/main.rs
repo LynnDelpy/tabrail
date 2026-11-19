@@ -11,6 +11,7 @@ mod model;
 mod name;
 mod program;
 mod ssh;
+mod width;
 
 use control::Tmux;
 use std::collections::HashSet;
@@ -42,18 +43,22 @@ fn main() {
     let fields = model::FIELDS.map(|f| format!("#{{{f}}}")).join("\t");
     let mut out = std::io::stdout();
     let _ = write!(out, "\x1b]2;sidebar\x1b\\\x1b[?25l\x1b[?1000h\x1b[?1006h");
-    // the tab a left press started on; the lines on screen; the menu file written for each row
-    let (mut drag, mut shown, mut written) = (None, Vec::new(), Vec::<String>::new());
+    // the tab a left press started on; the lines on screen and their size; the menu file for each row
+    let (mut drag, mut shown, mut drawn, mut written) = (None, Vec::new(), (0, 0), Vec::<String>::new());
     // while tmux shows a right-click menu over the sidebar, drawing would paint over it: paused from
     // the right press until the next change or click after the menu's first moment, 10 s at most
     let mut menu_open: Option<Instant> = None;
+    let mut keep = width::Width::default(); // one width for every tab's sidebar
     loop {
         let head = t.ask(&format!("display -p -t {pane} '%H:%M  %a %d.%m.\t#{{@sidebar_fold}}\t\
-                                   #{{pane_width}}\t#{{pane_height}}\t#{{@tabrail_groups}}'"));
+                                   #{{pane_width}}\t#{{pane_height}}\t#{{@tabrail_groups}}\t{}'", width::FORMAT));
         let h: Vec<&str> = head.first().map(|l| l.split('\t').collect()).unwrap_or_default();
         let folded: HashSet<String> = h.get(1).unwrap_or(&"").split('|').map(str::to_string).collect();
         let size: (usize, usize) = (h.get(2).and_then(|v| v.parse().ok()).unwrap_or(26),
                                     h.get(3).and_then(|v| v.parse().ok()).unwrap_or(40));
+        if keep.keep(&mut t, &pane, size.0, h.get(5..).unwrap_or_default()) {
+            continue; // draw at the new width
+        }
         let tabs = model::tabs(&t.ask(&format!("list-panes -s -t {session} -F '{fields}'")));
         let conf = h.get(4).filter(|p| !p.is_empty()).map(PathBuf::from).unwrap_or(dir.join("groups.conf"));
         let groups = model::groups(&fs::read_to_string(conf).unwrap_or_default());
@@ -67,6 +72,9 @@ fn main() {
             }
         }
         if menu_open.is_none() {
+            if drawn != size {
+                (shown, drawn) = (Vec::new(), size); // tmux reflowed the old lines: repaint them all
+            }
             let _ = out.write_all(draw::changes(&mut shown, screen.lines).as_bytes()).and_then(|_| out.flush());
         }
         for click in std::mem::take(&mut t.clicks) {

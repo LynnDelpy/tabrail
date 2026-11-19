@@ -29,6 +29,8 @@ grouped by project, with what each one is doing.
   one, `✓` when something finished out of sight.
 - Mouse: click a tab to go there, drag it onto another tab or a group, right-click for menus (new tab,
   new group, rename, duplicate, move to group, close, fold).
+- One width: every tab's sidebar keeps the same width through terminal resizes and layout commands;
+  drag any sidebar's border (or `resize-pane` it) to change it for all tabs until tmux stops.
 - Fast: each sidebar keeps one tmux control-mode connection and redraws when tmux reports a change;
   nothing is spawned on a tab switch (~15 ms until the sidebar shows it). Rust, standard library only.
 
@@ -47,6 +49,7 @@ In `~/.tmux.conf`:
 set -g mouse on
 set -g status off                          # optional: the sidebar shows tabs and the time
 set -g @tabrail_groups "$HOME/.config/tabrail/groups.conf"   # optional
+set -goq @sidebar_width 26                 # optional: the starting width (-o: a reload keeps a dragged one)
 source-file ~/src/tabrail/tabrail.tmux
 ```
 
@@ -65,7 +68,7 @@ Optional inputs, shown when present:
 
 | File | Job |
 |---|---|
-| `src/` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus |
+| `src/` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus, `width.rs` one width for all |
 | `tabrail.tmux` | What tmux.conf loads: mouse bindings, hooks, prefix M |
 | `tabrail-tmux` | Housekeeping from the hooks: a sidebar for every tab, restart, close tabs with only a sidebar |
 | `tabrail-act` | What the menus do: new tab, duplicate, fold, new group, rename group |

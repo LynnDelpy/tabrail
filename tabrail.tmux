@@ -15,6 +15,10 @@ bind -n MouseDragEnd1Pane send-keys -M -t =
 # Right button up over a sidebar: tmux opens the menu the sidebar keeps for that row (a menu takes
 # clicks only when opened from a mouse binding like this one)
 bind -n MouseUp3Pane if -F -t = "#{@sidebar}" "source-file -q -F '$MENUS/#{pid}-#{pane_id}-#{mouse_y}.conf'" "send-keys -M -t ="
+# A layout command resizes the sidebar too: mark the tab so it goes back to the shared width rather
+# than taking the new one (src/width.rs); prefix Space as select-layout -n, as next-layout has no hook
+bind Space select-layout -n
+set-hook -g after-select-layout[50] "set -w @sidebar_relayout 1"
 # prefix M: move this tab to another group
 bind M run-shell -b "#{@tabrail_dir}/tabrail-move '#{window_id}' '#{client_name}'"
 

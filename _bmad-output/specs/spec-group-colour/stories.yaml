@@ -1,0 +1,14 @@
+- id: "1"
+  title: Pick a group's colour from its menu
+  description: >-
+    The group menu's Colour… opens a palette picker with swatches and the
+    current one marked, then writes the tint to the group's line in the groups
+    file and every sidebar redraws (SPEC.md CAP-1, CAP-2).
+  invoke_dev_with: >-
+    tabrail-act is at 98 lines: put the popup and pick in its own script, as
+    tabrail-move does, and keep one palette list that both it and new-group's
+    auto-pick read. tabrail-pick -n labels may carry ANSI colours (48;2 for the
+    swatch). Write column 2 like move_group: through the symlink, mode kept,
+    renamed into place. No entry for Default. Open question: 7 or 9 colours;
+    build with the 7 existing tints unless Lynn says otherwise. Test on a copy
+    named by @tabrail_groups on a tmux -L server, never the user's file.

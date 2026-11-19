@@ -1,0 +1,10 @@
+- id: "1"
+  title: Name field where Esc cancels
+  description: >-
+    Rename, Rename group and both New group… items take the name in a popup
+    field: one Esc leaves with nothing changed, Enter saves as today
+    (SPEC.md CAP-1, CAP-2).
+  invoke_dev_with: >-
+    tabrail-move and tabrail-pick are the popup precedent (brownfield.md).
+    Close's y/n confirm is an open question, not part of this story. Test on a
+    tmux -L server started with EDITOR=/usr/bin/vim, Esc sent through the viewer.

@@ -22,13 +22,16 @@ Pain for the sidebar's user: a group's colour (the faint tint behind its row) is
 - **CAP-2**
   - **intent:** The user sees each palette colour as it looks behind a group row before picking, and which one the group has now.
   - **success:** Every picker row shows its colour as a swatch with the group's header text on it; the row of the group's current tint is marked current.
+- **CAP-3**
+  - **intent:** The user can narrow the long palette by typing part of a colour's name.
+  - **success:** Typing `te` in the picker leaves only the teal rows; Enter on one picks it as in CAP-1.
 
 ## Constraints
 
 - The colour stays where it lives today: column 2 of the group's line in the groups file (the file `@tabrail_groups` names, else `groups.conf`). A change rewrites only that field; comments and every other line stay byte for byte.
 - A failed or interrupted write never leaves the groups file broken or empty: written through a symlink, mode kept, renamed into place, as group moves do. It is the user's config.
 - Only palette colours are offered, each keeping the bold header text and icon readable.
-- The picker is a `tabrail-pick` popup (Claude Code option-list style, fzf); nothing new to install.
+- The picker is `tabrail-pick`'s searchable list in a popup (Claude Code option-list style, fzf); nothing new to install.
 - Every sidebar of every session shows the new tint on its next redraw (`sidebar-refresh`), no restart.
 - `README.md` is the behaviour reference: its groups and menu text change with this work.
 
@@ -42,14 +45,12 @@ Pain for the sidebar's user: a group's colour (the faint tint behind its row) is
 
 ## Success signal
 
-On a throwaway tmux server with two groups holding tabs, an SGR right-click on group A's row, Colour… and a swatch number turns A's row background to that colour in `capture-pane -e` of every sidebar, and A's line in the groups file holds the new hex in column 2 with every other line unchanged (`diff`); the same steps ending in Esc leave the file identical (`cmp`).
+On a throwaway tmux server with two groups holding tabs, an SGR right-click on group A's row, Colour…, a colour's name and Enter turns A's row background to that colour in `capture-pane -e` of every sidebar, and A's line in the groups file holds the new hex in column 2 with every other line unchanged (`diff`); the same steps ending in Esc leave the file identical (`cmp`).
 
 ## Assumptions
 
-- The palette is the 7 tints New group… already cycles through, named Blue, Brown, Green, Plum, Teal, Olive, Violet; one list serves both the picker and the auto-pick; at most 9, so 1–9 pick directly.
+- The palette has about 28 named colours: the 7 tints New group… already cycles through (Blue, Brown, Green, Plum, Teal, Olive, Violet), so existing groups stay marked, plus Catppuccin Mocha's 14 accent hues at a faint and a deeper depth, without duplicates. One list serves both the picker and the auto-pick, which starts with the 7.
+- Readable means the bold `#cdd6f4` header text has at least 4.5:1 contrast on each tint.
 - Two groups may share a colour; the picker does not block it, and New group… still prefers an unused one.
 - A hand-written tint outside the palette stays valid; the picker then marks no row current.
-
-## Open Questions
-
-- Keep the palette at today's 7 dark tints, or add up to 2 more (e.g. a red and a grey) to fill 1–9?
+- The popup is no taller than the terminal; fzf scrolls the rest.

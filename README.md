@@ -6,12 +6,12 @@ grouped by project, with what each one is doing.
 ```
 ▾ ◆ Website
  ❯ Fix login redire ✳ ⚙ 2m         Claude's topic, cut; Claude running a command for 2 min
-   website·release-2 ✳ ◇           folder and git branch; Claude idle
+   website·release-2 ✳   ◇         folder and git branch; Claude idle
    deploy · vim                    named by hand; vim runs in it
 ▾ ▲ Infra
    lde@app01 in · ssh ⏱ 4m         ssh: remote user, host, folder, cut; 4 min
-   infra ✗ 2                       the last command failed
-            14:41  Wed 18.11.
+   infra               ✗ 2         the last command failed
+    14:41  Wed 18.11.
 ```
 
 - Groups by folder (groups.conf), each with a faint tint and an icon; fold them with a click, reorder
@@ -26,9 +26,10 @@ grouped by project, with what each one is doing.
   program (`htop`, `make test`). A long name is cut first; the program is left out where it would leave
   fewer than 8 of the name's characters (or cut a shorter name), so it can come and go as a timer grows.
   The status is never cut.
-- Status: Claude's state with its time while `claude` is the tab's foreground program (`… ✎ ⚙ ◎ ⌕ ⧉`
-  working, `● waits`, `✓ 3m` done, `◇` idle), `⏱` for a command running 3 s or more, `✗` for a failed
-  one, `✓` when something finished out of sight.
+- Status, at the right edge so the times of all rows end in one column: Claude's state with its time
+  while `claude` is the tab's foreground program (`… ✎ ⚙ ◎ ⌕ ⧉` working, `● waits`, `✓ 3m` done, `◇`
+  idle), `⏱` for a command running 3 s or more, `✗` for a failed one, `✓` when something finished out
+  of sight.
 - Mouse: click a tab to go there, drag it onto another tab or a group; click a group's row to fold it,
   drag it onto another group's row or one of its tabs to move its line in the groups file there (above
   that group moving up, below it moving down); right-click for menus (new tab, new group, rename,

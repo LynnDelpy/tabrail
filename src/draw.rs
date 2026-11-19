@@ -1,6 +1,6 @@
 //! One screen of the sidebar: groups on the terminal's own background with a faint tint behind each
-//! group's row, ❯ and lavender for the current tab, the program dimmed and the status after its name,
-//! the time at the bottom.
+//! group's row, ❯ and lavender for the current tab, the program dimmed after its name and the status at
+//! the right edge, the clock at the bottom.
 //! Colours: Catppuccin Mocha.
 use crate::model::{self, Tab};
 use std::collections::HashSet;
@@ -70,7 +70,7 @@ pub fn screen(tabs: &[Tab], groups: &[(String, String, String)], folded: &HashSe
         lines.push(format!("{tint}{}\x1b[1m{}\x1b[0m", fg("text"), fit(&head, width)));
         rows.push(Row::Group(name.clone()));
         for tab in if fold { vec![] } else { members } {
-            // program and status right after the name; a long name is cut to make room for both, and the
+            // program after the name, status at the edge; a long name is cut to make room for both, and the
             // program left out where fewer than 8 of the name's characters (all of a shorter one) would show
             let (state, kind) = model::status(tab, now);
             let state = if state.is_empty() { state } else { format!(" {state}") };
@@ -80,11 +80,11 @@ pub fn screen(tabs: &[Tab], groups: &[(String, String, String)], folded: &HashSe
             let full = format!(" {} {}", if tab.current { '❯' } else { ' ' }, tab.name);
             let right = len(&prog) + len(&state);
             let room = width.saturating_sub(right);
-            // a cut ending in a space loses it: no double space before the program or status
+            // a cut ending in a space loses it: no double space before the program
             let label = if len(&full) > room { full.chars().take(room).collect::<String>().trim_end().into() } else { full };
             let rest = " ".repeat(width.saturating_sub(len(&label) + right));
             let style = if tab.current { fg("current") + "\x1b[1m" } else { fg("tab") };
-            lines.push(format!("{style}{label}\x1b[0m{}{prog}{}{state}\x1b[0m{rest}", fg("dim"), fg(kind)));
+            lines.push(format!("{style}{label}\x1b[0m{}{prog}{rest}{}{state}\x1b[0m", fg("dim"), fg(kind)));
             rows.push(Row::Tab(tab.id.clone()));
         }
         lines.push(String::new());

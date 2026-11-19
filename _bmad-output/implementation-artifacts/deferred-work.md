@@ -142,3 +142,19 @@ source_spec: `implementation-artifacts/spec-group-drag.md`
 severity: low
 reason: `run-shell -b '{h} new {group} {pane}'` and `'{h} fold {name}'`; `clean` drops quotes and `$` but not `& | < > ( ) * ?` or backticks, and New group… allows them. Group drag quotes its names since spec-group-drag review R5.
 status: open
+
+### DW-19: No automated test pins the right-aligned status: every tab row with a status ends with it in column `width`, padding before it, at any shared width.
+origin: bmad-build review, oneshot
+location: src/draw.rs (screen, tab row)
+source_spec: `implementation-artifacts/spec-status-right.md`
+severity: low
+reason: Moving `{rest}` back after `{state}` builds and passes; only a throwaway-tmux capture at widths 26 and 34 checked it. Same owner call as DW-3/DW-5/DW-8/DW-10/DW-14/DW-15; DW-10's rows_test.rs could also assert that each status ends at `width`.
+status: open
+
+### DW-20: spec-status-right adopts `../spec-tab-rows/row-layout.md` as a companion, which still says "status right after the name" (columns table: `name, space, status`).
+origin: bmad-build review, oneshot
+location: _bmad-output/specs/spec-status-right/SPEC.md (companions), _bmad-output/specs/spec-tab-rows/row-layout.md
+source_spec: `implementation-artifacts/spec-status-right.md`
+severity: low
+reason: Its own row-layout.md shows the right-aligned rows, so the companion set holds both rules. A line in SPEC.md that CAP-1 supersedes that part (or dropping the companion) settles it; spec edits go through bmad-spec.
+status: open

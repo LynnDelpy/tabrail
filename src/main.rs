@@ -9,6 +9,7 @@ mod input;
 mod menu;
 mod model;
 mod name;
+mod ssh;
 
 use control::Tmux;
 use std::collections::HashSet;

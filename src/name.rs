@@ -1,6 +1,8 @@
-//! The name a tab gets in the sidebar. A name given by hand (rename) wins; a Claude tab shows Claude's
-//! topic (its terminal title without the spinner or ✳); while a command runs, its command line (the
-//! title oh-my-zsh sets); an idle shell shows its folder and git branch (main and master left out).
+//! The name a tab gets in the sidebar. A name given by hand (rename) wins; while ssh runs, what ssh.rs
+//! makes of the title; a Claude tab shows Claude's topic (its terminal title without the spinner or ✳);
+//! while a command runs, its command line (the title oh-my-zsh sets) without `VAR=value` words in front;
+//! an idle shell shows its folder and git branch (main and master left out).
+use crate::ssh;
 use std::fs;
 use std::path::Path;
 
@@ -19,6 +21,10 @@ pub fn label(f: &Facts) -> String {
     if f.renamed {
         return f.window.to_string();
     }
+    // before Claude: an ssh started from a Claude tab outranks its stale @claude
+    if f.command == "ssh" {
+        return ssh::label(f.title, f.host);
+    }
     // no title worth showing: none, tmux's default (the host), the shell's idle one ("lde@f4l002:
     // ~/Dev") left over, or Claude's own name
     let title = f.title.trim_start_matches(|c: char| !c.is_alphanumeric()).trim();
@@ -29,7 +35,7 @@ pub fn label(f: &Facts) -> String {
             return title.to_string();
         }
     } else if f.running || !matches!(f.command, "zsh" | "bash" | "sh" | "fish") {
-        return if told { title.to_string() } else { f.command.to_string() };
+        return if told { bare(title).to_string() } else { f.command.to_string() };
     }
     let home = std::env::var("HOME").unwrap_or_default();
     let folder = if f.path == home { "~".to_string() } else {
@@ -39,6 +45,34 @@ pub fn label(f: &Facts) -> String {
         Some(b) if b != "main" && b != "master" => format!("{folder}·{b}"),
         _ => folder,
     }
+}
+
+/// `line` without the `NAME=value` words in front: `TERM=xterm-256color htop` gives `htop` (an alias
+/// like ssh='TERM=xterm-256color ssh' reaches the title expanded); `line` itself if nothing else is left.
+pub fn bare(line: &str) -> &str {
+    let mut rest = line.trim_start();
+    while assignment(rest) {
+        let mut quote = None; // the value ends at the first whitespace outside '…' or "…"
+        let end = rest.char_indices().find(|&(_, c)| {
+            match quote {
+                Some(q) if c == q => quote = None,
+                Some(_) => {}
+                None if c == '\'' || c == '"' => quote = Some(c),
+                None => return c.is_whitespace(),
+            }
+            false
+        });
+        rest = end.map_or("", |(i, _)| rest[i..].trim_start());
+    }
+    if rest.is_empty() { line } else { rest }
+}
+
+/// `word` starts with `NAME=`, NAME a shell variable's name.
+fn assignment(word: &str) -> bool {
+    word.split_once('=').is_some_and(|(name, _)| {
+        name.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_')
+            && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+    })
 }
 
 /// The checked-out branch (its last part: lde/add-person gives add-person) of the repository `dir`

@@ -25,6 +25,7 @@ fn main() {
         .expect("binary lives in tabrail/target/release");
     let helper = dir.join("tabrail-act").display().to_string();
     let mover = dir.join("tabrail-move").display().to_string();
+    let namer = dir.join("tabrail-name").display().to_string();
     let ids = Command::new("tmux").args(["display", "-p", "-t", &pane, "#{session_id} #{pid}"])
         .output().map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string()).unwrap_or_default();
     let (session, server) = ids.split_once(' ').unwrap_or((&ids, "0"));
@@ -36,7 +37,7 @@ fn main() {
     let tx = t.tx.clone();
     thread::spawn(move || input::read_clicks(tx));
     t.ask(&format!("set -p -t {pane} @sidebar 1"));
-    let place = menu::Place { pane: &pane, helper: &helper, mover: &mover };
+    let place = menu::Place { pane: &pane, helper: &helper, mover: &mover, namer: &namer };
     let fields = model::FIELDS.map(|f| format!("#{{{f}}}")).join("\t");
     let mut out = std::io::stdout();
     let _ = write!(out, "\x1b]2;sidebar\x1b\\\x1b[?25l\x1b[?1000h\x1b[?1006h");

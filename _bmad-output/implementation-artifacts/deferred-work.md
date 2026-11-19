@@ -53,3 +53,19 @@ source_spec: `2-readable-command-and-ssh-names.md`
 severity: low
 reason: The running-command branch shows `bare(title)` and has no editor parse; story 2 scoped `vim file` naming to ssh tabs. Trying `ssh::editor(title)` before `bare(title)` there would give one name per app everywhere and settle the local half of R22.
 status: open
+
+### DW-8: No automated test pins the menu item strings (`menu::for_row`): the namer quoting, `%NN` written `pNN` for `tabrail-act new-group`, and the `{{`/`\` escapes.
+origin: bmad-build review, loop 1
+location: src/menu.rs
+source_spec: `1-name-field-where-esc-cancels.md`
+severity: low
+reason: cargo test runs 0 tests; only a scratch throwaway-tmux harness checks the naming items. `for_row` is pure, so a std-only #[cfg(test)] in menu.rs could assert the three namer items. Same owner call as DW-3/DW-5.
+status: open
+
+### DW-9: AGENTS.md's tmux pitfalls miss two lessons from naming-escape: tmux defaults `status-keys` to vi when EDITOR or VISUAL contains `vi` (Esc then does not cancel `command-prompt` or `confirm-before`), and `display-popup` takes argv, so pass values as arguments (bash `printf %q` gives `$'…'` under a C locale).
+origin: bmad-build review, loop 1
+location: AGENTS.md
+source_spec: `1-name-field-where-esc-cancels.md`
+severity: low
+reason: Both cost a planning round in this story; editing agent-context files is the owner's call.
+status: open

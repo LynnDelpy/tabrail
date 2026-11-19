@@ -2,17 +2,22 @@
 # Picker in the style of Claude Code's option lists, for tmux popups (display-popup -B): rounded box
 # with the question as its title, ❯ on the selected row, key hints underneath. Reads "value<TAB>label"
 # lines (labels may carry ANSI colours), prints the chosen value. Colours: Catppuccin Mocha.
-#   -n  numbered list without a search line, 1-9 pick a row directly (for short lists)
+#   -n       numbered list without a search line, 1-9 pick a row directly (for short lists)
+#   -q TEXT  a name field holding TEXT instead of a list: prints the field on Enter, nothing on Esc
 # Example: printf 'a\tFirst\nb\tSecond\n' | tabrail-pick -n "Which one?"
-numbered=0
+numbered=0 field=0
 [[ $1 == -n ]] && { numbered=1; shift; }
+[[ $1 == -q ]] && { field=1 text=$2; shift 2; }
 opts=(--ansi --layout=reverse --border=rounded --border-label=" $1 " --border-label-pos=3
   --pointer='❯' --marker=' ' --gutter=' ' --info=hidden --no-scrollbar --no-separator
   --delimiter=$'\t' --with-nth=2.. --accept-nth=1
   --color='bg:-1,bg+:-1,fg:#cdd6f4,fg+:#b4befe:bold,hl:#f9e2af,hl+:#f9e2af:bold,pointer:#b4befe'
   --color='border:#6c7086,label:#cdd6f4:bold,footer:#6c7086,prompt:#b4befe,query:#cdd6f4,gutter:-1')
 
-if (( numbered )); then
+if (( field )); then
+  fzf "${opts[@]}" --disabled --query="$text" --prompt='❯ ' --bind enter:print-query \
+    --footer=' Enter to save · Esc to cancel' < /dev/null
+elif (( numbered )); then
   binds=()
   for i in {1..9}; do binds+=(--bind "$i:pos($i)+accept"); done
   awk -F'\t' '{ printf "%s\t%d. %s\n", $1, NR, $2 }' |

@@ -1,0 +1,27 @@
+- id: "1"
+  title: Repaint the sidebar on a size change
+  description: >-
+    After any change of the sidebar's size it shows exactly its current rows,
+    with no reflow leftovers in blank rows (SPEC.md CAP-3).
+  invoke_dev_with: >-
+    draw::changes skips unchanged lines and blank rows never change
+    (brownfield.md). Keep drawing only changed lines while the size holds:
+    AGENTS.md menu pitfall.
+- id: "2"
+  title: One sidebar width, set by dragging
+  description: >-
+    Every tab's sidebar keeps one shared width through terminal resizes; a
+    border drag sets it for all tabs and new ones (SPEC.md CAP-1, CAP-2).
+  invoke_dev_with: >-
+    Causes and repro in brownfield.md; MouseDragEnd1Border is unbound and free.
+    No run-shell per resize or tab switch. tabrail-tmux ensure drops WIDTH=26
+    for the option. Test viewer with -f /dev/null.
+- id: "3"
+  title: Hide the sidebar when the terminal is narrow
+  description: >-
+    Below a width threshold the sidebar hides and comes back at the shared
+    width when the terminal is wide again (SPEC.md CAP-4).
+  invoke_dev_with: >-
+    Needs story 2. The threshold is an open question in SPEC.md: settle it with
+    the user at the plan checkpoint. ensure must not re-add a hidden sidebar
+    and reap must not close its tab.

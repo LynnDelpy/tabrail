@@ -29,3 +29,27 @@ source_spec: `1-tighter-rows-without-numbers.md`
 severity: low
 reason: draw.rs:86-87 resizes lines to height-1 and pushes the clock but leaves rows as built, so rows.get(height) (main.rs:61, :75) returns the first hidden row's entry. A rows.truncate(height) would fix it. Predates this story; the test pane (30 rows, 11 content lines) never overflows.
 status: open
+
+### DW-5: No automated test pins tab naming (`name::bare`, `ssh::label`); only a scratch `rustc --test` crate checks it, and it does not run on later builds.
+origin: bmad-build review, loop 1
+location: src/name.rs, src/ssh.rs
+source_spec: `2-readable-command-and-ssh-names.md`
+severity: low
+reason: cargo test runs 0 tests; reverting `bare(title)` to `title` in name.rs, breaking the `-vp 2222` bundle rule or the IPv4 check in ssh.rs all still build and pass. Same owner call as DW-3; when decided, the scratch crate's cases (I/O matrix plus captured vim/nvim titles) fit a std-only src/name_test.rs via #[cfg(test)] #[path].
+status: open
+
+### DW-6: The status column still follows a stale `@claude` when ssh runs in a tab whose Claude crashed or is suspended, so the row shows Claude's state instead of the `⏱` timer.
+origin: bmad-build review, loop 1
+location: src/model.rs:70-82
+source_spec: `2-readable-command-and-ssh-names.md`
+severity: low
+reason: `model::status` returns on any non-empty f[7] (@claude) before the running-command timer. Story 2 made the name prefer foreground ssh over @claude, not the status. @claude is unset on SessionEnd (vmConfig/tmux-claude-state:16), so it is stale only after a crash or with Claude suspended. Predates this story.
+status: open
+
+### DW-7: A local vim or nvim tab shows its raw title (`nginx.conf (/etc/nginx) - VIM`), while over ssh the same title reads `vim nginx.conf`; a local `a=b.txt (/etc) - VIM` even reads `(/etc) - VIM` because `bare` takes `a=b.txt` for an assignment.
+origin: bmad-build review, loop 2
+location: src/name.rs:37-38, src/ssh.rs (editor)
+source_spec: `2-readable-command-and-ssh-names.md`
+severity: low
+reason: The running-command branch shows `bare(title)` and has no editor parse; story 2 scoped `vim file` naming to ssh tabs. Trying `ssh::editor(title)` before `bare(title)` there would give one name per app everywhere and settle the local half of R22.
+status: open

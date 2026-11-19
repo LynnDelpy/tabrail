@@ -8,13 +8,15 @@ grouped by project, with what each one is doing.
  ❯ Fix login redirect ⚙ 2m         Claude's topic, running a command for 2 min
    website·release-2 ◇             folder and git branch; Claude idle
 ▾ ▲ Infra
-   ssh app01 ⏱ 4m                  a command running for 4 min
+   lde@app01 infra ⏱ 4m            ssh: remote user, host, folder; 4 min
    infra ✗ 2                       the last command failed
             14:41  Wed 18.11.
 ```
 
 - Groups by folder (groups.conf), each with a faint tint and an icon; fold them with a click.
-- Tab names: a name given by hand, else Claude Code's topic, the running command, or folder and branch.
+- Tab names: a name given by hand, else Claude Code's topic, the running command (without `VAR=value`
+  in front), or folder and branch. An ssh tab shows the remote's `user@host folder`, vim's file
+  (`vim nginx.conf`), else what the remote titles, or the host until the remote sends a title.
 - Status: Claude's state with its time (`… ✎ ⚙ ◎ ⌕ ⧉` working, `● waits`, `✓ 3m` done, `◇` idle),
   `⏱` for a command running 3 s or more, `✗` for a failed one, `✓` when something finished out of sight.
 - Mouse: click a tab to go there, drag it onto another tab or a group, right-click for menus (new tab,
@@ -53,7 +55,7 @@ Optional inputs, shown when present:
 
 | File | Job |
 |---|---|
-| `src/` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus |
+| `src/` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus |
 | `tabrail.tmux` | What tmux.conf loads: mouse bindings, hooks, prefix M |
 | `tabrail-tmux` | Housekeeping from the hooks: a sidebar for every tab, restart, close tabs with only a sidebar |
 | `tabrail-act` | What the menus do: new tab, duplicate, fold, new group, rename group |

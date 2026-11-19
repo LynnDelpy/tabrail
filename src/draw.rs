@@ -1,5 +1,6 @@
 //! One screen of the sidebar: groups on the terminal's own background with a faint tint behind each
-//! group's row, ❯ and lavender for the current tab, status on the right, the time at the bottom.
+//! group's row, ❯ and lavender for the current tab, the program dimmed and the status after its name,
+//! the time at the bottom.
 //! Colours: Catppuccin Mocha.
 use crate::model::{self, Tab};
 use std::collections::HashSet;
@@ -69,15 +70,21 @@ pub fn screen(tabs: &[Tab], groups: &[(String, String, String)], folded: &HashSe
         lines.push(format!("{tint}{}\x1b[1m{}\x1b[0m", fg("text"), fit(&head, width)));
         rows.push(Row::Group(name.clone()));
         for tab in if fold { vec![] } else { members } {
-            // the status right after the name; a long name is cut to make room for it
+            // program and status right after the name; a long name is cut to make room for both, and the
+            // program left out where fewer than 8 of the name's characters (all of a shorter one) would show
             let (state, kind) = model::status(tab, now);
-            let mark = if tab.current { '❯' } else { ' ' };
-            let gap = if state.is_empty() { 0 } else { 1 };
-            let room = width.saturating_sub(state.chars().count() + gap);
-            let label: String = format!(" {mark} {}", tab.name).chars().take(room).collect();
-            let rest = width.saturating_sub(label.chars().count() + gap + state.chars().count());
+            let state = if state.is_empty() { state } else { format!(" {state}") };
+            let len = |s: &str| s.chars().count();
+            let least = 3 + len(&tab.name).min(8) + 1 + len(&tab.program) + len(&state);
+            let prog = if tab.program.is_empty() || least > width { String::new() } else { format!(" {}", tab.program) };
+            let full = format!(" {} {}", if tab.current { '❯' } else { ' ' }, tab.name);
+            let right = len(&prog) + len(&state);
+            let room = width.saturating_sub(right);
+            // a cut ending in a space loses it: no double space before the program or status
+            let label = if len(&full) > room { full.chars().take(room).collect::<String>().trim_end().into() } else { full };
+            let rest = " ".repeat(width.saturating_sub(len(&label) + right));
             let style = if tab.current { fg("current") + "\x1b[1m" } else { fg("tab") };
-            lines.push(format!("{style}{label}\x1b[0m{}{}{state}\x1b[0m{}", " ".repeat(gap), fg(kind), " ".repeat(rest)));
+            lines.push(format!("{style}{label}\x1b[0m{}{prog}{}{state}\x1b[0m{rest}", fg("dim"), fg(kind)));
             rows.push(Row::Tab(tab.id.clone()));
         }
         lines.push(String::new());

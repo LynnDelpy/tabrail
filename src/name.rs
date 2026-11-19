@@ -9,7 +9,7 @@ use std::path::Path;
 pub struct Facts<'a> {
     pub window: &'a str,  // window_name
     pub renamed: bool,    // automatic-rename off: named by hand
-    pub claude: bool,
+    pub claude: bool,     // the claude process runs (pane_current_command)
     pub title: &'a str,   // pane_title
     pub command: &'a str, // pane_current_command
     pub running: bool,    // OSC 133 says a command runs (tmux.zsh)
@@ -21,7 +21,6 @@ pub fn label(f: &Facts) -> String {
     if f.renamed {
         return f.window.to_string();
     }
-    // before Claude: an ssh started from a Claude tab outranks its stale @claude
     if f.command == "ssh" {
         return ssh::label(f.title, f.host);
     }
@@ -34,7 +33,7 @@ pub fn label(f: &Facts) -> String {
         if told {
             return title.to_string();
         }
-    } else if f.running || !matches!(f.command, "zsh" | "bash" | "sh" | "fish") {
+    } else if f.running || !shell(f.command) {
         return if told { bare(title).to_string() } else { f.command.to_string() };
     }
     let home = std::env::var("HOME").unwrap_or_default();
@@ -45,6 +44,11 @@ pub fn label(f: &Facts) -> String {
         Some(b) if b != "main" && b != "master" => format!("{folder}·{b}"),
         _ => folder,
     }
+}
+
+/// A shell: in the foreground of a tab it runs no program.
+pub fn shell(command: &str) -> bool {
+    matches!(command, "zsh" | "bash" | "sh" | "fish")
 }
 
 /// `line` without the `NAME=value` words in front: `TERM=xterm-256color htop` gives `htop` (an alias

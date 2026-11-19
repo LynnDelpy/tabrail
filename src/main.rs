@@ -9,6 +9,7 @@ mod input;
 mod menu;
 mod model;
 mod name;
+mod program;
 mod ssh;
 
 use control::Tmux;

@@ -44,7 +44,8 @@ location: src/model.rs:70-82
 source_spec: `2-readable-command-and-ssh-names.md`
 severity: low
 reason: `model::status` returns on any non-empty f[7] (@claude) before the running-command timer. Story 2 made the name prefer foreground ssh over @claude, not the status. @claude is unset on SessionEnd (vmConfig/tmux-claude-state:16), so it is stale only after a crash or with Claude suspended. Predates this story.
-status: open
+status: resolved
+resolution: spec-tab-program CAP-4, `model::status` reads @claude only while pane_current_command is claude
 
 ### DW-7: A local vim or nvim tab shows its raw title (`nginx.conf (/etc/nginx) - VIM`), while over ssh the same title reads `vim nginx.conf`; a local `a=b.txt (/etc) - VIM` even reads `(/etc) - VIM` because `bare` takes `a=b.txt` for an assignment.
 origin: bmad-build review, loop 2
@@ -68,4 +69,28 @@ location: AGENTS.md
 source_spec: `1-name-field-where-esc-cancels.md`
 severity: low
 reason: Both cost a planning round in this story; editing agent-context files is the owner's call.
+status: open
+
+### DW-10: No automated test pins this story's rules: the live-Claude gate (`model::status`, `Facts.claude`), `program::mark` and the row's drop, cut and trim math; only a scratch `rustc --test` crate checks them.
+origin: bmad-build review, loops 1-3
+location: src/model.rs, src/program.rs, src/draw.rs
+source_spec: `spec-tab-program.md`
+severity: low
+reason: cargo test runs 0 tests; mutants (ungated `@claude`, `shell(name)`, no basename, no `least` check, no `trim_end`, `min(7)`) all build and pass. Same owner call as DW-3/DW-5/DW-8. When decided, the scratch cases fit a std-only src/rows_test.rs via #[cfg(test)] #[path] feeding `model::tabs` FIELDS lines into `draw::screen` at width 26: the I/O matrix of spec-tab-program.md plus `./target/release/x` -> `· x`, a cut at a space (`lde@app01 · ssh ⏱ 1h6m`), `deploy`+`terraform` showing at `⏱ 9s`, dropped at `⏱ 10s`, back at `⏱ 1m`, and every row exactly 26 wide with ` ❯ ` plus min(8) name characters.
+status: open
+
+### DW-11: AGENTS.md's tmux pitfalls miss how `pane_current_command` is made: the argv0 of the foreground process group's leader, basenamed only when absolute.
+origin: bmad-build review, loop 2
+location: AGENTS.md
+source_spec: `spec-tab-program.md`
+severity: low
+reason: Cost two review findings: `sudo vim` reports `sudo`, npm retitles itself so `npm run build` reports `npm` (not `node`), and `./target/release/x` stays whole. Editing agent-context files is the owner's call.
+status: open
+
+### DW-12: A program suspended with Ctrl-Z shows `✗ 148` in the fail colour, now a suspended Claude too.
+origin: bmad-build review, loop 3
+location: src/model.rs (status), ~/Dev/vmConfig/tmux.zsh
+source_spec: `spec-tab-program.md`
+severity: low
+reason: zsh reports 148 after a suspend and tmux.zsh sends it as the OSC 133 exit status, so `status` takes the fail arm. Before spec-tab-program a stale `@claude` masked it for Claude; vim and others already showed it. Treating 148 as no failure would fix it.
 status: open

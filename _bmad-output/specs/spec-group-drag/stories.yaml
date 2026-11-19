@@ -1,0 +1,17 @@
+- id: "1"
+  title: Group rows fold on release
+  description: >-
+    A group row folds or unfolds when the button is let go over the same row,
+    so a press dragged onto another row never folds (SPEC.md CAP-2).
+  invoke_dev_with: >-
+    Today drag.rs folds on the press. Tab drags already act on release
+    (AGENTS.md pitfall); follow that.
+- id: "2"
+  title: Drag a group to reorder
+  description: >-
+    Dropping a group's row on another group rewrites the groups file's line
+    order, shown in every sidebar (SPEC.md CAP-1).
+  invoke_dev_with: >-
+    The groups file is the user's config: write a temp file and rename, keep
+    comments and untouched lines byte for byte. Test on a copy named by
+    @tabrail_groups on a tmux -L server, never the user's file.

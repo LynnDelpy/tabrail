@@ -1,7 +1,9 @@
-//! The left button. Pressing and letting go on the same tab goes there; a press on a group's row folds
-//! or unfolds it. Letting go over another tab puts the pressed tab right there, in that tab's group;
-//! over a group's row it joins that group at its end. Nothing switches before the release: the
-//! release must reach this same sidebar, which only the current tab shows.
+//! The left button, acting on the release. Pressing and letting go on the same tab goes there, on the
+//! same group's row folds or unfolds it. Letting go over another tab puts the pressed tab right there,
+//! in that tab's group; over a group's row it joins that group at its end. A group's row let go over
+//! another group's row or one of its tabs moves its line in the groups file (tabrail-act move-group):
+//! above that group moving up, below it moving down; Default stays last. Nothing switches before the
+//! release: the release must reach this same sidebar, which only the current tab shows.
 use crate::control::Click;
 use crate::draw::Row;
 use crate::menu::clean;
@@ -10,32 +12,50 @@ use std::collections::HashSet;
 
 const REFRESH: &str = "set-buffer -b sidebar-refresh x"; // the other sidebars redraw on it
 
-/// tmux commands for a left press or release; `drag` holds the pressed tab between the two.
-pub fn left(click: &Click, row: Option<&Row>, tabs: &[Tab], folded: &HashSet<String>,
-            drag: &mut Option<(usize, String)>) -> Vec<String> {
-    if click.release {
-        return match drag.take() {
-            Some((from, src)) if from != click.row => drop_on(&src, row, tabs),
-            Some((_, src)) => vec![format!("select-window -t {src}")],
-            None => vec![],
+/// tmux commands for a left press or release; `drag` holds the pressed row between the two.
+pub fn left(click: &Click, row: Option<&Row>, tabs: &[Tab], folded: &HashSet<String>, helper: &str,
+            drag: &mut Option<(usize, Row)>) -> Vec<String> {
+    if !click.release {
+        *drag = match row {
+            Some(Row::Tab(id)) => Some((click.row, Row::Tab(id.clone()))),
+            Some(Row::Group(name)) => Some((click.row, Row::Group(name.clone()))),
+            _ => None,
         };
+        return vec![];
     }
-    *drag = None;
-    match row {
-        Some(Row::Tab(id)) => {
-            *drag = Some((click.row, id.clone()));
-            vec![]
-        }
-        Some(Row::Group(name)) => {
-            let mut f = folded.clone();
-            if !f.remove(name) {
-                f.insert(name.clone());
-            }
-            let f: Vec<&str> = f.iter().map(String::as_str).filter(|s| !s.is_empty()).collect();
-            vec![format!("set -g @sidebar_fold '{}'", f.join("|")), REFRESH.into()]
-        }
+    match drag.take() {
+        Some((from, Row::Tab(src))) if from != click.row => drop_on(&src, row, tabs),
+        Some((_, Row::Tab(src))) => vec![format!("select-window -t {src}")],
+        Some((from, Row::Group(src))) if from == click.row => fold(&src, folded),
+        Some((_, Row::Group(src))) => reorder(&src, row, tabs, helper),
         _ => vec![],
     }
+}
+
+fn fold(name: &str, folded: &HashSet<String>) -> Vec<String> {
+    let mut f = folded.clone();
+    if !f.remove(name) {
+        f.insert(name.to_string());
+    }
+    let f: Vec<&str> = f.iter().map(String::as_str).filter(|s| !s.is_empty()).collect();
+    vec![format!("set -g @sidebar_fold '{}'", f.join("|")), REFRESH.into()]
+}
+
+/// Group `src` let go over `row`: onto the group of that row, unless it is its own or Default is moved.
+fn reorder(src: &str, row: Option<&Row>, tabs: &[Tab], helper: &str) -> Vec<String> {
+    let onto = match row {
+        Some(Row::Group(g)) => g.as_str(),
+        Some(Row::Tab(id)) => match tabs.iter().find(|t| &t.id == id) {
+            Some(t) => t.group.as_str(),
+            None => return vec![],
+        },
+        _ => return vec![],
+    };
+    // only names that pass into the quotes unchanged: a cleaned name could match another group
+    if onto == src || src == "Default" || [src, onto].iter().any(|n| clean(n) != *n || n.contains('`')) {
+        return vec![];
+    }
+    vec![format!("run-shell -b '{helper} move-group \"{src}\" \"{onto}\"'")]
 }
 
 fn drop_on(src: &str, row: Option<&Row>, tabs: &[Tab]) -> Vec<String> {

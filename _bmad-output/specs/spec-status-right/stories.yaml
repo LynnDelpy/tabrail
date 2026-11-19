@@ -1,0 +1,9 @@
+- id: "1"
+  title: Status at the right edge
+  description: >-
+    Tab rows end their status (icon and time) at the sidebar's right edge;
+    name, program and the cut rules stay as they are (SPEC.md CAP-1, CAP-2).
+  invoke_dev_with: >-
+    draw.rs screen builds the row as label, program, status, padding: move the
+    padding before the status (row-layout.md). Update README's example rows.
+    Test at two shared widths on a tmux -L server, never the user's tmux.

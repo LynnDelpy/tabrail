@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# Tests for the reader pane (tabrail-reader, tabrail-reader-size, the hooks and prefix & in
+# tabrail.tmux) on throwaway tmux servers, never the default one: -L tabrail-rt runs tabrail with
+# @tabrail_reader 'cd / && exec sleep 99999', shown inside -L tabrail-ro (-f /dev/null) for clicks,
+# keys and the screen. Needs target/release/tabrail. One line per check, exits 1 if one failed.
+unset TMUX TMUX_PANE
+R=$(dirname "$(readlink -f "$0")")
+T=$(mktemp -d)
+fails=0
+check() { if eval "$2"; then echo "ok   $1"; else echo "FAIL $1"; fails=$((fails + 1)); fi; }
+t() { tmux -L tabrail-rt "$@"; }
+o() { tmux -L tabrail-ro "$@"; }
+settle() { sleep "${1:-1.5}"; }
+click() { o send-keys -t o -l $'\e[<0;'"$1;$2M"; o send-keys -t o -l $'\e[<0;'"$1;$2m"; settle; }
+rd() { local f='#{pane_id}'; t list-panes -a -f '#{@reader}' -F "${1:-$f}"; }       # the reader
+own() { t list-panes -t "$1" -f '#{!:#{@sidebar}#{@reader}}' -F '#{pane_id}'; }   # a tab's own panes
+sizes() { t list-panes -t "$1" -F '#{pane_width}x#{pane_height}' "${@:2}" | tr '\n' ' '; }
+mine() { sizes "$1" -f '#{!:#{@sidebar}#{@reader}}'; }                           # its own panes' sizes
+tabs() { t list-windows -t main | wc -l; }
+cleanup() {   # this server's menu files only: they start with its pid
+  t kill-server 2>/dev/null; o kill-server 2>/dev/null
+  [[ -n $spid ]] && rm -f "${XDG_RUNTIME_DIR:-/tmp}/tabrail/$spid-"*.conf
+  rm -rf "$T"
+}
+trap cleanup EXIT
+mkdir "$T/work"
+printf '%s\n' 'set -g base-index 1' 'set -g mouse on' 'set -g status off' \
+  "set -g @tabrail_reader 'cd / && exec sleep 99999'" "source-file $R/tabrail.tmux" > "$T/conf"
+t -f "$T/conf" new -d -s main -x 160 -y 46 -c "$T/work"
+spid=$(t display -p '#{pid}')
+o -f /dev/null new -d -s o -x 160 -y 46 "TMUX= tmux -L tabrail-rt attach -t main; sleep 60"
+o set -g status off
+t new-window -d -c "$T/work"; t new-window -d -c "$T/work"; settle 2
+pid=$(rd '#{pane_pid}')
+check "reader 26x4 under tab 1's sidebar" '[[ $(rd "#{window_index} #{pane_width}x#{pane_height} #{pane_left}") == "1 26x4 0" ]]'
+t select-window -t :3; settle
+check "tab switch: under tab 3, same pid; tab 1's sidebar alone" \
+  '[[ $(rd "#{window_index} #{pane_pid}") == "3 $pid" && $(sizes :1) == "26x46 133x46 " ]]'
+t split-window -h -d -t "$(own :3)" -l 110 -c "$T/work"; settle   # growing takes from both
+before=$(mine :3)
+click 5 44
+check "clicked into: big, 80 wide, 2/3 high" '[[ $(rd "#{@reader_big} #{pane_width}x#{pane_height}") == "1 80x30" ]]'
+check "reader active: the tab's row names the tab's own pane" 'o capture-pane -p -t o | grep "❯" | grep -q " work"'
+click 100 10
+check "own pane clicked: small, side-by-side panes back to their sizes" \
+  '[[ $(rd "#{pane_width}x#{pane_height}") == 26x4 && $(mine :3) == "$before" ]]'
+click 5 44
+t run-shell "$R/tabrail-act dup $(t display -p -t :3 '#{window_id}')"; settle 2
+check "Duplicate with the reader active: the tab's own folder" '[[ $(t display -p -t :4 "#{pane_current_path}") == "$T/work" ]]'
+check "new tab while big: small under it, same pid; tab 3 back to its sizes" \
+  '[[ $(rd "#{window_index} #{pane_pid} #{pane_width}x#{pane_height}") == "4 $pid 26x4" && $(mine :3) == "$before" ]]'
+check "@sidebar_width never written" '[[ -z $(t show -gv @sidebar_width 2>/dev/null) ]]'
+t run-shell "$R/tabrail-tmux restart"; settle
+check "restart keeps the reader's pid" '[[ $(rd "#{pane_pid}") == "$pid" ]]'
+o resize-window -t o -x 160 -y 56; settle 2
+check "terminal resize: still 4 rows" '[[ $(rd "#{pane_height}") == 4 ]]'
+o resize-window -t o -x 160 -y 46; settle 2
+
+t new-session -d -s s2 -c "$T/work"; settle 2
+t select-window -t main:1; settle
+c=$(t list-clients -f '#{!:#{client_control_mode}}' -F '#{client_name}')
+t switch-client -c "$c" -t s2; settle
+check "switch-client: it follows into the other session, same pid" '[[ $(rd "#{session_name} #{pane_pid}") == "s2 $pid" ]]'
+t switch-client -c "$c" -t main; settle
+n=$(tabs)
+o send-keys -t o C-b '&'; settle 0.5; o send-keys -t o y; settle 2
+check "prefix &: the tab closes, the reader moves to the tab shown" \
+  '[[ $(tabs) == $((n - 1)) && $(rd "#{session_name} #{window_active} #{pane_pid}") == "main 1 $pid" ]]'
+check "the menus' Close: tabrail-tmux close" 'grep -q "tabrail-tmux close" "${XDG_RUNTIME_DIR:-/tmp}/tabrail/$spid-"*.conf'
+n=$(tabs)
+for p in $(own "$(rd '#{window_id}')"); do t kill-pane -t "$p"; done; settle 2
+check "only sidebar and reader left: the tab closes, the reader moves on" \
+  '[[ $(tabs) == $((n - 1)) && $(rd "#{window_active} #{pane_pid}") == "1 $pid" ]]'
+while (( EPOCHSECONDS - $(t show -gv @tabrail_reader_started) < 11 )); do sleep 1; done
+t kill-pane -t "$(rd)"; settle 2
+check "reader gone: started again" '[[ -n $(rd) && $(rd "#{pane_pid}") != "$pid" ]]'
+t kill-pane -t "$(rd)"; settle 1; t next-window -t main; settle
+check "not again within 10 s of the last start" '[[ -z $(rd) ]]'
+t set -g @tabrail_reader_started 0; t set -gu @tabrail_reader; t next-window -t main; settle
+check "@tabrail_reader unset: no reader pane" '[[ -z $(rd) ]]'
+n=$(tabs)
+for p in $(own "$(t display -p -t main '#{window_id}')"); do t kill-pane -t "$p"; done; settle 2
+check "@tabrail_reader unset: a sidebar-only tab closes" '[[ $(tabs) == $((n - 1)) ]]'
+check "no failure shown in any pane" '[[ -z $(t list-panes -a -F "#{pane_in_mode}" | grep 1) ]]'
+exit $((fails > 0))

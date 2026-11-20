@@ -11,9 +11,11 @@ tmux.conf loads. `README.md` is the reference for behaviour and setup. BMAD plan
   without the proxy, and none are needed). After a build, `tabrail-tmux restart` restarts the sidebars.
 - Never test against the user's tmux (the default socket): it runs their work, Claude chats included.
   Use a throwaway server, `tmux -L test -f <conf>`, and show it inside a second one to see and drive it:
-  `tmux -L outer new -d "TMUX= tmux -L test attach"`, then `tmux -L outer capture-pane -p` reads the
-  screen and `tmux -L outer send-keys -l $'\e[<0;5;3M'` sends a real mouse click (SGR: button 0 left,
-  2 right, 32 drag; `M` press, `m` release) through tmux's own bindings.
+  `tmux -L outer -f /dev/null new -d "TMUX= tmux -L test attach"` (`-f /dev/null`: not the user's
+  tmux.conf with its plugins), then `tmux -L outer capture-pane -p` reads the screen and
+  `tmux -L outer send-keys -l $'\e[<0;5;3M'` sends a real mouse click (SGR: button 0 left, 2 right,
+  32 drag; `M` press, `m` release) through tmux's own bindings. `tabrail-reader-test` does it so.
+  Menu files of a test server start with its pid: delete only those, never another server's.
 - Helper scripts called from a shell outside that server need `TMUX=<its socket>,0,0`, or they act on
   the user's tmux. When a test server runs tabrail, kill its sidebars with it and never `pkill -f` by a
   pattern that also matches your own command line.
@@ -21,10 +23,12 @@ tmux.conf loads. `README.md` is the reference for behaviour and setup. BMAD plan
 ## Conventions
 
 - Files under 100 lines; split by job (see README's Files table).
-- tmux options the sidebar uses: pane `@sidebar` (this pane is a sidebar), window `@group`, `@claude*`,
-  `@finished`, `@sidebar_relayout`, global `@sidebar_fold`, `@sidebar_width`, `@tabrail_groups`,
-  `@tabrail_dir`. The buffer `sidebar-refresh` is the "redraw now" signal. Keep these names: running
-  sidebars find each other by them.
+- tmux options the sidebar uses: pane `@sidebar` (this pane is a sidebar), `@reader`, `@reader_big` and
+  `@reader_layout` (the reader pane, grown, the tab's layout before; never `@sidebar`), window
+  `@group`, `@claude*`, `@finished`, `@sidebar_relayout`, global `@sidebar_fold`, `@sidebar_width`,
+  `@tabrail_groups`, `@tabrail_dir`, `@tabrail_reader` (the reader pane's command),
+  `@tabrail_reader_started`. The buffer `sidebar-refresh` is the "redraw now" signal. Keep these
+  names: running sidebars find each other by them.
 
 ## tmux pitfalls (each cost a debugging round)
 

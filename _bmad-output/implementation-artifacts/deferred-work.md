@@ -158,3 +158,10 @@ source_spec: `implementation-artifacts/spec-status-right.md`
 severity: low
 reason: Its own row-layout.md shows the right-aligned rows, so the companion set holds both rules. A line in SPEC.md that CAP-1 supersedes that part (or dropping the companion) settles it; spec edits go through bmad-spec.
 status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-agent-journal.md`
+  summary: After a tmux-resurrect restore the reader pane may come back unmarked (no `@reader`), as a stray pane under a sidebar, possibly relaunched by the `~claude->withproxy claude --continue` rule, while `follow` starts a second reader (medium, unverified).
+  evidence: resurrect saves every pane and the pane's child command but no user pane options; the reader has no shell, so what it saves for it is unknown. Settle with a save and restore on a `-L` test server with `@resurrect-dir` in a scratch folder; likely fix is `start` marking its own pane plus a `"~claude-haiku-5-5->~/Dev/vmConfig/journal-reader/start"` rule ahead of `~claude` in tmux.conf.
+- source_spec: `_bmad-output/implementation-artifacts/spec-agent-journal.md`
+  summary: AGENTS.md lacks the reader-pane pitfalls (split-window, join-pane and resize-pane unzoom a tab; `#{P:}` guards in FORMAT and hooks) and the harness's outer server should start with `-f /dev/null`.
+  evidence: `tmux -L outer new …` as AGENTS.md writes it loads ~/.tmux.conf with resurrect, continuum and a second tabrail; the implementer had to work around it.

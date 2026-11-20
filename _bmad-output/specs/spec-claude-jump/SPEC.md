@@ -12,7 +12,7 @@ sources: []
 
 ## Why
 
-Pain, for the one user of the sidebar. Several Claude chats run in one session; a waiting Claude is stalled work and the user is the bottleneck. The sidebar marks `● waits` and `✓ 3m12s` but shows no time for how long either has waited, so finding the right tab means clicking around. A crashed or killed Claude also leaves a stale `● waits`: `@claude` is unset only on `SessionEnd`.
+Pain, for the one user of the sidebar. Several Claude chats run in one session; a waiting Claude is stalled work and the user is the bottleneck. The sidebar marks `● waits` and `✓ 3m12s` but shows no time for how long either has waited, so finding the right tab means clicking around.
 
 ## Capabilities
 
@@ -37,7 +37,7 @@ Pain, for the one user of the sidebar. Several Claude chats run in one session; 
 - The binding ships in `tabrail.tmux`, like prefix M; the helper is its own file under 100 lines.
 - Sidebar drawing, tab names and status unchanged.
 - `README.md` is the behaviour reference: its keys and the hook's optional inputs (`@claude_waits`) change with this work.
-- Verification only on a throwaway tmux server, with a stand-in script named `claude` and `@claude` / `@claude_waits` set by hand; never the user's tmux.
+- Verification only on a throwaway tmux server, with a stand-in process whose `argv[0]` is `claude` (`exec -a claude sleep 1d`; a script named `claude` shows as `bash`) and `@claude` / `@claude_waits` set by hand; never the user's tmux.
 
 ## Non-goals
 

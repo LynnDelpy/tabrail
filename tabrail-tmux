@@ -4,8 +4,10 @@
 #   ensure [WINDOW]  give every tab (or WINDOW) a sidebar pane on the left, and a group by its folder
 #   refresh          make every sidebar redraw now
 #   restart          restart every sidebar (after cargo build)
-#   reap             close tabs where only the sidebar is left
+#   reap             close tabs where only the sidebar (and the reader pane) is left
+#   close WINDOW     close a tab; the reader pane moves on first (the menus' Close)
 #   group DIR        print the group of a folder
+# The reader pane (tabrail-reader) only when the global option @tabrail_reader names its command.
 D=$(dirname "$(readlink -f "$0")")
 CONF=$(tmux show -gv @tabrail_groups 2>/dev/null)   # the groups: the file tmux.conf names, else ours
 CONF=${CONF:-$D/groups.conf}
@@ -15,6 +17,7 @@ WIDTH=$(tmux show -gv @sidebar_width 2>/dev/null)   # one width for every sideba
 # Every sidebar's control connection reports a changed paste buffer at once (%paste-buffer-changed),
 # so touching a named one is the cheapest way to make them all redraw
 refresh() { tmux set-buffer -b sidebar-refresh x 2>/dev/null; true; }
+reader() { [[ -n $(tmux show -gv @tabrail_reader 2>/dev/null) ]] && "$D/tabrail-reader" "$@"; true; }
 
 group() {
   local name tint icon dir
@@ -48,6 +51,7 @@ ensure() {
     fi
   done
   refresh
+  reader follow
 }
 
 restart() {
@@ -60,11 +64,19 @@ restart() {
 reap() {
   local win
   for win in $(tmux list-windows -a -F '#{window_id}'); do
-    tmux list-panes -t "$win" -F '#{@sidebar}' | grep -qv 1 || tmux kill-window -t "$win"
+    tmux list-panes -t "$win" -F '#{@sidebar}#{@reader}' | grep -qv 1 || close "$win"
   done
+  reader follow   # it moves to the tab shown now, or starts again if it was the pane that ended
+}
+
+close() {
+  reader away "$1"
+  tmux kill-window -t "$1" 2>/dev/null
+  true   # run-shell -b shows a failure in the pane
 }
 
 case $1 in
-  ensure | refresh | restart | reap | group) "$@" ;;
-  *) echo "usage: tabrail-tmux ensure [WINDOW] | refresh | restart | reap | group DIR" >&2; exit 2 ;;
+  ensure | refresh | restart | reap | close | group) "$@" ;;
+  *) echo "usage: tabrail-tmux ensure [WINDOW] | refresh | restart | reap | close WINDOW | group DIR" >&2
+     exit 2 ;;
 esac

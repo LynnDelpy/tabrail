@@ -2,16 +2,18 @@
 //! over all panes of a tab, so when the tab's width or the shared width changes, the sidebar sets its
 //! own pane back to the shared width. When its width changes while the tab's does not, its border was
 //! dragged: once the width holds still, it becomes the shared width, and every other sidebar follows.
-//! A layout command (tabrail.tmux marks the tab with @sidebar_relayout) puts it back instead.
+//! A layout command (tabrail.tmux marks the tab with @sidebar_relayout) puts it back instead. The
+//! reader pane (tabrail-reader) shares the column: while it is big the column is left alone.
 use crate::control::Tmux;
 
 /// The default when @sidebar_width is not set; `tabrail-tmux ensure` uses the same.
 pub const DEFAULT: usize = 26;
 /// What `keep` reads, appended to the sidebar's display query: tab width, shared width, the
-/// zoomed/left/top/bottom/right flags ("01110": not zoomed, the full-height left column, not alone)
-/// and whether a layout command ran.
+/// zoomed/left/top/bottom/right flags ("01110": not zoomed, the full-height left column, not alone;
+/// "01100" with the reader pane under it), whether a layout command ran and the reader pane's size.
 pub const FORMAT: &str = "#{window_width}\t#{@sidebar_width}\t#{window_zoomed_flag}#{pane_at_left}\
-                          #{pane_at_top}#{pane_at_bottom}#{pane_at_right}\t#{@sidebar_relayout}";
+                          #{pane_at_top}#{pane_at_bottom}#{pane_at_right}\t#{@sidebar_relayout}\t\
+                          #{P:#{?@reader,#{?@reader_big,big,small},}}";
 
 #[derive(Default)]
 pub struct Width {
@@ -26,8 +28,14 @@ impl Width {
     pub fn keep(&mut self, t: &mut Tmux, pane: &str, width: usize, fields: &[&str]) -> bool {
         let num = |i: usize| fields.get(i).and_then(|v| v.parse().ok());
         let (Some(window), shared) = (num(0), num(1).unwrap_or(DEFAULT)) else { return false };
+        // a big reader pane widened the column: start over once it is small again or gone
+        let reader = fields.get(4).copied().unwrap_or("");
+        if reader == "big" {
+            (self.seen, self.pane, self.moved) = (None, None, false);
+            return false;
+        }
         // zoomed: resize-pane would unzoom the tab; off the left column: a layout command moved it
-        if fields.get(2) != Some(&"01110") {
+        if fields.get(2) != Some(&if reader.is_empty() { "01110" } else { "01100" }) {
             return false;
         }
         if fields.get(3) == Some(&"1") {

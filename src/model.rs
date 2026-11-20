@@ -3,12 +3,12 @@
 use crate::{name, program};
 use std::collections::BTreeMap;
 
-pub const FIELDS: [&str; 21] = [
+pub const FIELDS: [&str; 22] = [
     "window_id", "window_index", "window_name", "window_active", "@group", "@sidebar",
     "pane_active", "@claude", "@claude_since", "@claude_took", "@finished",
     "pane_command_running", "pane_command_start_time", "pane_command_end_time",
     "pane_command_status", "pane_id", "pane_title", "pane_current_command", "pane_current_path",
-    "automatic-rename", "host_short",
+    "automatic-rename", "host_short", "@reader",
 ];
 
 pub struct Tab {
@@ -22,12 +22,12 @@ pub struct Tab {
 }
 
 /// One Tab per window from `list-panes -F` lines (FIELDS joined by tabs): its content pane, the
-/// active one if there are several; sidebar panes are skipped.
+/// active one if there are several; sidebar and reader panes are skipped.
 pub fn tabs(lines: &[String]) -> Vec<Tab> {
     let mut by_window: BTreeMap<u32, Tab> = BTreeMap::new();
     for line in lines {
         let f: Vec<String> = line.split('\t').map(str::to_string).collect();
-        if f.len() < FIELDS.len() || f[5] == "1" {
+        if f.len() < FIELDS.len() || f[5] == "1" || f[21] == "1" {
             continue;
         }
         let index = f[1].parse().unwrap_or(0);

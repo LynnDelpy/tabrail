@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # What tabrail's right-click menus and group drags do (src/menu.rs, drag.rs); also usable by hand:
 #   new GROUP PANE           a new tab in GROUP's first folder (home if none), in PANE's session
-#   dup WINDOW               a new tab right after WINDOW, same folder and group
+#   dup WINDOW               a new tab right after WINDOW, same group and folder (of its own pane)
 #   fold GROUP               fold or unfold a group in every sidebar
 #   rename-group OLD NEW     in groups.conf, on its tabs and in the fold state
 #   new-group NAME TARGET    a line in groups.conf with a tint and an icon not used yet; TARGET a
@@ -24,9 +24,10 @@ new() {
   tmux set -w -t "$id" @group "$1"
 }
 
-dup() {
-  local id
-  id=$(tmux new-window -a -t "$1" -P -F '#{window_id}' -c "$(tmux display -p -t "$1" '#{pane_current_path}')")
+dup() {   # the tab's own pane: its active one, else its first; not the sidebar or the reader pane
+  local id dir=$(tmux list-panes -t "$1" -f '#{!:#{@sidebar}#{@reader}}' -F '#{pane_active} #{pane_current_path}' |
+    sort -rsk1,1 | head -1)
+  id=$(tmux new-window -a -t "$1" -P -F '#{window_id}' -c "${dir#[01] }")
   tmux set -w -t "$id" @group "$(tmux show -wv -t "$1" @group)"
 }
 

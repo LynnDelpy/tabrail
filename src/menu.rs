@@ -42,7 +42,9 @@ pub fn for_row(row: Option<&Row>, tabs: &[Tab], folded: &HashSet<String>, p: &Pl
                 format!("'Move to group…' m {{ run-shell -b \"{} {id} '#{{client_name}}'\" }}", p.mover),
                 new_group(id),
                 "''".into(),
-                format!("Close x {{ confirm-before -p 'Close {name}? (y/n)' {{ kill-window -t {id} }} }}"),
+                // tabrail-tmux close: the reader pane moves on before the tab closes
+                format!("Close x {{ confirm-before -p 'Close {name}? (y/n)' \
+                         {{ run-shell -b '#{{@tabrail_dir}}/tabrail-tmux close {id}' }} }}"),
             ])
         }
         Some(Row::Group(name)) => {

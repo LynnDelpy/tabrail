@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# The reader pane under the sidebar, when the global option @tabrail_reader holds the command it runs
+# (a chat: ~/Dev/vmConfig/journal-reader/start). One pane, marked @reader, sits under the sidebar of
+# the tab shown last and moves along (join-pane: same process, same conversation); small, big while
+# it has the keyboard (tabrail-reader-size). From tabrail.tmux hooks and tabrail-tmux:
+#   follow [SESSION]  move it to the tab SESSION shows (else the last used one); start it if it is
+#                     gone, not within 10 s of the last start (@tabrail_reader_started)
+#   fit WINDOW        big while it is WINDOW's active pane, small while the tab's own pane is
+#   away WINDOW       before WINDOW closes: move it to the tab tmux shows next
+CMD=$(tmux show -gv @tabrail_reader 2>/dev/null)
+[[ -n $CMD ]] || exit 0
+WIDTH=$(tmux show -gv @sidebar_width 2>/dev/null)
+[[ $WIDTH =~ ^[0-9]+$ ]] || WIDTH=26
+exec 8> "/tmp/tabrail-reader-$UID.lock"   # one at a time: hooks fire in bursts
+flock -w 5 8 || exit 0
+source "$(dirname "$(readlink -f "$0")")/tabrail-reader-size"   # big, small, fit
+
+# the reader's pane, its window and whether it is big; a window's sidebar pane
+reader() { tmux list-panes -a -f '#{@reader}' -F '#{pane_id} #{window_id} #{@reader_big}' | head -1; }
+sidebar() { tmux list-panes -t "$1" -f '#{@sidebar}' -F '#{pane_id}' 2>/dev/null | head -1; }
+zoomed() { tmux display -p -t "$1" '#{window_zoomed_flag}'; }
+# zoomed tabs stay zoomed: split-window and join-pane unzoom them (WINDOW, its flag before)
+rezoom() { [[ $2 == 1 && $(zoomed "$1") == 0 ]] && tmux resize-pane -Z -t "$1"; }
+
+# pane $1 (in window $2, big if $3) goes under sidebar $4 of window $5
+move() {
+  local from=$(zoomed "$2") to=$(zoomed "$5")
+  [[ -n $3 ]] && small "$1" "$2"   # its tab's layout back first
+  tmux join-pane -v -d -l 4 -s "$1" -t "$4" || return
+  rezoom "$2" "$from"
+  rezoom "$5" "$to"
+}
+
+start() {   # under sidebar $1 of window $2
+  local last id was
+  last=$(tmux show -gv @tabrail_reader_started 2>/dev/null)
+  (( EPOCHSECONDS - ${last:-0} < 10 )) && return
+  tmux set -g @tabrail_reader_started "$EPOCHSECONDS"
+  was=$(zoomed "$2")
+  id=$(tmux split-window -v -d -l 4 -t "$1" -P -F '#{pane_id}' "$CMD")
+  [[ -n $id ]] && tmux set -p -t "$id" @reader 1
+  rezoom "$2" "$was"
+}
+
+follow() {
+  local win side r rwin isbig
+  win=$(tmux display -p ${1:+-t "$1"} '#{window_id}') || return
+  side=$(sidebar "$win")
+  [[ -n $side ]] || return   # no sidebar yet: tabrail-tmux ensure follows once it has one
+  read -r r rwin isbig < <(reader)
+  if [[ -z $r ]]; then start "$side" "$win"
+  elif [[ $rwin != "$win" ]]; then move "$r" "$rwin" "$isbig" "$side" "$win"
+  else fit "$win"; fi
+}
+
+away() {
+  local r rwin isbig next side
+  read -r r rwin isbig < <(reader)
+  [[ $rwin == "$1" ]] || return
+  # what tmux shows once WINDOW is gone: if it is the current tab the last one, else the one before
+  # it (round), else the current tab
+  next=$(tmux list-windows -t "$1" -F '#{window_id} #{window_active}#{window_last_flag}' |
+    awk -v w="$1" '$1 == w { me = 1; current = substr($2, 1, 1) == 1; next }
+      substr($2, 1, 1) == 1 { cur = $1 } substr($2, 2, 1) == 1 { last = $1 }
+      { if (me) end = $1; else before = $1 }
+      END { print !current ? cur : last ? last : before ? before : end }')
+  side=$(sidebar "$next")
+  [[ -n $side ]] && move "$r" "$rwin" "$isbig" "$side" "$next"
+}
+
+case $1 in
+  follow | fit | away) "$@"; exit 0 ;;   # run-shell -b shows a failure in the pane
+  *) echo "usage: tabrail-reader follow [SESSION] | fit WINDOW | away WINDOW" >&2; exit 2 ;;
+esac

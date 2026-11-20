@@ -22,8 +22,9 @@ set-hook -g after-select-layout[50] "set -w @sidebar_relayout 1"
 # prefix M: move this tab to another group
 bind M run-shell -b "#{@tabrail_dir}/tabrail-move '#{window_id}' '#{client_name}'"
 
-# Every new tab gets a sidebar; a tab is closed when only its sidebar is left. A command of 10 s or
-# more that finished out of sight leaves ✓ until you look (needs OSC 133 marks from the shell).
+# Every new tab gets a sidebar; a tab is closed when only its sidebar (and the reader pane) is left.
+# A command of 10 s or more that finished out of sight leaves ✓ until you look (needs OSC 133 marks
+# from the shell).
 set-hook -g after-new-window[50] "run-shell -b '#{@tabrail_dir}/tabrail-tmux ensure #{window_id}'"
 set-hook -g after-new-session[50] "run-shell -b '#{@tabrail_dir}/tabrail-tmux ensure'"
 set-hook -g client-attached[50] "run-shell -b '#{@tabrail_dir}/tabrail-tmux ensure'"
@@ -31,5 +32,33 @@ set-hook -g after-select-window[50] "set -wu @finished ; set-buffer -b sidebar-r
 set-hook -g pane-exited[50] "run-shell -b '#{@tabrail_dir}/tabrail-tmux reap'"
 set-hook -g after-kill-pane[50] "run-shell -b '#{@tabrail_dir}/tabrail-tmux reap'"
 set-hook -g pane-command-finished[50] 'if -F "#{&&:#{e|>=:#{pane_command_duration},10},#{!:#{&&:#{window_active},#{session_attached}}}}" "set -w @finished 1 ; set-buffer -b sidebar-refresh x"'
+
+# The reader pane, only if @tabrail_reader names its command (tabrail-reader): it follows to the tab
+# shown, also in another session; grows while it has the keyboard, shrinks when the tab's own pane
+# takes it (the sidebar does not), and gets its size back after a resize
+set-hook -g session-window-changed[50] {
+  if -F "#{&&:#{@tabrail_reader},#{!:#{P:#{@reader}}}}" {
+    run-shell -b "#{@tabrail_dir}/tabrail-reader follow '#{session_id}'"
+  }
+}
+set-hook -g client-session-changed[50] {
+  if -F "#{&&:#{@tabrail_reader},#{!:#{P:#{@reader}}}}" {
+    run-shell -b "#{@tabrail_dir}/tabrail-reader follow '#{session_id}'"
+  }
+}
+set-hook -g window-pane-changed[50] {
+  if -F "#{&&:#{@tabrail_reader},#{P:#{@reader}}}" {
+    run-shell -b "#{@tabrail_dir}/tabrail-reader fit '#{window_id}'"
+  }
+}
+set-hook -g window-resized[50] {
+  if -F "#{&&:#{@tabrail_reader},#{P:#{@reader}}}" {
+    run-shell -b "#{@tabrail_dir}/tabrail-reader fit '#{window_id}'"
+  }
+}
+# prefix &: close the tab like the menus' Close, the reader pane moving on first
+bind & confirm-before -p "kill-window #W? (y/n)" {
+  run-shell -b "#{@tabrail_dir}/tabrail-tmux close '#{window_id}'"
+}
 
 run-shell -b "#{@tabrail_dir}/tabrail-tmux ensure"

@@ -2,16 +2,15 @@
   title: Record every command and edit
   description: >-
     A Claude Code hook appends a raw record per command and edit, from every
-    session on f4l002, to one central journal (SPEC.md CAP-1,
-    journal-records.md).
+    session on f4l002, to one local journal with secrets masked (SPEC.md
+    CAP-1, journal-records.md).
   invoke_dev_with: >-
-    Lives in ~/Dev/vmConfig beside tmux-claude-state (bash, jq), on an lde/
-    branch there. Print nothing, never exit non-zero, under 50 ms. Open
-    question, journal location: until Lynn decides, write to a local folder
-    outside any git repo and commit no journal data. Open question, secret
-    scrubbing and retention: leave both out, say so in the summary. Test by
-    piping sample hook JSON into the script; wiring it into
-    ~/.claude/settings.json touches every live session, so leave that as the
+    Code lives in ~/Dev/vmConfig beside tmux-claude-state (bash, jq), on an
+    lde/ branch there; the journal itself in a local folder outside any git
+    repo, never committed. Print nothing, never exit non-zero, under 50 ms.
+    Test masking with sample commands (--password x, TOKEN=x, https://u:p@h,
+    Authorization headers) piped in as hook JSON. Wiring it into
+    ~/.claude/settings.json touches every live session: leave that as the
     last step and give Lynn the change instead of making it.
 - id: "2"
   title: Distilled entry per task
@@ -23,7 +22,7 @@
     Stop hook starts it detached; the turn's end must not wait. The
     summarizer's own headless claude run must not trigger the journal hooks
     (an env var the hooks check). Feed it the turn's raw records and only the
-    transcript part of that turn.
+    transcript part of that turn; mask secrets in its output like story 1.
 - id: "3"
   title: Reader chat
   description: >-
@@ -38,11 +37,12 @@
 - id: "4"
   title: Reader pane under the sidebar
   description: >-
-    The reader chat runs in a pane under the sidebar's tab list, follows from
-    tab to tab with its conversation, and can be shown and hidden (SPEC.md
-    CAP-4, CAP-5).
+    The reader chat runs in an always-open, small pane under the sidebar's tab
+    list that follows from tab to tab, grows while clicked into and shrinks
+    when left (SPEC.md CAP-4, CAP-6).
   invoke_dev_with: >-
-    Open question, width: build at the sidebar's width; widening is Lynn's
-    call. A tab with only a sidebar and the pane closes like a sidebar-only
-    tab, and tabrail-tmux restart must not kill the chat; keep the pane's
-    tmux marker apart from @sidebar. Test on a tmux -L server only (AGENTS.md).
+    Growing must not touch @sidebar_width: leaving restores every sidebar and
+    the work pane exactly. A tab with only a sidebar and the pane closes like
+    a sidebar-only tab, and tabrail-tmux restart must not kill the chat; keep
+    the pane's tmux marker apart from @sidebar. Test on a tmux -L server only
+    (AGENTS.md).

@@ -14,7 +14,7 @@ What the two kinds of journal record carry: the contract between the hooks that 
 | what | The command line, or the edited file's path |
 | versions | `name version` pairs found in the command or its output (`tmux 3.8`, `serde 1.0.210`); empty when none |
 
-Never the command's output, the file's contents, or the diff.
+Never the command's output, the file's contents, or the diff. Secrets in `what` (tokens, passwords, keys, credentials in arguments, `VAR=value`, URL userinfo, auth headers) are masked before writing; the same holds for every field of a distilled entry.
 
 ## Distilled entry (one per turn that changed something, CAP-2)
 

@@ -49,7 +49,7 @@ On a throwaway tmux server with two groups holding tabs, an SGR right-click on g
 
 ## Assumptions
 
-- The palette has about 28 named colours: the 7 tints New group… already cycles through (Blue, Brown, Green, Plum, Teal, Olive, Violet), so existing groups stay marked, plus Catppuccin Mocha's 14 accent hues at a faint and a deeper depth, without duplicates. One list serves both the picker and the auto-pick, which starts with the 7.
+- The palette has 25 named colours: the 7 tints New group… already cycles through (Blue, Brown, Green, Plum, Teal, Olive, Violet), so existing groups stay marked, plus Catppuccin Mocha's accent hues at a faint and a deep depth, near-duplicates dropped. One list serves both the picker and the auto-pick, which starts with the 7.
 - Readable means the bold `#cdd6f4` header text has at least 4.5:1 contrast on each tint.
 - Two groups may share a colour; the picker does not block it, and New group… still prefers an unused one.
 - A hand-written tint outside the palette stays valid; the picker then marks no row current.

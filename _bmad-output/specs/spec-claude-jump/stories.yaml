@@ -5,8 +5,9 @@
     oldest first, cycling, live claude only, this session (SPEC.md CAP-1..3).
   invoke_dev_with: >-
     Helper in its own file under 100 lines. Test with @claude and
-    @claude_waits set by hand and a stand-in script named claude on a tmux -L
-    server, never the user's tmux.
+    @claude_waits set by hand and a stand-in process started with
+    exec -a claude sleep 1d (a script named claude shows as bash) on a
+    tmux -L server, never the user's tmux.
 - id: "2"
   title: Record when Claude starts waiting
   description: >-

@@ -1,0 +1,48 @@
+- id: "1"
+  title: Record every command and edit
+  description: >-
+    A Claude Code hook appends a raw record per command and edit, from every
+    session on f4l002, to one local journal with secrets masked (SPEC.md
+    CAP-1, journal-records.md).
+  invoke_dev_with: >-
+    Code lives in ~/Dev/vmConfig beside tmux-claude-state (bash, jq), on an
+    lde/ branch there; the journal itself in a local folder outside any git
+    repo, never committed. Print nothing, never exit non-zero, under 50 ms.
+    Test masking with sample commands (--password x, TOKEN=x, https://u:p@h,
+    Authorization headers) piped in as hook JSON. Wiring it into
+    ~/.claude/settings.json touches every live session: leave that as the
+    last step and give Lynn the change instead of making it.
+- id: "2"
+  title: Distilled entry per task
+  description: >-
+    After a turn that edited files or ran commands, a small model writes a
+    short entry with what, where, versions and pointers, in the background
+    (SPEC.md CAP-2, journal-records.md).
+  invoke_dev_with: >-
+    Stop hook starts it detached; the turn's end must not wait. The
+    summarizer's own headless claude run must not trigger the journal hooks
+    (an env var the hooks check). Feed it the turn's raw records and only the
+    transcript part of that turn; mask secrets in its output like story 1.
+- id: "3"
+  title: Reader chat
+  description: >-
+    One Claude Code chat set up to answer questions about versions and past
+    work from the journal, citing entries (SPEC.md CAP-3).
+  invoke_dev_with: >-
+    Its own folder in vmConfig with a CLAUDE.md (journal location, record
+    format, rules) and a skill that searches the journal by name, version,
+    repo and date. Never connects to servers: hand Lynn the command. Its own
+    sessions are not journaled. Lynn's fabasoft-infra skill is available to
+    it.
+- id: "4"
+  title: Reader pane under the sidebar
+  description: >-
+    The reader chat runs in an always-open, small pane under the sidebar's tab
+    list that follows from tab to tab, grows while clicked into and shrinks
+    when left (SPEC.md CAP-4, CAP-6).
+  invoke_dev_with: >-
+    Growing must not touch @sidebar_width: leaving restores every sidebar and
+    the work pane exactly. A tab with only a sidebar and the pane closes like
+    a sidebar-only tab, and tabrail-tmux restart must not kill the chat; keep
+    the pane's tmux marker apart from @sidebar. Test on a tmux -L server only
+    (AGENTS.md).

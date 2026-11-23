@@ -24,7 +24,7 @@ rezoom() { [[ $2 == 1 && $(zoomed "$1") == 0 ]] && tmux resize-pane -Z -t "$1"; 
 move() {
   local from=$(zoomed "$2") to=$(zoomed "$5")
   [[ -n $3 ]] && small "$1"
-  tmux join-pane -v -d -l 4 -s "$1" -t "$4" || return
+  tmux join-pane -v -d -l "$SMALL" -s "$1" -t "$4" || return
   rezoom "$2" "$from"
   rezoom "$5" "$to"
 }
@@ -35,7 +35,7 @@ start() {   # under sidebar $1 of window $2
   (( EPOCHSECONDS - ${last:-0} < 10 )) && return
   tmux set -g @tabrail_reader_started "$EPOCHSECONDS"
   was=$(zoomed "$2")
-  id=$(tmux split-window -v -d -l 4 -t "$1" -P -F '#{pane_id}' "$CMD")
+  id=$(tmux split-window -v -d -l "$SMALL" -t "$1" -P -F '#{pane_id}' "$CMD")
   [[ -n $id ]] && tmux set -p -t "$id" @reader 1
   rezoom "$2" "$was"
 }

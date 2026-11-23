@@ -1,15 +1,17 @@
 # shellcheck shell=bash
 # The reader pane's size, sourced by tabrail-reader. Only its height changes, never the column's
-# width, so the sidebar and the tab's own panes stay where they are. Small: 4 rows. Big
-# (@reader_big) while it has the keyboard: 2/3 of the tab's height.
+# width, so the sidebar and the tab's own panes stay where they are. Small: SMALL rows
+# (Claude Code's input line and the mode line under it). Big (@reader_big) while it has the
+# keyboard: 2/3 of the tab's height.
+SMALL=5
 
 big() {   # reader $1 in window $2
   tmux set -p -t "$1" @reader_big 1
   tmux resize-pane -t "$1" -y $(( $(tmux display -p -t "$2" '#{window_height}') * 2 / 3 ))
 }
 
-small() {   # reader $1; also to put a small one back to 4 rows
-  tmux resize-pane -t "$1" -y 4
+small() {   # reader $1; also to put a small one back to SMALL rows
+  tmux resize-pane -t "$1" -y "$SMALL"
   tmux set -pu -t "$1" @reader_big
 }
 

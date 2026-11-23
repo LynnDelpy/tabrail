@@ -4,10 +4,11 @@
 #   ensure [WINDOW]  give every tab (or WINDOW) a sidebar pane on the left, and a group by its folder
 #   refresh          make every sidebar redraw now
 #   restart          restart every sidebar (after cargo build)
-#   reap             close tabs where only the sidebar (and the reader pane) is left
+#   reap             close tabs where only the sidebar (and the reader pane or its slot) is left
 #   close WINDOW     close a tab; the reader pane moves on first (the menus' Close)
 #   group DIR        print the group of a folder
-# The reader pane (tabrail-reader) only when the global option @tabrail_reader names its command.
+# The reader pane and its slots (tabrail-reader) only when the global option @tabrail_reader names
+# its command.
 D=$(dirname "$(readlink -f "$0")")
 CONF=$(tmux show -gv @tabrail_groups 2>/dev/null)   # the groups: the file tmux.conf names, else ours
 CONF=${CONF:-$D/groups.conf}
@@ -32,8 +33,8 @@ group() {
 }
 
 ensure() {
-  # During a restore (resurrect) tabs come back one by one, their saved sidebars with them: wait until
-  # it is done, and a moment for the restored sidebars to start ([t] keeps pgrep off this script)
+  # During a restore (resurrect) tabs come back one by one, their saved sidebars and slots with them:
+  # wait until it is done, and a moment for the restored ones to start ([t] keeps pgrep off this script)
   local win id
   if pgrep -f '[t]mux-resurrect/scripts/restore.sh' >/dev/null; then
     while pgrep -f '[t]mux-resurrect/scripts/restore.sh' >/dev/null; do sleep 0.5; done
@@ -51,6 +52,10 @@ ensure() {
     fi
   done
   refresh
+  if [[ -z $(tmux show -gv @tabrail_reader 2>/dev/null) ]]; then   # slots only while it is set
+    tmux list-panes -a -f '#{@reader_slot}' -F '#{pane_id}' | xargs -rn1 tmux kill-pane -t
+  fi
+  reader slots "$1"
   reader follow
 }
 
@@ -64,8 +69,9 @@ restart() {
 reap() {
   local win
   for win in $(tmux list-windows -a -F '#{window_id}'); do
-    tmux list-panes -t "$win" -F '#{@sidebar}#{@reader}' | grep -qv 1 || close "$win"
+    tmux list-panes -t "$win" -F '#{@sidebar}#{@reader}#{@reader_slot}' | grep -qv 1 || close "$win"
   done
+  reader slots   # a tab whose reader ended gets its slot back
   reader follow   # it moves to the tab shown now, or starts again if it was the pane that ended
 }
 

@@ -165,3 +165,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-agent-journal.md`
   summary: AGENTS.md lacks the reader-pane pitfalls (split-window, join-pane and resize-pane unzoom a tab; `#{P:}` guards in FORMAT and hooks) and the harness's outer server should start with `-f /dev/null`.
   evidence: `tmux -L outer new …` as AGENTS.md writes it loads ~/.tmux.conf with resurrect, continuum and a second tabrail; the implementer had to work around it.
+- source_spec: `_bmad-output/specs/spec-reader-bar/stories/5-slot-in-every-tab-grow-on-double-click.md`
+  summary: AGENTS.md does not list the new pane option `@reader_slot` among the names running sidebars find each other by, nor story 5's tmux pitfalls.
+  evidence: AGENTS.md:26-30 lists `@sidebar`, `@reader`, `@reader_big`… but not `@reader_slot`, which src/model.rs, src/width.rs and the bash helpers now use. Pitfalls found in story 5 live only in its Implementation Notes: `swap-pane -d` hands the leaving tab's keyboard to the slot (needs `last-pane`); `DoubleClick1Pane` fires after the second release; a pane in copy mode takes mouse keys from the mode's table before root; resurrect's ps strategy saves only the pane pid's direct children. Agent-context file, so deferred.
+- source_spec: `_bmad-output/specs/spec-reader-bar/stories/5-slot-in-every-tab-grow-on-double-click.md`
+  summary: Sidebars and the reader pane do not come back through resurrect; a restore leaves a stray shell in each sidebar's cell (and the reader's), and ensure adds new sidebars.
+  evidence: medium (unverified by a live restore). The user's save file records sidebars as `:tmux -C attach-session …` (their child process); `~release/tabrail` in @resurrect-processes is a regex on that string and never matches; the reader pane is saved with no command. Pre-existing, found by story 5's restore test; settle with a restore on a -L server that counts every pane per tab.
+- source_spec: `_bmad-output/specs/spec-reader-bar/stories/5-slot-in-every-tab-grow-on-double-click.md`
+  summary: The reader and ensure locks (/tmp/tabrail-reader-$UID.lock, /tmp/tabrail-$UID.lock) and ensure's restore wait (pgrep restore.sh) are per user, not per tmux server, so test servers and the live one serialize each other.
+  evidence: low. While a tabrail-*-test runs, a live `follow` can wait up to 5 s and give up (`flock -w 5 8 || exit 0`), and a live ensure waits during the slot test's restore. Pre-existing; key the locks by `#{pid}` and scope the restore wait to the server.
+- source_spec: `_bmad-output/specs/spec-reader-bar/stories/5-slot-in-every-tab-grow-on-double-click.md`
+  summary: A double-click on a sidebar row selects the sidebar pane (keyboard moves into it), unlike a single click.
+  evidence: low. The DoubleClick1Pane else branch (tmux's default, and vmConfig's tmux-mouse.conf binding) starts with `select-pane -t =`; MouseDown1Pane in tabrail.tmux skips select-pane for `@sidebar`. Pre-existing: tmux's default did the same before story 5.

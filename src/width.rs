@@ -3,19 +3,19 @@
 //! own pane back to the shared width. When its width changes while the tab's does not, its border was
 //! dragged: once the width holds still, it becomes the shared width, and every other sidebar follows.
 //! A layout command (tabrail.tmux marks the tab with @sidebar_relayout) puts it back instead. The
-//! reader pane (tabrail-reader) is a bar across the bottom of the tab, under the sidebar; it grows and
-//! shrinks only in height.
+//! reader pane (tabrail-reader) is a bar across the bottom of the tab, under the sidebar, and every
+//! other tab holds its slot there, as big as the small bar; the bar grows and shrinks only in height.
 use crate::control::Tmux;
 
 /// The default when @sidebar_width is not set; `tabrail-tmux ensure` uses the same.
 pub const DEFAULT: usize = 26;
 /// What `keep` reads, appended to the sidebar's display query: tab width, shared width, the
 /// zoomed/left/top/bottom/right flags ("01110": not zoomed, the full-height left column, not alone;
-/// "01100" with the reader bar under it), whether a layout command ran and whether the reader pane
-/// is in the tab.
+/// "01100" with the reader bar or its slot under it), whether a layout command ran and whether the
+/// reader pane or its slot is in the tab.
 pub const FORMAT: &str = "#{window_width}\t#{@sidebar_width}\t#{window_zoomed_flag}#{pane_at_left}\
                           #{pane_at_top}#{pane_at_bottom}#{pane_at_right}\t#{@sidebar_relayout}\t\
-                          #{P:#{?@reader,1,}}";
+                          #{P:#{?@reader,1,}#{?@reader_slot,1,}}";
 
 #[derive(Default)]
 pub struct Width {

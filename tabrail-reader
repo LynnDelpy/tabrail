@@ -9,8 +9,6 @@
 #   away WINDOW       before WINDOW closes: move it to the tab tmux shows next
 CMD=$(tmux show -gv @tabrail_reader 2>/dev/null)
 [[ -n $CMD ]] || exit 0
-WIDTH=$(tmux show -gv @sidebar_width 2>/dev/null)
-[[ $WIDTH =~ ^[0-9]+$ ]] || WIDTH=26
 exec 8> "/tmp/tabrail-reader-$UID.lock"   # one at a time: hooks fire in bursts
 flock -w 5 8 || exit 0
 source "$(dirname "$(readlink -f "$0")")/tabrail-reader-size"   # big, small, fit
@@ -25,8 +23,8 @@ rezoom() { [[ $2 == 1 && $(zoomed "$1") == 0 ]] && tmux resize-pane -Z -t "$1"; 
 # pane $1 (in window $2, big if $3) goes under sidebar $4 of window $5
 move() {
   local from=$(zoomed "$2") to=$(zoomed "$5")
-  [[ -n $3 ]] && small "$1" "$2"   # its tab's layout back first
-  tmux join-pane -v -d -l 4 -s "$1" -t "$4" || return
+  [[ -n $3 ]] && small "$1"
+  tmux join-pane -v -d -l "$SMALL" -s "$1" -t "$4" || return
   rezoom "$2" "$from"
   rezoom "$5" "$to"
 }
@@ -37,7 +35,7 @@ start() {   # under sidebar $1 of window $2
   (( EPOCHSECONDS - ${last:-0} < 10 )) && return
   tmux set -g @tabrail_reader_started "$EPOCHSECONDS"
   was=$(zoomed "$2")
-  id=$(tmux split-window -v -d -l 4 -t "$1" -P -F '#{pane_id}' "$CMD")
+  id=$(tmux split-window -v -d -l "$SMALL" -t "$1" -P -F '#{pane_id}' "$CMD")
   [[ -n $id ]] && tmux set -p -t "$id" @reader 1
   rezoom "$2" "$was"
 }

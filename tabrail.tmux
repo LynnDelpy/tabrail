@@ -16,9 +16,15 @@ bind -n MouseDragEnd1Pane send-keys -M -t =
 # clicks only when opened from a mouse binding like this one)
 bind -n MouseUp3Pane if -F -t = "#{@sidebar}" "source-file -q -F '$MENUS/#{pid}-#{pane_id}-#{mouse_y}.conf'" "send-keys -M -t ="
 # A layout command resizes the sidebar too: mark the tab so it goes back to the shared width rather
-# than taking the new one (src/width.rs); prefix Space as select-layout -n, as next-layout has no hook
+# than taking the new one (src/width.rs); it rearranges the reader bar as well, which goes back across
+# the bottom (tabrail-reader fit); prefix Space as select-layout -n, as next-layout has no hook
 bind Space select-layout -n
-set-hook -g after-select-layout[50] "set -w @sidebar_relayout 1"
+set-hook -g after-select-layout[50] {
+  set -w @sidebar_relayout 1
+  if -F "#{&&:#{@tabrail_reader},#{P:#{@reader}}}" {
+    run-shell -b "#{@tabrail_dir}/tabrail-reader fit '#{window_id}'"
+  }
+}
 # prefix M: move this tab to another group
 bind M run-shell -b "#{@tabrail_dir}/tabrail-move '#{window_id}' '#{client_name}'"
 
@@ -33,9 +39,9 @@ set-hook -g pane-exited[50] "run-shell -b '#{@tabrail_dir}/tabrail-tmux reap'"
 set-hook -g after-kill-pane[50] "run-shell -b '#{@tabrail_dir}/tabrail-tmux reap'"
 set-hook -g pane-command-finished[50] 'if -F "#{&&:#{e|>=:#{pane_command_duration},10},#{!:#{&&:#{window_active},#{session_attached}}}}" "set -w @finished 1 ; set-buffer -b sidebar-refresh x"'
 
-# The reader pane, only if @tabrail_reader names its command (tabrail-reader): it follows to the tab
-# shown, also in another session; grows while it has the keyboard, shrinks when the tab's own pane
-# takes it (the sidebar does not), and gets its size back after a resize
+# The reader pane, only if @tabrail_reader names its command (tabrail-reader): a bar across the bottom
+# of the tab shown that follows it, also into another session; grows while it has the keyboard,
+# shrinks when the tab's own pane takes it (the sidebar does not), gets its size back after a resize
 set-hook -g session-window-changed[50] {
   if -F "#{&&:#{@tabrail_reader},#{!:#{P:#{@reader}}}}" {
     run-shell -b "#{@tabrail_dir}/tabrail-reader follow '#{session_id}'"

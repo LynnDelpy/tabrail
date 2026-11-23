@@ -13,7 +13,7 @@ sources: []
 
 ## Why
 
-Pain for the user of the reader pane (spec-agent-journal): the chat sits 26 columns wide under the sidebar, and Claude Code's own TUI spends its 5 rows on a prompt box and a mode line, so the small pane shows almost nothing of an answer. Moved to a full-width bar along the bottom of the tab and driven by a frontend built for a few rows, the small bar shows the conversation itself, readable without clicking in. This supersedes the pane's placement and small size in spec-agent-journal CAP-4 and CAP-6; following tabs, growing (now on a double-click, CAP-2) and the housekeeping rules stay.
+Pain for the user of the reader pane (spec-agent-journal): the chat sits 26 columns wide under the sidebar, and Claude Code's own TUI spends its 5 rows on a prompt box and a mode line, so the small pane shows almost nothing of an answer. Moved to a full-width bar along the bottom of the tab and driven by a frontend built for a few rows, the small bar shows the conversation itself, readable without clicking in. This supersedes the pane's placement and small size in spec-agent-journal CAP-4 and CAP-6; following tabs, growing (now sized by the chat in it, CAP-2) and the housekeeping rules stay.
 
 ## Capabilities
 
@@ -21,8 +21,8 @@ Pain for the user of the reader pane (spec-agent-journal): the chat sits 26 colu
   - **intent:** The reader pane sits as a bar across the full width of the tab shown, below the sidebar and the tab's own panes, and follows from tab to tab with the same process and conversation; every other tab keeps an idle slot of the bar's small size in its place, which the bar swaps places with, so a tab switch resizes none of the tabs' own panes.
   - **success:** With the bar in tab 1 after a question, switching to tab 3 shows it at the bottom of tab 3 with `pane_width` equal to `window_width`, `pane_left` 0 and the same pid; tab 1 holds a 4-row slot where the bar was, no reader pane; switching 1, 3, 1, 3 changes the size of no pane in either tab but the bar's and the slots'.
 - **CAP-2**
-  - **intent:** The bar is small; a click into it gives it the keyboard, a double-click grows it to work in, another double-click or a click into the tab's own pane shrinks it again.
-  - **success:** Small, the bar is 4 rows; a click into it gives it the keyboard at 4 rows, a double-click makes it 2/3 of the window height, a second double-click (the keyboard staying in it) or a click into the tab's own pane brings it back to 4 rows, and it shrinks in a tab it leaves; through all, every pane keeps its width, `@sidebar_width` is never written, a zoomed tab stays zoomed, and after a terminal resize the bar and the slots get their height back.
+  - **intent:** The bar is small; a click into it gives it the keyboard; with the frontend in it, it sizes to what it shows while it has the keyboard, up to a cap, and two buttons in it make it bigger and smaller; a click into the tab's own pane shrinks it again.
+  - **success:** Small, the bar is 4 rows; a click into it gives it the keyboard at 4 rows; with the keyboard, the input or an answer changing sets it to the rows of the input and the latest question and its answer (tool lines included), rounded up to a multiple of 4, between 4 rows and a third of the window height, at most one resize every 500 ms; while a new question is typed (no turn running, the input not empty) the input's rows and one conversation row instead, so a short question after a long answer keeps it at 4 rows; `▲` at the end of the input's last row grows it by a sixth of the window height, at most 2/3, `▼` shrinks it by a sixth, at least 4 rows, a size that holds until the next question is sent or the bar is back at 4 rows; a click into the tab's own pane brings it back to 4 rows, where it stays while answers arrive; it leaves a tab at 4 rows and arrives at 4; a double-click, a click or focus alone never grows it; through all, every pane keeps its width, `@sidebar_width` is never written, a zoomed tab stays zoomed, and after a terminal resize the bar and the slots get their height back.
 - **CAP-3**
   - **intent:** A chat frontend for Claude Code that spends every row of a few-row pane on the conversation: the input line and the latest answer, streaming in as it is written.
   - **success:** In a 4-row bar, after a question, the bar shows the last 3 lines of the answer wrapped at the bar's full width above the input line while the answer is still arriving; no logo, box, border, status or mode line is drawn.
@@ -61,14 +61,14 @@ Pain for the user of the reader pane (spec-agent-journal): the chat sits 26 colu
 
 ## Success signal
 
-Through a day of normal work the 4-row bar along the bottom of every tab shows the reader chat's latest answer at full width, readable without clicking in; asking "which versions did agents change today?" streams the answer into the small bar, tool calls show as single lines, and a double-click in grows the bar for a long answer that the wheel scrolls back through. Tab switches keep the conversation and every pane's width.
+Through a day of normal work the 4-row bar along the bottom of every tab shows the reader chat's latest answer at full width, readable without clicking in; asking "which versions did agents change today?" streams the answer into the small bar, tool calls show as single lines, and with the keyboard in it the bar grows with a long answer (`▲` for more) that the wheel scrolls back through. Tab switches keep the conversation and every pane's width.
 
 ## Assumptions
 
 - The bar spans the whole window, under the sidebar too: the sidebar column ends above it ("over the full page").
-- Small is 4 rows: 3 conversation lines and the input line. Big stays 2/3 of the window height.
+- Small is 4 rows: 3 conversation lines and the input line. The bar's own height reaches at most a third of the window height, its `▲` button 2/3.
 - Each tab's slot is a pane of its own (`@reader_slot`, running `tabrail-slot`), as big as the small bar; the bar takes its place with `swap-pane`, so tab switches resize no other pane. A slot comes back after a resurrect restore through its `@resurrect-processes` entry.
-- The bar grows only on a double-click, never on a single click or the keyboard alone: a single click right under the work pane's prompt popped it up too often.
+- The bar grows only when the chat's content changes while it has the keyboard, or on its `▲` button; never on a click, a double-click, focus or a tab switch alone: a single click right under the work pane's prompt popped it up too often, and a double-click went unnoticed (tmux counts one only within about 300 ms, and nothing on screen hints at it). tabrail binds no `DoubleClick1Pane`.
 - Answers show as plain text wrapped at the bar's width; one character is one column.
 - Enter sends a single input line; Esc interrupts a running answer.
 - Scroll back covers the running frontend's turns; after a restart the conversation continues in Claude's context but earlier turns are not shown.

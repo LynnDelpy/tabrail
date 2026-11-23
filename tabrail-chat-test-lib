@@ -1,24 +1,25 @@
 # shellcheck shell=bash
-# Shared by tabrail-chat's tests (tabrail-chat-test, tabrail-chat-session-test), sourced after setting
-# L: tabrail-test-lib's throwaway servers, here a 120x4 pane for tabrail-chat (no tabrail in it) shown
-# inside the outer server for the wheel and clicks; the fake claude (tabrail-chat-fake) logs to $T.
-# Needs target/release/tabrail-chat.
+# Shared by the tests that drive tabrail-chat, sourced after setting L: tabrail-test-lib's throwaway
+# servers, here a 120x4 pane for tabrail-chat (no tabrail in it) shown inside the outer server for the
+# wheel and clicks; the fake claude (tabrail-chat-fake) logs to $T. The helpers act on pane C (main);
+# with HELPERS_ONLY=1 set first, no servers are made. Needs target/release/tabrail-chat.
 source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
-printf '%s\n' 'set -g mouse on' 'set -g status off' 'set -g default-shell /bin/sh' > "$T/conf"
-E=$'\e'
+E=$'\e' C=main
 chat() {   # the pane's chat started again with these options (claude: $CHAT_CLAUDE, else the fake)
   rm -f "$T/go"   # the shell's stty after it ends: $T/stty
   t respawn-pane -k -t main -c "$T/work" -e "TABRAIL_CHAT_CLAUDE=${CHAT_CLAUDE-$R/tabrail-chat-fake}" \
     -e "TABRAIL_CHAT_FAKE_LOG=$T" "$R/target/release/tabrail-chat $*; stty -a > $T/stty; exec sleep 99"
   settle 1
 }
-row() { t capture-pane -p -t main | sed -n "$1p"; }
-dim() { t capture-pane -p -e -t main -S $(($1 - 1)) -E $(($1 - 1)) | grep -q "^$E\[2m"; }   # one row: its own styles
-cur() { t display -p -t main '#{cursor_x},#{cursor_y}'; }
-keys() { t send-keys -t main "$@"; settle 0.5; }
-ask() { t send-keys -t main -l "$1"; keys Enter; }
+row() { t capture-pane -p -t "$C" | sed -n "$1p"; }
+dim() { t capture-pane -p -e -t "$C" -S $(($1 - 1)) -E $(($1 - 1)) | grep -q "^$E\[2m"; }   # one row: its own styles
+cur() { t display -p -t "$C" '#{cursor_x},#{cursor_y}'; }
+keys() { t send-keys -t "$C" "$@"; settle 0.5; }
+ask() { t send-keys -t "$C" -l "$1"; keys Enter; }
 wheel() { local i; for ((i = 0; i < $2; i++)); do o send-keys -t o -l "$E[<$1;5;2M"; done; settle 0.5; }
 words() { seq -f "w%02g" -s ' ' "$1" "$2"; }
+[[ $HELPERS_ONLY == 1 ]] && return
+printf '%s\n' 'set -g mouse on' 'set -g status off' 'set -g default-shell /bin/sh' > "$T/conf"
 t -f "$T/conf" new -d -s main -x 120 -y 4 -c "$T/work" 'exec sleep 99'
 o -f /dev/null new -d -s o -x 120 -y 4 "TMUX= tmux -L tabrail-$L attach -t main; sleep 60"
 o set -g status off

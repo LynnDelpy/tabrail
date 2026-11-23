@@ -1,5 +1,6 @@
 //! The conversation: questions, answers and dim lines (tool calls, errors), wrapped at the pane's
 //! width, and the rows a height shows of it, scrolled back from the bottom.
+use crate::keys::Key;
 
 pub enum Entry {
     Question(String),
@@ -10,38 +11,57 @@ pub enum Entry {
 #[derive(Default)]
 pub struct View {
     entries: Vec<Entry>,
-    pub back: usize, // rows scrolled back from the bottom; rows() stops it at the top
+    pub back: usize,   // rows scrolled back from the bottom; rows() stops it at the top
+    pub changed: bool, // an entry or answer text came since the bar's height was last looked at (bar.rs)
 }
 
 impl View {
     pub fn push(&mut self, entry: Entry) {
         self.entries.push(entry);
+        self.changed = true;
     }
 
     /// Answer text arriving: onto the answer being written, the view back at the bottom.
     pub fn text(&mut self, text: &str) {
-        self.back = 0;
+        (self.back, self.changed) = (0, true);
         match self.entries.last_mut() {
             Some(Entry::Answer(answer)) => answer.push_str(text),
             _ => self.entries.push(Entry::Answer(text.into())),
         }
     }
 
+    /// The wheel 3 rows, PgUp and PgDn a `page` of rows, back from the bottom or towards it.
+    pub fn scroll(&mut self, key: Key, page: usize) {
+        self.back = match key {
+            Key::WheelUp => self.back + 3,
+            Key::WheelDown => self.back.saturating_sub(3),
+            Key::PageUp => self.back + page,
+            _ => self.back.saturating_sub(page),
+        };
+    }
+
     /// Exactly `height` rows; at the top while the conversation is shorter.
     pub fn rows(&mut self, width: usize, height: usize) -> Vec<String> {
-        let mut lines = Vec::new();
-        for entry in &self.entries {
-            match entry {
-                Entry::Question(q) => lines.extend(wrap(&format!("❯ {q}"), width).iter().map(|l| format!("\x1b[1m{l}\x1b[0m"))),
-                Entry::Answer(a) => lines.extend(wrap(a, width)),
-                Entry::Dim(d) => lines.push(format!("\x1b[2m{}\x1b[0m", clean(d).into_iter().take(width).collect::<String>())),
-            }
-        }
+        let mut lines: Vec<String> = self.entries.iter().flat_map(|entry| lines(entry, width)).collect();
         let top = lines.len().saturating_sub(height);
         self.back = self.back.min(top);
         lines.drain(..top - self.back);
         lines.resize(height, String::new());
         lines
+    }
+
+    /// The rows of the latest question and what came after it (its answer, tool lines), at `width`.
+    pub fn latest(&self, width: usize) -> usize {
+        let from = self.entries.iter().rposition(|e| matches!(e, Entry::Question(_))).unwrap_or(0);
+        self.entries[from..].iter().map(|entry| lines(entry, width).len()).sum()
+    }
+}
+
+fn lines(entry: &Entry, width: usize) -> Vec<String> {
+    match entry {
+        Entry::Question(q) => wrap(&format!("❯ {q}"), width).iter().map(|l| format!("\x1b[1m{l}\x1b[0m")).collect(),
+        Entry::Answer(a) => wrap(a, width),
+        Entry::Dim(d) => vec![format!("\x1b[2m{}\x1b[0m", clean(d).into_iter().take(width).collect::<String>())],
     }
 }
 

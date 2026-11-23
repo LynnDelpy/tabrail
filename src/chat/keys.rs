@@ -1,5 +1,5 @@
 //! Keys from the terminal in raw mode: UTF-8 text, the editing keys, a bracketed paste (its lines
-//! joined with spaces) and the mouse wheel (SGR reports); clicks and other keys are dropped.
+//! joined with spaces) and the mouse's wheel and left presses (mouse.rs); other keys are dropped.
 use crate::Event;
 use std::io::Read;
 use std::sync::mpsc::Sender;
@@ -19,6 +19,7 @@ pub enum Key {
     PageDown,
     WheelUp,
     WheelDown,
+    Click(usize, usize), // a left press: its row and column, from 0
     Gone, // the terminal closed
 }
 
@@ -85,8 +86,7 @@ fn csi(seq: &[u8]) -> Option<Key> {
         "F" | "4~" | "8~" => Key::End,
         "5~" => Key::PageUp,
         "6~" => Key::PageDown,
-        s if s.starts_with("<64;") && s.ends_with('M') => Key::WheelUp,
-        s if s.starts_with("<65;") && s.ends_with('M') => Key::WheelDown,
+        s if s.starts_with('<') => return crate::mouse::sgr(s),
         _ => return None,
     })
 }

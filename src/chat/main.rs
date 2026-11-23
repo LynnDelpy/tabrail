@@ -1,14 +1,17 @@
 //! tabrail-chat [claude options…]: a Claude Code frontend for a pane of a few rows (the reader bar).
 //! It runs `claude -p` over stream-json in the caller's folder and environment with their options,
 //! and draws the tail of the conversation above the input at the pane's full width.
+mod bar;
 mod chat;
 mod claude;
 mod input;
 mod json;
 mod keys;
+mod mouse;
 mod session;
 mod stream;
 mod term;
+mod tmux;
 mod tool;
 mod view;
 

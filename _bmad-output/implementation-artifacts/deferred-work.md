@@ -192,3 +192,6 @@ status: open
 - source_spec: `_bmad-output/specs/spec-reader-bar/stories/4-journal-reader-on-the-frontend.md`
   summary: journal-reader/start's TUI fallback ends at once with "No conversation found to continue" when the folder has only tabrail-chat (`claude -p`) transcripts.
   evidence: medium. Claude Code's TUI `--continue` skips transcripts written by `claude -p` (checked with one transcript under both labels); `start` passes `--continue` whenever any transcript exists. Today 4 TUI transcripts keep it working; after Claude Code's 30-day cleanup the fallback would end every time and tabrail would restart it every 10 s. Only the fallback is affected (tabrail-chat not built, or outside tmux). Fix: give the TUI `--continue` only for a TUI transcript, or none.
+- source_spec: `_bmad-output/specs/spec-reader-bar/stories/6-the-bar-sizes-to-the-chat.md`
+  summary: AGENTS.md still calls `@reader_big` "whether it is grown" (it now holds the bar's height in rows) and lacks story 6's cross-process contract and pitfall.
+  evidence: tabrail-chat runs `$(tmux show -gv @tabrail_dir)/tabrail-reader size PANE ROWS|up|down`; the reader command unsets TMUX_PANE, so tabrail-chat finds its pane by `#{pane_tty}` against /proc/self/fd/0. Agent-context file, so deferred.

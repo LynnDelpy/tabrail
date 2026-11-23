@@ -1,5 +1,6 @@
 //! What the chat does with keys and with claude's events, and the screen it shows: the
-//! conversation above the input.
+//! conversation above the input; in the reader bar, the bar's height (bar.rs).
+use crate::bar::Bar;
 use crate::input::Input;
 use crate::keys::Key;
 use crate::session::Session;
@@ -15,13 +16,14 @@ pub struct Chat {
     view: View,
     input: Input,
     page: usize, // conversation rows on the screen, for PgUp and PgDn
+    bar: Bar,
 }
 
 impl Chat {
     /// claude starts at once: its start-up is over by the first question.
     pub fn new(opts: Vec<String>, tx: Sender<Event>) -> Chat {
-        let (view, input) = (View::default(), Input::default());
-        let mut chat = Chat { claude: Session::new(opts, tx), turn: None, view, input, page: 1 };
+        let (view, input, bar) = (View::default(), Input::default(), Bar::new());
+        let mut chat = Chat { claude: Session::new(opts, tx), turn: None, view, input, page: 1, bar };
         if let Err(e) = chat.claude.start() {
             chat.view.push(Entry::Dim(e));
         }
@@ -31,10 +33,8 @@ impl Chat {
     /// false: quit.
     pub fn key(&mut self, key: Key) -> bool {
         match key {
-            Key::WheelUp => self.view.back += 3,
-            Key::WheelDown => self.view.back = self.view.back.saturating_sub(3),
-            Key::PageUp => self.view.back += self.page,
-            Key::PageDown => self.view.back = self.view.back.saturating_sub(self.page),
+            key @ (Key::WheelUp | Key::WheelDown | Key::PageUp | Key::PageDown) => self.view.scroll(key, self.page),
+            Key::Click(row, col) => self.bar.click(row, col),
             Key::Gone => return false,
             Key::Eof if self.input.is_empty() => return false,
             Key::Enter => {
@@ -59,6 +59,7 @@ impl Chat {
             return;
         }
         self.view.push(Entry::Question(text.clone()));
+        self.bar.sent();
         match self.claude.ask(&text) {
             Ok(()) => self.turn = self.turn.or(Some(Instant::now())),
             Err(e) => self.view.push(Entry::Dim(e)),
@@ -87,13 +88,12 @@ impl Chat {
 
     /// The screen at `(width, height)`: its rows and where the cursor goes in them.
     pub fn frame(&mut self, (width, height): (usize, usize)) -> (Vec<String>, (usize, usize)) {
-        let took = |s: u64| if s < 60 { format!("… {s}s") } else { format!("… {}m{:02}s", s / 60, s % 60) };
-        let timer = self.turn.map(|t| took(t.elapsed().as_secs())).unwrap_or_default();
-        let (input, (row, col)) = self.input.rows(width, height.saturating_sub(1), &timer);
+        let (input, (row, col)) = self.bar.input(&self.input, (width, height), self.turn);
         self.page = height.saturating_sub(input.len()).max(1);
         let mut rows = self.view.rows(width, height.saturating_sub(input.len()));
         let cursor = (rows.len() + row, col);
         rows.extend(input);
+        self.bar.fit((width, height), self.turn.is_some(), &mut self.input, &mut self.view);
         (rows, cursor)
     }
 }

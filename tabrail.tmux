@@ -42,8 +42,9 @@ set-hook -g pane-command-finished[50] 'if -F "#{&&:#{e|>=:#{pane_command_duratio
 
 # The reader pane, only if @tabrail_reader names its command (tabrail-reader): a bar across the bottom
 # of the tab shown that follows it, also into another session, swapping places with each tab's slot;
-# a double-click into it grows it or shrinks it again, the tab's own pane taking the keyboard shrinks
-# it (the sidebar does not); it and the slots get their size back after a resize
+# tabrail-chat in it sizes it (tabrail-reader size), the tab's own pane taking the keyboard shrinks it
+# (the sidebar does not); it and the slots get their size back after a resize. No double-click binding:
+# tmux's own (or tmux.conf's) applies, in the bar too
 set-hook -g session-window-changed[50] {
   if -F "#{&&:#{@tabrail_reader},#{!:#{P:#{@reader}}}}" {
     run-shell -b "#{@tabrail_dir}/tabrail-reader follow '#{session_id}'"
@@ -63,12 +64,6 @@ set-hook -g window-resized[50] {
   if -F "#{&&:#{@tabrail_reader},#{P:#{@reader}#{@reader_slot}}}" {
     run-shell -b "#{@tabrail_dir}/tabrail-reader fit '#{window_id}'"
   }
-}
-# A double-click into the bar: tabrail-reader grow; elsewhere tmux's own (select and copy a word)
-bind -n DoubleClick1Pane if -F -t = "#{@reader}" {
-  select-pane -t = ; run-shell -b -t = "#{@tabrail_dir}/tabrail-reader grow '#{window_id}'"
-} {
-  select-pane -t = ; if -F "#{||:#{pane_in_mode},#{mouse_any_flag}}" { send-keys -M } { copy-mode -H ; send-keys -X select-word ; run-shell -d 0.3 ; send-keys -X copy-pipe-and-cancel }
 }
 # prefix &: close the tab like the menus' Close, the reader pane moving on first
 bind & confirm-before -p "kill-window #W? (y/n)" {

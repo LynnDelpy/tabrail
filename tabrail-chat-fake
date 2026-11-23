@@ -3,6 +3,7 @@
 # it is sent to the folder $TABRAIL_CHAT_FAKE_LOG (args, pids, in) and answers each question with
 # canned stream-json lines picked by its text; any other question gets "<question> one/two". With the
 # file noresume in that folder, a --resume ends at once, as claude does for a conversation it lacks.
+# "lines N" streams N lines 50 ms apart; "lines N more" N more once the file go is there.
 log=$TABRAIL_CHAT_FAKE_LOG
 echo "$*" >> "$log/args"
 echo $$ >> "$log/pids"
@@ -46,6 +47,13 @@ while IFS= read -r line; do
       out 'not json'
       out '{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"BAD"}},"parent_tool_use_id":null} x'
       delta 'say \"hi\"\ncaf\u00e9 é 😀 \ud83d\ude00' ;;
+    *'"content":"lines '*)
+      read -r _ n more <<< "$(sed 's/.*"content":"\([^"]*\)".*/\1/' <<< "$line")"
+      for ((i = 1; i <= n; i++)); do delta "line $i\n"; sleep 0.05; done
+      if [[ -n $more ]]; then   # -d: a test that stops early leaves no fake waiting
+        while [[ ! -e $log/go && -d $log ]]; do sleep 0.1; done
+        for ((i = 1; i <= n; i++)); do delta "more $i\n"; sleep 0.05; done
+      fi ;;
     *'"content":"many"'*) delta "$(words m '\n' 1 40)\n$(words w ' ' 1 37)" ;;
     *'"content":"later"'*)
       while [[ ! -e $log/go ]]; do sleep 0.1; done; delta 'later one\nlater two' ;;

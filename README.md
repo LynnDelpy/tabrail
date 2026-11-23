@@ -41,14 +41,16 @@ grouped by project, with what each one is doing.
   same process and conversation. Every other tab keeps an idle slot of the same size in its place
   (`tabrail-slot`), which the bar swaps places with: a tab switch resizes no other pane, so nothing
   in the tabs redraws, except in a zoomed tab, which unzooms for the swap and zooms again. A click
-  into the bar gives it the keyboard at 4 rows; a double-click grows it to two thirds of the height,
-  only in height (every pane keeps its width), and another double-click or a click into the tab's
-  own pane shrinks it again; it shrinks as well in a tab it leaves. It follows into another session
-  too (switch-client, the tree); it and the slots get their size back after a terminal resize and go
-  back across the bottom after a layout command (prefix Space) or a sidebar added beside them. A tab
-  left with only the sidebar and the reader pane or its slot closes, the pane moving on first, as
-  does a tab closed with the menus' Close or prefix `&`; `tabrail-tmux restart` leaves the reader and
-  the slots running.
+  into the bar gives it the keyboard at 4 rows. Only with `tabrail-chat` as the reader command does
+  the bar size itself to what it shows while it has the keyboard, with buttons to make it bigger and
+  smaller (below), only in height (every pane keeps its width); another reader command (Claude Code's
+  own TUI as a fallback) stays at 4 rows. A click into the tab's own pane shrinks it to 4 rows,
+  where it stays while answers arrive, and it leaves a tab at 4 rows and arrives at 4. It follows
+  into another session too (switch-client, the tree); it and the slots get their size back after a
+  terminal resize and go back across the bottom after a layout command (prefix Space) or a sidebar
+  added beside them. A tab left with only the sidebar and the reader pane or its slot closes, the
+  pane moving on first, as does a tab closed with the menus' Close or prefix `&`; `tabrail-tmux
+  restart` leaves the reader and the slots running.
 - `tabrail-chat [claude options…]` is a small-pane Claude Code frontend the reader command can run. It
   runs `claude -p` over stream-json (Claude Code's `claude` on PATH, or `$TABRAIL_CHAT_CLAUDE`) in its
   caller's folder and environment with those options, and spends every row on the conversation: the
@@ -60,7 +62,15 @@ grouped by project, with what each one is doing.
   why and the next Enter starts claude again with `--resume` on the same conversation (as it was
   started under `--no-session-persistence`; on a new one when claude could not resume it). The bar
   takes the mouse: select its text with Shift-drag. Permission prompts are denied for now
-  (`--permission-prompts none`).
+  (`--permission-prompts none`). As the reader (it finds its pane by its terminal) it sizes the bar
+  while the bar has the keyboard: when the input or the conversation changes, to the rows of the
+  input and the latest question and answer (tool lines too), rounded up to a multiple of 4, from 4
+  rows to a third of the window, at most once every 500 ms. While a new question is typed (no turn
+  running) only the input counts, with one row above it, so a short question after a long answer
+  stays at 4 rows; from Enter on the answer counts again. `▲` at the end of the input's last row
+  (after the timer) grows the bar by a sixth of the window, up to two thirds, `▼` shrinks it by a
+  sixth, down to 4 rows; that size holds until the next question or until the bar is back at 4
+  rows. A double-click does nothing to it.
 - Fast: each sidebar keeps one tmux control-mode connection and redraws when tmux reports a change;
   nothing is spawned on a tab switch (~15 ms until the sidebar shows it) but, with the reader pane, the
   helper that moves it. Rust, standard library only.
@@ -99,8 +109,8 @@ Optional inputs, shown when present:
   runs (here the agent journal's reader chat). Unset, tabrail starts no pane or slot and spawns
   nothing for it, and `tabrail-tmux ensure` removes the slots left. If its program ends, the next
   tab switch or closed pane starts it again in the shown tab's slot, at most every 10 s.
-  tabrail.tmux binds `DoubleClick1Pane`, replacing a binding of your own made before it; one made
-  after it replaces tabrail's: give it tabrail's `#{@reader}` branch first. With tmux-resurrect, add
+  tabrail.tmux binds no `DoubleClick1Pane`; drop a `tabrail-reader grow` branch from a binding of
+  your own (that command is gone). With tmux-resurrect, add
   `"~tabrail-slot->/path/to/tabrail/tabrail-slot"` to `@resurrect-processes` so that restored slot
   panes are slots again: the slot waits in a child process named `tabrail-slot` for that.
 
@@ -109,14 +119,15 @@ Optional inputs, shown when present:
 | File | Job |
 |---|---|
 | `src/*.rs` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus, `width.rs` one width for all |
-| `src/chat/` | `tabrail-chat`: `main.rs` loop and drawing, `chat.rs` keys and claude's events, `session.rs` claude across restarts (`--resume`), `claude.rs` the claude process, `stream.rs` its stream-json lines, `json.rs` JSON, `tool.rs` a tool call's line, `view.rs` the conversation, `input.rs` the input, `keys.rs` keys and wheel, `term.rs` the terminal |
-| `tabrail.tmux` | What tmux.conf loads: mouse bindings (the reader bar's double-click too), hooks, prefix M and & |
+| `src/chat/` | `tabrail-chat`: `main.rs` loop and drawing, `chat.rs` keys and claude's events, `session.rs` claude across restarts (`--resume`), `claude.rs` the claude process, `stream.rs` its stream-json lines, `json.rs` JSON, `tool.rs` a tool call's line, `view.rs` the conversation, `input.rs` the input, `keys.rs` keys, `mouse.rs` wheel and clicks, `term.rs` the terminal, `bar.rs` the reader bar's height and buttons, `tmux.rs` its pane and `tabrail-reader size` |
+| `tabrail.tmux` | What tmux.conf loads: mouse bindings, hooks, prefix M and & |
 | `tabrail-tmux` | Housekeeping from the hooks: a sidebar (and a reader slot) for every tab, restart, close tabs with only a sidebar (and the reader pane or its slot), the menus' Close |
-| `tabrail-reader`, `tabrail-reader-size` | The reader pane, a bar across the bottom: a slot in every tab, swap places with the shown tab's slot, start in it, move away before its tab closes; grow and shrink on a double-click; back across the bottom when tmux moved it or a slot |
+| `tabrail-reader`, `tabrail-reader-size` | The reader pane, a bar across the bottom: a slot in every tab, swap places with the shown tab's slot, start in it, move away before its tab closes; its height as tabrail-chat asks (`size`); back across the bottom when tmux moved it or a slot |
 | `tabrail-slot` | A tab's slot: marks its pane, then waits in a child named `tabrail-slot` (for resurrect) |
 | `tabrail-reader-test`, `tabrail-slot-test` | The reader bar's tests and its slots' (with ~/Dev/vmConfig's mouse config and a resurrect save and restore), on throwaway tmux servers |
 | `tabrail-chat-test`, `tabrail-chat-session-test` | `tabrail-chat`'s tests on a throwaway tmux server: what it shows and its keys; its claude's options, restarts and the way out |
-| `tabrail-chat-test-lib`, `tabrail-chat-fake` | What both share: the 120x4 pane, rows, keys, the wheel; the fake claude they run, canned stream-json per question |
+| `tabrail-bar-test` | The reader bar sized by `tabrail-chat` in it (its height, buttons, away, tab switch, zoom), against the fake claude on throwaway tmux servers |
+| `tabrail-chat-test-lib`, `tabrail-chat-fake` | A 120x4 pane for `tabrail-chat` and helpers for rows, keys and the wheel on pane `C` (`main`; only the helpers with `HELPERS_ONLY=1`); the fake claude, canned stream-json per question |
 | `tabrail-test-lib` | What the tests share: the throwaway servers, clicks, checks |
 | `tabrail-act` | What the menus and group drags do: new tab, duplicate, fold, new group, rename group, move group |
 | `tabrail-move`, `tabrail-pick` | Move a tab to a group in a picker; the picker (Claude Code's option-list style, fzf), or a name field with `-q` |

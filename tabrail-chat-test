@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Tests for what tabrail-chat shows and how it takes keys, against a fake claude in a 120x4 pane of a
+# throwaway tmux server (tabrail-chat-test-lib); its restarts: tabrail-chat-session-test. One line
+# per check, exits 1 if one failed.
+L=chat
+source "$(dirname "$(readlink -f "$0")")/tabrail-chat-test-lib"
+long=$(printf '0123456789%.0s' {1..40})
+chat --model m
+check "empty input: a dim 'type to ask' after ❯" '[[ $(t capture-pane -p -e -t main | sed -n 4p) == "❯ $E[2mtype to ask"* ]]'
+ask stream
+check "stream: rows 1-3 the answer's last 3 wrapped lines while it streams, the timer at the right" \
+  '[[ $(row 1) == "line five" && $(row 2) == "$(words 1 30)" && $(row 3) == "$(words 31 37)" && $(row 4) =~ ^❯\ .*…\ [0-9]s$ ]]'
+t send-keys -t main -l next; keys Enter
+check "Enter while a turn runs: nothing sent, the text stays, the answer under its question, the timer on" \
+  '[[ $(row 1) == "line five" && $(row 3) == "$(words 31 37)" && $(row 4) =~ ^❯\ next\ .*…\ [0-9]s$ ]] &&
+   ! grep -q "\"content\":\"next\"" "$T/in"'
+touch "$T/go"; settle 0.5
+check "turn over: no timer, the text still in the input" '[[ $(row 4) == "❯ next" ]]'
+keys C-c
+ask tools
+check "tool: dim one-row lines (Bash's command, cut at the width; Read with ~); no subagent lines" \
+  '[[ $(row 1) == "⚙ Bash ./journal-search -R tmux" && $(row 2) == "⚙ Bash $(printf "x%.0s" {1..113})" &&
+     $(row 3) == "◎ Read ~/notes.md" ]] && dim 1 && dim 3'
+ask tools2
+check "tool: Grep its pattern, Edit its file, Agent its first string" \
+  '[[ $(row 1) == "⌕ Grep TODO" && $(row 2) == "✎ Edit /etc/hosts" && $(row 3) == "⧉ Agent look around" ]]'
+ask tools3
+check "tool: another · and its skill, or only its name" '[[ $(row 2) == "· Skill journal-search" && $(row 3) == "· Mystery" ]]'
+ask escapes
+check "escapes: newline, quote, é, 😀; the bad JSON lines skipped" \
+  '[[ $(row 1) == "❯ escapes" && $(row 2) == "say \"hi\"" && $(row 3) == "café é 😀 😀" ]]'
+ask layout
+check "answer: a blank line takes no row" '[[ $(row 1) == a && $(row 2) == b ]]'
+check "answer: a tab as four spaces, an escape not passed on" '[[ $(row 3) == "x    y[2Jz" ]]'
+ask wide
+check "answer: a word wider than the pane broken at the width" \
+  '[[ $(row 2) == "$(printf "y%.0s" {1..120})" && $(row 3) == "yyyyyyyyyy end" ]]'
+t send-keys -t main -l "${long:0:200}"; settle 0.5
+check "long input: on the last 2 rows, the cursor after the last character; 2 conversation rows" \
+  '[[ $(row 2) == "yyyyyyyyyy end" && $(row 3) == "❯ ${long:0:118}" && $(row 4) == "${long:118:82}" && $(cur) == 82,3 ]]'
+t send-keys -t main -l "${long:200}"; settle 0.5
+check "input over 3 rows: its tail and the cursor; one conversation row left" \
+  '[[ $(row 1) == "yyyyyyyyyy end" && $(row 2) == "${long:118:120}" && $(row 4) == "${long:358}" && $(cur) == 42,3 ]]'
+keys C-c
+check "Ctrl-C: the input empty" '[[ $(row 4) == "❯ type to ask" ]]'
+keys -l hello; keys Left Left X Home Y End Z BSpace C-a Right Right C-u C-e
+check "keys: Left/Right, Home/End, Ctrl-A/E/U, Backspace" '[[ $(row 4) == "❯ elXlo" && $(cur) == 7,3 ]]'
+keys C-c; keys -l 'é😀'; keys -H c3; keys -l a
+check "typed é😀; a bad UTF-8 byte dropped, the key after it kept" '[[ $(row 4) == "❯ é😀a" ]]'
+keys C-c; t set-buffer -b chat-test $'one\ntwo\n\nthree\n'; t paste-buffer -p -d -b chat-test -t main; keys C-d
+check "bracketed paste: lines joined with spaces; Ctrl-D on a line: nothing" '[[ $(row 4) == "❯ one two three" && $(cur) == 15,3 ]]'
+keys C-c; t pipe-pane -t main -o "cat > $T/pipe"; settle 1.5; t pipe-pane -t main
+check "idle, no turn: nothing written to the pane" '[[ -e $T/pipe && ! -s $T/pipe ]]'
+
+chat --model m
+ask q1; ask q2; ask later; wheel 64 5
+check "scroll: wheel up x5 shows the first question" '[[ $(row 1) == "❯ q1" ]]'
+wheel 65 1
+check "scroll: the top clamps, one wheel down moves" '[[ $(row 1) == "❯ q2" ]]'
+touch "$T/go"; settle 0.5
+check "new answer text: the bottom again" '[[ $(row 1) == "❯ later" && $(row 3) == "later two" ]]'
+wheel 64 1; keys -l x
+check "a key typed: the bottom again" '[[ $(row 1) == "❯ later" && $(row 4) == "❯ x" ]]'
+keys C-c PPage
+check "PgUp: a page up" '[[ $(row 1) == "❯ q2" ]]'
+keys NPage
+check "PgDn: a page down" '[[ $(row 1) == "❯ later" ]]'
+click 5 2
+check "a click: ignored" '[[ $(row 1) == "❯ later" && $(row 4) == "❯ type to ask" ]]'
+ask many
+check "at 120: the long line on 2 rows" '[[ $(row 1) == m40 && $(row 2) == "$(words 1 30)" && $(row 3) == "$(words 31 37)" ]]'
+o resize-window -t o -x 160 -y 30; settle 1
+check "resize 120x4 to 160x30: rewrapped at 160, 29 conversation rows" \
+  '[[ $(t display -p -t main "#{pane_width}x#{pane_height}") == 160x30 && $(row 1) == m13 && $(row 28) == m40 &&
+     $(row 29) == "$(words 1 37)" && $(row 30) == "❯ type to ask" ]]'
+exit $((fails > 0))

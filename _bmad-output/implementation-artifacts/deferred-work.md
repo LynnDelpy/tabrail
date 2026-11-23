@@ -177,3 +177,9 @@ status: open
 - source_spec: `_bmad-output/specs/spec-reader-bar/stories/5-slot-in-every-tab-grow-on-double-click.md`
   summary: A double-click on a sidebar row selects the sidebar pane (keyboard moves into it), unlike a single click.
   evidence: low. The DoubleClick1Pane else branch (tmux's default, and vmConfig's tmux-mouse.conf binding) starts with `select-pane -t =`; MouseDown1Pane in tabrail.tmux skips select-pane for `@sidebar`. Pre-existing: tmux's default did the same before story 5.
+- source_spec: `_bmad-output/specs/spec-reader-bar/stories/2-tabrail-chat-frontend.md`
+  summary: tabrail-chat starts claude in its own process group on the pane's terminal, so a tool that opens /dev/tty (sudo, ssh, git credential prompts) could read keys typed into the bar, and the SIGKILL path leaves claude's tool processes behind.
+  evidence: medium (unverified). claude.rs spawns with no process_group/setsid and kills only claude's pid. Whether Claude Code's Bash tool detaches its children from the controlling terminal is not checked; settle with a fake tool that opens /dev/tty under real claude in a -L pane. Possible fix: `CommandExt::process_group(0)` and `kill(-pgid)`, relying on stdin EOF when the pane closes.
+- source_spec: `_bmad-output/specs/spec-reader-bar/stories/2-tabrail-chat-frontend.md`
+  summary: AGENTS.md does not describe the second binary (tabrail-chat) nor its terminal pitfall.
+  evidence: with autowrap off, an erase after a row that fills the width takes the row's last character, so rows are cleared (`ESC[2K`) before they are written (src/chat/main.rs changes). Agent-context file, so deferred.

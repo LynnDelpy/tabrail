@@ -49,3 +49,14 @@
     Bash and tmux.conf first; src/ only where the sidebar must ignore the
     slot pane. Test with tabrail-reader-test on tmux -L servers, never the
     user's tmux; split the test file by job if it outgrows 100 lines.
+- id: "6"
+  title: The bar sizes to the chat, buttons instead of double-click
+  description: >-
+    The reader bar's height follows tabrail-chat's input and latest answer
+    up to a cap, with clickable buttons to make it bigger and smaller; the
+    double-click binding, `tabrail-reader grow` and vmConfig's double-click
+    branch go (user feedback 2026-11-23; SPEC.md CAP-2 amended).
+  invoke_dev_with: >-
+    Needs story 2's tabrail-chat. Height changes cost a redraw of every
+    Claude in the tab: keep them few (no resize on arrival in a tab). Test
+    on tmux -L servers only; vmConfig changes as a patch file.

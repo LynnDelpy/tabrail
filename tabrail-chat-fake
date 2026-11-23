@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# A fake claude for tabrail-chat-test (as TABRAIL_CHAT_CLAUDE): logs its options, pid and every line
+# it is sent to the folder $TABRAIL_CHAT_FAKE_LOG (args, pids, in) and answers each question with
+# canned stream-json lines picked by its text; any other question gets "<question> one/two". With the
+# file noresume in that folder, a --resume ends at once, as claude does for a conversation it lacks.
+log=$TABRAIL_CHAT_FAKE_LOG
+echo "$*" >> "$log/args"
+echo $$ >> "$log/pids"
+sid=sid-$(wc -l < "$log/args")
+if [[ -e $log/noresume && " $* " == *" --resume "* ]]; then
+  echo "No conversation found with session ID: ${@: -1}" >&2; exit 1
+fi
+out() { printf '%s\n' "$1"; }
+delta() {   # TEXT [PARENT]: JSON escapes in TEXT stay as they are
+  printf '{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"%s"}},"parent_tool_use_id":%s,"session_id":"%s"}\n' \
+    "$1" "${2:-null}" "$sid"
+}
+tool() {    # NAME INPUT [PARENT]
+  printf '{"type":"assistant","message":{"content":[{"type":"text","text":"x"},{"type":"tool_use","id":"t1","name":"%s","input":%s}]},"parent_tool_use_id":%s,"session_id":"%s"}\n' \
+    "$1" "$2" "${3:-null}" "$sid"
+}
+words() { seq -f "$1%02g" -s "$2" "$3" "$4"; }
+out '{"type":"system","subtype":"init","session_id":"'"$sid"'","tools":["Bash"]}'
+while IFS= read -r line; do
+  echo "$line" >> "$log/in"
+  case $line in
+    *'"control_request"'*) continue ;;
+    *'"content":"stream"'*)
+      delta 'line one\nline two\nli'; delta 'ne three\nline four\n'; delta 'line five\n'
+      delta "$(words w ' ' 1 20) "; delta "$(words w ' ' 21 37)"
+      while [[ ! -e $log/go ]]; do sleep 0.1; done ;;   # the test looks while it streams
+    *'"content":"tools"'*)
+      tool Bash '{"description":"search","command":"./journal-search -R tmux"}'
+      tool Bash "{\"command\":\"$(printf 'x%.0s' {1..200})\"}"
+      tool Read "{\"file_path\":\"$HOME/notes.md\",\"limit\":[1,{\"a\":null}]}"
+      tool Bash '{"command":"SUBAGENT"}' '"t1"'
+      delta 'SUBAGENT' '"t1"' ;;
+    *'"content":"tools2"'*)
+      tool Grep '{"pattern":"TODO","path":"src"}'; tool Edit '{"file_path":"/etc/hosts","old_string":"a"}'
+      tool Agent '{"description":"look around","prompt":"p"}' ;;
+    *'"content":"tools3"'*) tool Skill '{"skill":"journal-search"}'; tool Mystery '{"n":1,"b":true}' ;;
+    *'"content":"layout"'*) delta 'a\n\nb\nx\ty\u001b[2Jz' ;;
+    *'"content":"wide"'*) delta "$(printf 'y%.0s' {1..130}) end" ;;
+    *'"content":"escapes"'*)
+      out '{"type":"stream_event","event":{'
+      out 'not json'
+      out '{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"BAD"}},"parent_tool_use_id":null} x'
+      delta 'say \"hi\"\ncaf\u00e9 é 😀 \ud83d\ude00' ;;
+    *'"content":"many"'*) delta "$(words m '\n' 1 40)\n$(words w ' ' 1 37)" ;;
+    *'"content":"later"'*)
+      while [[ ! -e $log/go ]]; do sleep 0.1; done; delta 'later one\nlater two' ;;
+    *'"content":"crash"'*) echo 'boom' >&2; exit 1 ;;
+    *'"content":"fail"'*)
+      out '{"type":"result","subtype":"error_during_execution","is_error":true,"result":"API Error: 529","session_id":"'"$sid"'"}'
+      continue ;;
+    *'"content":"failexit"'*)
+      out '{"type":"result","subtype":"error_during_execution","is_error":true,"session_id":"'"$sid"'"}'
+      echo 'gone' >&2; exit 1 ;;
+    *) q=$(sed 's/.*"content":"\([^"]*\)".*/\1/' <<< "$line"); delta "$q one\n$q two" ;;
+  esac
+  out '{"type":"result","subtype":"success","is_error":false,"result":"done","session_id":"'"$sid"'"}'
+done

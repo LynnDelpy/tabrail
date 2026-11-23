@@ -49,6 +49,18 @@ grouped by project, with what each one is doing.
   left with only the sidebar and the reader pane or its slot closes, the pane moving on first, as
   does a tab closed with the menus' Close or prefix `&`; `tabrail-tmux restart` leaves the reader and
   the slots running.
+- `tabrail-chat [claude options…]` is a small-pane Claude Code frontend the reader command can run. It
+  runs `claude -p` over stream-json (Claude Code's `claude` on PATH, or `$TABRAIL_CHAT_CLAUDE`) in its
+  caller's folder and environment with those options, and spends every row on the conversation: the
+  question bold, the answer as plain text wrapped at the full width while it streams in, each tool
+  call one dim line (`⚙ Bash ./journal-search -R tmux`, never its output), above the input (`❯ `,
+  wrapped over the rows it needs, a dim `… 12s` while a turn runs; Enter sends nothing until the turn
+  is over). Wheel and PgUp/PgDn scroll back; a key or new answer text goes back to the bottom. Ctrl-C
+  clears the input, Ctrl-D on an empty one quits. When claude ends or a turn fails, a dim line says
+  why and the next Enter starts claude again with `--resume` on the same conversation (as it was
+  started under `--no-session-persistence`; on a new one when claude could not resume it). The bar
+  takes the mouse: select its text with Shift-drag. Permission prompts are denied for now
+  (`--permission-prompts none`).
 - Fast: each sidebar keeps one tmux control-mode connection and redraws when tmux reports a change;
   nothing is spawned on a tab switch (~15 ms until the sidebar shows it) but, with the reader pane, the
   helper that moves it. Rust, standard library only.
@@ -58,7 +70,7 @@ grouped by project, with what each one is doing.
 Needs tmux (tested with 3.8), `fzf` for the pickers and name fields, and Rust to build.
 
 ```bash
-cargo build --release --offline
+cargo build --release --offline           # target/release/tabrail and tabrail-chat
 cp groups.conf.example groups.conf        # or set @tabrail_groups to a file of your own
 ```
 
@@ -72,7 +84,8 @@ set -goq @sidebar_width 26                 # optional: the starting width (-o: a
 source-file ~/src/tabrail/tabrail.tmux
 ```
 
-After a rebuild, `tabrail-tmux restart` restarts every sidebar.
+After a rebuild, `tabrail-tmux restart` restarts every sidebar. A rebuilt `tabrail-chat` goes live when
+the reader pane restarts: kill it (`tmux kill-pane -t <the reader>`) and tabrail starts it again.
 
 Optional inputs, shown when present:
 
@@ -95,13 +108,16 @@ Optional inputs, shown when present:
 
 | File | Job |
 |---|---|
-| `src/` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus, `width.rs` one width for all |
+| `src/*.rs` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus, `width.rs` one width for all |
+| `src/chat/` | `tabrail-chat`: `main.rs` loop and drawing, `chat.rs` keys and claude's events, `session.rs` claude across restarts (`--resume`), `claude.rs` the claude process, `stream.rs` its stream-json lines, `json.rs` JSON, `tool.rs` a tool call's line, `view.rs` the conversation, `input.rs` the input, `keys.rs` keys and wheel, `term.rs` the terminal |
 | `tabrail.tmux` | What tmux.conf loads: mouse bindings (the reader bar's double-click too), hooks, prefix M and & |
 | `tabrail-tmux` | Housekeeping from the hooks: a sidebar (and a reader slot) for every tab, restart, close tabs with only a sidebar (and the reader pane or its slot), the menus' Close |
 | `tabrail-reader`, `tabrail-reader-size` | The reader pane, a bar across the bottom: a slot in every tab, swap places with the shown tab's slot, start in it, move away before its tab closes; grow and shrink on a double-click; back across the bottom when tmux moved it or a slot |
 | `tabrail-slot` | A tab's slot: marks its pane, then waits in a child named `tabrail-slot` (for resurrect) |
 | `tabrail-reader-test`, `tabrail-slot-test` | The reader bar's tests and its slots' (with ~/Dev/vmConfig's mouse config and a resurrect save and restore), on throwaway tmux servers |
-| `tabrail-test-lib` | What both tests share: the throwaway servers, clicks, checks |
+| `tabrail-chat-test`, `tabrail-chat-session-test` | `tabrail-chat`'s tests on a throwaway tmux server: what it shows and its keys; its claude's options, restarts and the way out |
+| `tabrail-chat-test-lib`, `tabrail-chat-fake` | What both share: the 120x4 pane, rows, keys, the wheel; the fake claude they run, canned stream-json per question |
+| `tabrail-test-lib` | What the tests share: the throwaway servers, clicks, checks |
 | `tabrail-act` | What the menus and group drags do: new tab, duplicate, fold, new group, rename group, move group |
 | `tabrail-move`, `tabrail-pick` | Move a tab to a group in a picker; the picker (Claude Code's option-list style, fzf), or a name field with `-q` |
 | `tabrail-name` | The menus' Rename, Rename group and New group…: a name field in a popup, Esc cancels whatever `status-keys` is |

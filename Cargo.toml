@@ -4,6 +4,14 @@ version = "0.1.0"
 edition = "2021"
 description = "Vertical tab rail for tmux: tabs grouped by project, Claude's state, event-driven over tmux control mode"
 
+[[bin]]
+name = "tabrail"
+path = "src/main.rs"
+
+[[bin]]
+name = "tabrail-chat"
+path = "src/chat/main.rs"
+
 # Standard library only: nothing to fetch from crates.io
 [dependencies]
 

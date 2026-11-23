@@ -183,3 +183,12 @@ status: open
 - source_spec: `_bmad-output/specs/spec-reader-bar/stories/2-tabrail-chat-frontend.md`
   summary: AGENTS.md does not describe the second binary (tabrail-chat) nor its terminal pitfall.
   evidence: with autowrap off, an erase after a row that fills the width takes the row's last character, so rows are cleared (`ESC[2K`) before they are written (src/chat/main.rs changes). Agent-context file, so deferred.
+- source_spec: `_bmad-output/specs/spec-reader-bar/stories/4-journal-reader-on-the-frontend.md`
+  summary: tabrail-chat-session-test checks the restart drops `-c` but never `--continue`, the flag journal-reader/start actually passes.
+  evidence: low. Narrowing `"--continue" | "-c"` in src/chat/session.rs to `"-c"` passes every tabrail-chat test; the reader would then restart with `--continue --resume <sid>`. Story 4 may not edit tabrail; add `--continue` beside `-c` at tabrail-chat-session-test:9 and its expected args.
+- source_spec: `_bmad-output/specs/spec-reader-bar/stories/4-journal-reader-on-the-frontend.md`
+  summary: After a resurrect restore the reader's cell comes back running a full `withproxy claude --continue` TUI, because the reader's child `claude -p … --continue` matches `~claude` in @resurrect-processes.
+  evidence: medium. With tabrail-chat as the reader, the pane pid is tabrail-chat and its child is `claude -p --input-format stream-json …`, which resurrect's ps strategy saves; `~claude` is a substring match. Before story 4 the reader's own pid was claude, saved with no command. A fix needs both a narrower entry (resurrect's non-`~` match is `^name( |$)`, so tabrail-chat would also start claude by absolute path) and a restore test on a -L server; overlaps the story-5 deferral on sidebars and the reader not restoring.
+- source_spec: `_bmad-output/specs/spec-reader-bar/stories/4-journal-reader-on-the-frontend.md`
+  summary: journal-reader/start's TUI fallback ends at once with "No conversation found to continue" when the folder has only tabrail-chat (`claude -p`) transcripts.
+  evidence: medium. Claude Code's TUI `--continue` skips transcripts written by `claude -p` (checked with one transcript under both labels); `start` passes `--continue` whenever any transcript exists. Today 4 TUI transcripts keep it working; after Claude Code's 30-day cleanup the fallback would end every time and tabrail would restart it every 10 s. Only the fallback is affected (tabrail-chat not built, or outside tmux). Fix: give the TUI `--continue` only for a TUI transcript, or none.

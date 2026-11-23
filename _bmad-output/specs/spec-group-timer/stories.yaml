@@ -1,0 +1,26 @@
+- id: "1"
+  title: Group timer from the menu
+  description: >-
+    A per-group stopwatch kept in a state file, shown after the group's name in
+    its header and driven by Start/Stop timer and Reset timer in the group
+    menu; it survives restarts and follows Rename group (SPEC.md CAP-1, CAP-2
+    menu part, CAP-3 to CAP-6).
+  invoke_dev_with: >-
+    main.rs is at 99 lines and draw.rs at 96: read the state file and format
+    the label in a new src/timer.rs, make room in main.rs by building the
+    helper paths in one line, and pass the timers into draw::screen and
+    menu::for_row in place. tabrail-act is at 99: Rename group's timer rename
+    is one call from rename_group, nothing more there. tabrail-timer also gets
+    toggle, which story 2 calls. Test with XDG_STATE_HOME on a temp dir for
+    the tmux -L server, never the user's ~/.local/state/tabrail.
+- id: "2"
+  title: Click the time to stop or start
+  description: >-
+    A left press and release on a group's time toggles its timer; anywhere
+    else on the row still folds and a drag from the time still moves the group
+    (SPEC.md CAP-2 click part, click constraint).
+  invoke_dev_with: >-
+    Needs story 1's tabrail-timer toggle and the label in the header. Click
+    has no column today (input.rs drops it): add it without adding lines to
+    control.rs (106 already). The time's columns come from draw, which knows
+    where it put the label after cutting the name.

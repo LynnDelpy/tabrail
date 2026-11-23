@@ -1,0 +1,41 @@
+- id: "1"
+  title: Reader bar across the bottom
+  description: >-
+    The reader pane moves from under the sidebar to a full-width bar at the
+    bottom of the tab shown, 4 rows small, 2/3 high while it has the
+    keyboard (SPEC.md CAP-1, CAP-2).
+  invoke_dev_with: >-
+    Bash only (tabrail-reader, tabrail-reader-size, tabrail.tmux), no Rust
+    logic change; works with today's claude TUI as the reader command. Test
+    with tabrail-reader-test on tmux -L servers, never the user's tmux.
+- id: "2"
+  title: tabrail-chat, a Claude Code frontend for a few rows
+  description: >-
+    A second std-only binary that drives claude -p over stream-json: input
+    line, streaming answer at full width, tool calls as one line, scroll back
+    (SPEC.md CAP-3, CAP-5, CAP-6, the options pass-through of CAP-4).
+  invoke_dev_with: >-
+    No crates. Test against a fake claude (TABRAIL_CHAT_CLAUDE) in
+    tabrail-chat-test on a tmux -L server; one real claude turn on Haiku at
+    most, in a scratch folder with --no-session-persistence. Prompts are
+    auto-denied (--permission-prompts none) until story 3.
+- id: "3"
+  title: Permission prompts, Esc, /clear and /model
+  description: >-
+    tabrail-chat answers can_use_tool inline with y/n, interrupts on Esc,
+    switches model and starts new conversations; other slash commands are
+    refused (SPEC.md CAP-7, CAP-8).
+  invoke_dev_with: >-
+    Control protocol shapes are in stack.md, verified on claude 2.1.323;
+    match replies by request_id. Extend the fake claude rather than
+    spending real turns.
+- id: "4"
+  title: Journal reader on the frontend
+  description: >-
+    ~/Dev/vmConfig/journal-reader/start runs tabrail-chat and its CLAUDE.md
+    fits the bar (SPEC.md CAP-4).
+  invoke_dev_with: >-
+    ~/Dev/vmConfig is its own git repo (github LynnDelpy/vmConfig): branch
+    lde/reader-bar there, commit, push, PR. Keep the TUI as fallback while
+    tabrail-chat is not built. Never restart the user's reader pane
+    yourself; tell Lynn to run tabrail-tmux restart or kill the pane.

@@ -1,13 +1,14 @@
 # shellcheck shell=bash
-# The reader pane's size, sourced by tabrail-reader. Only its height changes, never the column's
-# width, so the sidebar and the tab's own panes stay where they are. Small: SMALL rows
-# (Claude Code in fullscreen: the chat's last lines and the input line). Big (@reader_big) while
-# it has the keyboard: 2/3 of the tab's height.
-SMALL=6
+# The reader bar's size, sourced by tabrail-reader. Only its height changes, never a pane's width,
+# so the sidebar and the tab's own panes keep their columns. Small: SMALL rows (the chat's last
+# lines and the input line). Big (@reader_big) while it has the keyboard: 2/3 of the tab's height.
+SMALL=4
+
+tall() { echo $(( $(tmux display -p -t "$1" '#{window_height}') * 2 / 3 )); }   # big in window $1
 
 big() {   # reader $1 in window $2
   tmux set -p -t "$1" @reader_big 1
-  tmux resize-pane -t "$1" -y $(( $(tmux display -p -t "$2" '#{window_height}') * 2 / 3 ))
+  tmux resize-pane -t "$1" -y "$(tall "$2")"
 }
 
 small() {   # reader $1; also to put a small one back to SMALL rows
@@ -15,8 +16,22 @@ small() {   # reader $1; also to put a small one back to SMALL rows
   tmux set -pu -t "$1" @reader_big
 }
 
+# reader $1 in window $2 (big if $3): if tmux moved it out of place (a layout command, a sidebar
+# split in beside it), back across the bottom at full width, SMALL rows high or 2/3 if big
+place() {
+  local wide full bottom side rows=$SMALL
+  read -r wide full bottom < <(tmux display -p -t "$1" \
+    '#{pane_width} #{window_width} #{pane_at_bottom}')
+  (( wide < full )) || [[ $bottom != 1 ]] || return 0
+  side=$(sidebar "$2")
+  [[ -n $side ]] || return 0   # no sidebar yet: tabrail-tmux ensure follows once it has one
+  [[ -n $3 ]] && rows=$(tall "$2")
+  tmux join-pane -fv -d -l "$rows" -s "$1" -t "$side"
+}
+
 # WINDOW: big while the reader is its active pane, small while its own pane is; the sidebar leaves
-# the reader as it is. Its size is applied again either way (after a resize, tmux spreads rows).
+# the reader as it is. Its place and size are applied again either way (after a resize, tmux spreads
+# rows; a layout command spreads the bar too).
 fit() {
   local r rwin isbig zoom active
   read -r r rwin isbig < <(reader)
@@ -24,6 +39,7 @@ fit() {
   read -r zoom active < <(tmux display -p -t "$1" \
     '#{window_zoomed_flag} #{?@reader,reader,#{?@sidebar,sidebar,work}}')
   [[ $zoom == 1 ]] && return   # resizing would unzoom the tab
+  place "$r" "$1" "$isbig"
   case $active in
     reader) big "$r" "$1" ;;
     work) small "$r" ;;

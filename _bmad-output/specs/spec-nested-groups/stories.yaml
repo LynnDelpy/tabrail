@@ -1,0 +1,50 @@
+- id: "1"
+  title: Show nested groups
+  description: >-
+    Read each group's depth from its line's indentation and draw the tree in
+    every sidebar: indented headers and tabs, folding a parent hides its
+    subtree, Move to group… lists the tree (SPEC.md CAP-1, CAP-2).
+  invoke_dev_with: >-
+    model.rs, draw.rs and tabrail-act are at 96-99 lines: groups reading goes
+    to src/groups.rs, tab-row formatting to its own file, and the groups-file
+    writers (rename, move, new group) to a new tabrail-groups script. Rename
+    must keep a line's indentation. move-group stays single-line until story
+    4. Test on a groups copy named by @tabrail_groups on a tmux -L server,
+    never the user's file.
+- id: "2"
+  title: Longest folder wins
+  description: >-
+    A new tab joins the group whose folder is the longest one holding its
+    folder, at any level, and a group without folders opens new tabs in its
+    nearest ancestor's first folder (SPEC.md CAP-3).
+  invoke_dev_with: >-
+    Call helpers from outside the test server with TMUX=<its socket>,0,0
+    (AGENTS.md), or they read the user's groups file.
+- id: "3"
+  title: Create subgroups
+  description: >-
+    New subgroup… in a group's menu and a + at the right edge of its header
+    open the name field and add the subgroup under it, with a new tab in it
+    (SPEC.md CAP-4).
+  invoke_dev_with: >-
+    Clicks carry no column yet (input.rs drops it). A popup from the sidebar
+    needs the user's client, not the sidebar's own control client. If
+    spec-group-colour has landed, the auto-pick reads its palette file.
+- id: "4"
+  title: Drag groups with their tree
+  description: >-
+    Dragging a group moves it with its whole subtree among its siblings, or
+    nests it when released on another header at or right of its name
+    (SPEC.md CAP-5, CAP-7).
+  invoke_dev_with: >-
+    move-group's safety check compares sorted lines; re-indented lines need
+    the comparison without leading whitespace. Add the drag checks to
+    tabrail-tree-test.
+- id: "5"
+  title: Move into group from the menu
+  description: >-
+    Move into group… in a group's menu nests it under a picked group or takes
+    it back to the top level (SPEC.md CAP-6).
+  invoke_dev_with: >-
+    Reuse story 4's nest operation; build the picker the way tabrail-move
+    does.

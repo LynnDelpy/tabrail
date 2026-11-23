@@ -38,9 +38,9 @@ grouped by project, with what each one is doing.
   drag any sidebar's border (or `resize-pane` it) to change it for all tabs until tmux stops.
 - Reader pane (optional, `@tabrail_reader`): one chat in a small pane under the sidebar of the tab
   shown, 4 rows at the sidebar's width; it moves along from tab to tab, the same process and
-  conversation. Clicked into (or given the keyboard), it grows: the column about 80 wide, the pane two
-  thirds of the height; a click into the tab's own pane shrinks it, and every sidebar and pane are back
-  to their sizes (growing never changes the shared width). It follows into another session too
+  conversation. Clicked into (or given the keyboard), it grows to two thirds of the height, only in
+  height: the sidebar and the tab's own panes stay where they are. A click into the tab's own pane
+  shrinks it again. It follows into another session too
   (switch-client, the tree), and gets its size back after a terminal resize. A tab left with only the
   sidebar and the reader pane closes, the pane moving on first, as does a tab closed with the menus'
   Close or prefix `&`; `tabrail-tmux restart` leaves it running.

@@ -1,33 +1,16 @@
 # shellcheck shell=bash
-# The reader pane's size, sourced by tabrail-reader (WIDTH: @sidebar_width). Small: 4 rows at the
-# sidebar's width. Big (@reader_big) while it has the keyboard: the column min(80, tab width - 40)
-# wide, the pane 2/3 of the tab's height. Growing keeps the tab's layout in @reader_layout and
-# shrinking puts it back, so panes side by side get their sizes back; if the tab's panes or size
-# changed meanwhile, it resizes instead. Marked big before growing, unmarked after shrinking:
-# src/width.rs leaves a column with a big reader alone, so the sidebar never takes it for a drag.
+# The reader pane's size, sourced by tabrail-reader. Only its height changes, never the column's
+# width, so the sidebar and the tab's own panes stay where they are. Small: 4 rows. Big
+# (@reader_big) while it has the keyboard: 2/3 of the tab's height.
 
-# a tab's size and panes: whether its saved layout still fits
-shape() { tmux display -p -t "$1" '#{window_width}x#{window_height}#{P:#{pane_id}}'; }
-
-big() {   # reader $1 in window $2; $3 set: it is big already, only its size again
-  local w h
-  if [[ -z $3 ]]; then
-    tmux set -p -t "$1" @reader_layout "$(shape "$2") $(tmux display -p -t "$2" '#{window_layout}')"
-    tmux set -p -t "$1" @reader_big 1
-  fi
-  read -r w h < <(tmux display -p -t "$2" '#{window_width} #{window_height}')
-  w=$(( w - 40 < 80 ? w - 40 : 80 ))
-  tmux resize-pane -t "$1" -x $(( w > WIDTH ? w : WIDTH )) -y $(( h * 2 / 3 ))
+big() {   # reader $1 in window $2
+  tmux set -p -t "$1" @reader_big 1
+  tmux resize-pane -t "$1" -y $(( $(tmux display -p -t "$2" '#{window_height}') * 2 / 3 ))
 }
 
-small() {   # reader $1 in window $2; also to put a small one back to 4 rows
-  local saved
-  saved=$(tmux show -pv -t "$1" @reader_layout 2>/dev/null)
-  saved=${saved//,\"a\":true/}   # tmux 3.8 marks the active pane: it would make the reader active again
-  [[ -n $saved && ${saved%% *} == "$(shape "$2")" ]] && tmux select-layout -t "$2" "${saved#* }"
-  tmux resize-pane -t "$1" -x "$WIDTH" -y 4
+small() {   # reader $1; also to put a small one back to 4 rows
+  tmux resize-pane -t "$1" -y 4
   tmux set -pu -t "$1" @reader_big
-  tmux set -pu -t "$1" @reader_layout
 }
 
 # WINDOW: big while the reader is its active pane, small while its own pane is; the sidebar leaves
@@ -40,8 +23,8 @@ fit() {
     '#{window_zoomed_flag} #{?@reader,reader,#{?@sidebar,sidebar,work}}')
   [[ $zoom == 1 ]] && return   # resizing would unzoom the tab
   case $active in
-    reader) big "$r" "$1" "$isbig" ;;
-    work) small "$r" "$1" ;;
-    *) if [[ -n $isbig ]]; then big "$r" "$1" 1; else small "$r" "$1"; fi ;;
+    reader) big "$r" "$1" ;;
+    work) small "$r" ;;
+    *) if [[ -n $isbig ]]; then big "$r" "$1"; else small "$r"; fi ;;
   esac
 }

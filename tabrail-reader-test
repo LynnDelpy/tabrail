@@ -36,13 +36,14 @@ check "reader 26x4 under tab 1's sidebar" '[[ $(rd "#{window_index} #{pane_width
 t select-window -t :3; settle
 check "tab switch: under tab 3, same pid; tab 1's sidebar alone" \
   '[[ $(rd "#{window_index} #{pane_pid}") == "3 $pid" && $(sizes :1) == "26x46 133x46 " ]]'
-t split-window -h -d -t "$(own :3)" -l 110 -c "$T/work"; settle   # growing takes from both
+t split-window -h -d -t "$(own :3)" -l 110 -c "$T/work"; settle
 before=$(mine :3)
 click 5 44
-check "clicked into: big, 80 wide, 2/3 high" '[[ $(rd "#{@reader_big} #{pane_width}x#{pane_height}") == "1 80x30" ]]'
+check "clicked into: big, 2/3 high, still 26 wide; the tab's own panes untouched" \
+  '[[ $(rd "#{@reader_big} #{pane_width}x#{pane_height}") == "1 26x30" && $(mine :3) == "$before" ]]'
 check "reader active: the tab's row names the tab's own pane" 'o capture-pane -p -t o | grep "❯" | grep -q " work"'
 click 100 10
-check "own pane clicked: small, side-by-side panes back to their sizes" \
+check "own pane clicked: small, the tab's own panes untouched" \
   '[[ $(rd "#{pane_width}x#{pane_height}") == 26x4 && $(mine :3) == "$before" ]]'
 click 5 44
 t run-shell "$R/tabrail-act dup $(t display -p -t :3 '#{window_id}')"; settle 2

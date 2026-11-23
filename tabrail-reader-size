@@ -1,9 +1,9 @@
 # shellcheck shell=bash
 # The reader pane's size, sourced by tabrail-reader. Only its height changes, never the column's
 # width, so the sidebar and the tab's own panes stay where they are. Small: SMALL rows
-# (Claude Code's input line and the mode line under it). Big (@reader_big) while it has the
-# keyboard: 2/3 of the tab's height.
-SMALL=5
+# (Claude Code in fullscreen: the chat's last lines and the input line). Big (@reader_big) while
+# it has the keyboard: 2/3 of the tab's height.
+SMALL=6
 
 big() {   # reader $1 in window $2
   tmux set -p -t "$1" @reader_big 1

@@ -32,7 +32,7 @@ o -f /dev/null new -d -s o -x 160 -y 46 "TMUX= tmux -L tabrail-rt attach -t main
 o set -g status off
 t new-window -d -c "$T/work"; t new-window -d -c "$T/work"; settle 2
 pid=$(rd '#{pane_pid}')
-check "reader 26x5 under tab 1's sidebar" '[[ $(rd "#{window_index} #{pane_width}x#{pane_height} #{pane_left}") == "1 26x5 0" ]]'
+check "reader 26x6 under tab 1's sidebar" '[[ $(rd "#{window_index} #{pane_width}x#{pane_height} #{pane_left}") == "1 26x6 0" ]]'
 t select-window -t :3; settle
 check "tab switch: under tab 3, same pid; tab 1's sidebar alone" \
   '[[ $(rd "#{window_index} #{pane_pid}") == "3 $pid" && $(sizes :1) == "26x46 133x46 " ]]'
@@ -44,17 +44,17 @@ check "clicked into: big, 2/3 high, still 26 wide; the tab's own panes untouched
 check "reader active: the tab's row names the tab's own pane" 'o capture-pane -p -t o | grep "❯" | grep -q " work"'
 click 100 10
 check "own pane clicked: small, the tab's own panes untouched" \
-  '[[ $(rd "#{pane_width}x#{pane_height}") == 26x5 && $(mine :3) == "$before" ]]'
+  '[[ $(rd "#{pane_width}x#{pane_height}") == 26x6 && $(mine :3) == "$before" ]]'
 click 5 44
 t run-shell "$R/tabrail-act dup $(t display -p -t :3 '#{window_id}')"; settle 2
 check "Duplicate with the reader active: the tab's own folder" '[[ $(t display -p -t :4 "#{pane_current_path}") == "$T/work" ]]'
 check "new tab while big: small under it, same pid; tab 3 back to its sizes" \
-  '[[ $(rd "#{window_index} #{pane_pid} #{pane_width}x#{pane_height}") == "4 $pid 26x5" && $(mine :3) == "$before" ]]'
+  '[[ $(rd "#{window_index} #{pane_pid} #{pane_width}x#{pane_height}") == "4 $pid 26x6" && $(mine :3) == "$before" ]]'
 check "@sidebar_width never written" '[[ -z $(t show -gv @sidebar_width 2>/dev/null) ]]'
 t run-shell "$R/tabrail-tmux restart"; settle
 check "restart keeps the reader's pid" '[[ $(rd "#{pane_pid}") == "$pid" ]]'
 o resize-window -t o -x 160 -y 56; settle 2
-check "terminal resize: still 5 rows" '[[ $(rd "#{pane_height}") == 5 ]]'
+check "terminal resize: still 6 rows" '[[ $(rd "#{pane_height}") == 6 ]]'
 o resize-window -t o -x 160 -y 46; settle 2
 
 t new-session -d -s s2 -c "$T/work"; settle 2

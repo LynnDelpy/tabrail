@@ -37,7 +37,7 @@ grouped by project, with what each one is doing.
 - One width: every tab's sidebar keeps the same width through terminal resizes and layout commands;
   drag any sidebar's border (or `resize-pane` it) to change it for all tabs until tmux stops.
 - Reader pane (optional, `@tabrail_reader`): one chat in a small pane under the sidebar of the tab
-  shown, 5 rows at the sidebar's width; it moves along from tab to tab, the same process and
+  shown, 6 rows at the sidebar's width; it moves along from tab to tab, the same process and
   conversation. Clicked into (or given the keyboard), it grows to two thirds of the height, only in
   height: the sidebar and the tab's own panes stay where they are. A click into the tab's own pane
   shrinks it again. It follows into another session too

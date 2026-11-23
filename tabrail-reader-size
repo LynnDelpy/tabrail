@@ -1,7 +1,8 @@
 # shellcheck shell=bash
 # The reader bar's size, sourced by tabrail-reader. Only its height changes, never a pane's width,
 # so the sidebar and the tab's own panes keep their columns. Small: SMALL rows (the chat's last
-# lines and the input line). Big (@reader_big) while it has the keyboard: 2/3 of the tab's height.
+# lines and the input line), as a tab's slot always is. Big (@reader_big) after a double-click into
+# it: 2/3 of the tab's height, until the next double-click or a click into the tab's own pane.
 SMALL=4
 
 tall() { echo $(( $(tmux display -p -t "$1" '#{window_height}') * 2 / 3 )); }   # big in window $1
@@ -11,38 +12,44 @@ big() {   # reader $1 in window $2
   tmux resize-pane -t "$1" -y "$(tall "$2")"
 }
 
-small() {   # reader $1; also to put a small one back to SMALL rows
+small() {   # reader $1; also to put a small one or a slot back to SMALL rows
   tmux resize-pane -t "$1" -y "$SMALL"
   tmux set -pu -t "$1" @reader_big
 }
 
-# reader $1 in window $2 (big if $3): if tmux moved it out of place (a layout command, a sidebar
-# split in beside it), back across the bottom at full width, SMALL rows high or 2/3 if big
+# reader or slot $1 in window $2 (big if $3): if tmux moved it out of place (a layout command, a
+# sidebar split in beside it), back across the bottom at full width, SMALL rows high or 2/3 if big
 place() {
-  local wide full bottom side rows=$SMALL
-  read -r wide full bottom < <(tmux display -p -t "$1" \
-    '#{pane_width} #{window_width} #{pane_at_bottom}')
+  local wide full bottom zoom side rows=$SMALL
+  read -r wide full bottom zoom < <(tmux display -p -t "$1" \
+    '#{pane_width} #{window_width} #{pane_at_bottom} #{window_zoomed_flag}')
   (( wide < full )) || [[ $bottom != 1 ]] || return 0
   side=$(sidebar "$2")
-  [[ -n $side ]] || return 0   # no sidebar yet: tabrail-tmux ensure follows once it has one
+  # no sidebar yet: tabrail-tmux ensure follows once it has one; zoomed: joining would unzoom the tab
+  [[ -n $side && $zoom == 0 ]] || return 0
   [[ -n $3 ]] && rows=$(tall "$2")
   tmux join-pane -fv -d -l "$rows" -s "$1" -t "$side"
 }
 
-# WINDOW: big while the reader is its active pane, small while its own pane is; the sidebar leaves
-# the reader as it is. Its place and size are applied again either way (after a resize, tmux spreads
-# rows; a layout command spreads the bar too).
+# WINDOW: small while its own pane is active, else the size it has; the keyboard alone never grows
+# it. Its place and size are applied again either way (after a resize, tmux spreads rows; a layout
+# command spreads the bar too). A tab without the bar: its slot, always small.
 fit() {
   local r rwin isbig zoom active
   read -r r rwin isbig < <(reader)
-  [[ $rwin == "$1" ]] || return
+  [[ $rwin == "$1" ]] || { r=$(slot "$1") isbig=; }
+  [[ -n $r ]] || return
   read -r zoom active < <(tmux display -p -t "$1" \
     '#{window_zoomed_flag} #{?@reader,reader,#{?@sidebar,sidebar,work}}')
   [[ $zoom == 1 ]] && return   # resizing would unzoom the tab
   place "$r" "$1" "$isbig"
-  case $active in
-    reader) big "$r" "$1" ;;
-    work) small "$r" ;;
-    *) if [[ -n $isbig ]]; then big "$r" "$1"; else small "$r"; fi ;;
-  esac
+  if [[ -n $isbig && $active != work ]]; then big "$r" "$1"; else small "$r"; fi
+}
+
+grow() {   # a double-click into the bar in WINDOW: big, or small if it is big; it keeps the keyboard
+  local r rwin isbig
+  read -r r rwin isbig < <(reader)
+  [[ $rwin == "$1" && $(zoomed "$1") == 0 ]] || return
+  place "$r" "$1" "$isbig"
+  if [[ -n $isbig ]]; then small "$r"; else big "$r" "$1"; fi
 }

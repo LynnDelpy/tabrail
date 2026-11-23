@@ -39,3 +39,13 @@
     lde/reader-bar there, commit, push, PR. Keep the TUI as fallback while
     tabrail-chat is not built. Never restart the user's reader pane
     yourself; tell Lynn to run tabrail-tmux restart or kill the pane.
+- id: "5"
+  title: Slot in every tab, grow on double-click
+  description: >-
+    Tab switches stop resizing the tab's own panes: every tab keeps a 4-row
+    slot across the bottom that the reader swaps places with; the bar grows
+    to 2/3 only on a double-click into it (SPEC.md CAP-1, CAP-2 as amended).
+  invoke_dev_with: >-
+    Bash and tmux.conf first; src/ only where the sidebar must ignore the
+    slot pane. Test with tabrail-reader-test on tmux -L servers, never the
+    user's tmux; split the test file by job if it outgrows 100 lines.

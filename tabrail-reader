@@ -1,46 +1,69 @@
 #!/usr/bin/env bash
 # The reader pane, a bar across the bottom of the tab, when the global option @tabrail_reader holds
 # the command it runs (a chat: ~/Dev/vmConfig/journal-reader/start). One pane, marked @reader, spans
-# the full width of the tab shown last, under its sidebar and own panes, and moves along (join-pane
-# -f: same process, same conversation); small, big while it has the keyboard (tabrail-reader-size).
-# From tabrail.tmux hooks and tabrail-tmux:
+# the full width of the tab shown last, under its sidebar and own panes; every other tab holds a slot
+# there (tabrail-slot, @reader_slot), an idle pane as big as the small bar, that the bar swaps places
+# with: same process and conversation, no other pane resizes. Its size: tabrail-reader-size. From
+# tabrail.tmux hooks and bindings and tabrail-tmux:
 #   follow [SESSION]  move it to the tab SESSION shows (else the last used one); start it if it is
-#                     gone, not within 10 s of the last start (@tabrail_reader_started)
-#   fit WINDOW        big while it is WINDOW's active pane, small while the tab's own pane is;
-#                     back across the bottom if tmux moved it (layout command, sidebar beside it)
+#                     gone, in that tab's slot, not within 10 s of the last start (@tabrail_reader_started)
+#   slots [WINDOW]    a slot in every tab (or WINDOW) that holds neither a slot nor the reader
+#   fit WINDOW        small while the tab's own pane is active; back across the bottom at its size if
+#                     tmux moved it (layout command, terminal resize); in a tab without it, its slot
+#   grow WINDOW       a double-click into it: big, or small again if it is big
 #   away WINDOW       before WINDOW closes: move it to the tab tmux shows next
 CMD=$(tmux show -gv @tabrail_reader 2>/dev/null)
 [[ -n $CMD ]] || exit 0
 exec 8> "/tmp/tabrail-reader-$UID.lock"   # one at a time: hooks fire in bursts
 flock -w 5 8 || exit 0
-# big, small, fit, place, tall; they use reader and sidebar from here
-source "$(dirname "$(readlink -f "$0")")/tabrail-reader-size"
+D=$(dirname "$(readlink -f "$0")")
+source "$D/tabrail-reader-size"   # big, small, fit, grow, place, tall; they use reader, slot, sidebar
 
-# the reader's pane, its window and whether it is big; a window's sidebar pane
+# the reader's pane, its window and whether it is big; a window's slot and sidebar pane
 reader() { tmux list-panes -a -f '#{@reader}' -F '#{pane_id} #{window_id} #{@reader_big}' | head -1; }
+slot() { tmux list-panes -t "$1" -f '#{@reader_slot}' -F '#{pane_id}' 2>/dev/null | head -1; }
 sidebar() { tmux list-panes -t "$1" -f '#{@sidebar}' -F '#{pane_id}' 2>/dev/null | head -1; }
 zoomed() { tmux display -p -t "$1" '#{window_zoomed_flag}'; }
-# zoomed tabs stay zoomed: split-window and join-pane unzoom them (WINDOW, its flag before)
+# zoomed tabs stay zoomed: split-window and swap-pane unzoom them (WINDOW, its flag before)
 rezoom() { [[ $2 == 1 && $(zoomed "$1") == 0 ]] && tmux resize-pane -Z -t "$1"; }
 
-# pane $1 (in window $2, big if $3) goes across the bottom of window $5, below its sidebar $4
+mkslot() {   # a slot across the bottom of window $2, below its sidebar $1; prints its pane
+  local id was=$(zoomed "$2")
+  id=$(tmux split-window -fv -d -l "$SMALL" -t "$1" -P -F '#{pane_id}' "$D/tabrail-slot") || return
+  tmux set -p -t "$id" @reader_slot 1; rezoom "$2" "$was"; echo "$id"
+}
+
+slots() {   # also puts a slot out of place (a sidebar added beside it) back across the bottom
+  local f='#{window_id} #{pane_id} #{?@sidebar,s,}#{?@reader_slot,l,}#{?@reader,r,}' act p win
+  f+='#{?#{&&:#{pane_at_bottom},#{==:#{pane_width},#{window_width}}},,o}'   # o: out of place
+  while read -r act p win; do   # from one list of panes, not three tmux calls per tab
+    if [[ $act == p ]]; then place "$p" "$win"; else mkslot "$p" "$win" >/dev/null; fi
+  done < <(tmux list-panes ${1:+-t} "${1:--a}" -F "$f" 2>/dev/null | awk '
+    $3 ~ /s/ { side[$1] = $2 } $3 ~ /[lr]/ { has[$1] } $3 ~ /lo/ { out[$1] = $2 }
+    END { for (i in side) if (i in out) print "p", out[i], i; else if (!(i in has)) print "m", side[i], i }')
+}
+
+# pane $1 (in window $2, big if $3) swaps places with window $5's slot, made below its sidebar $4 if
+# it has none; both SMALL rows across the bottom first, or the swap hands on another size or place
 move() {
-  local from=$(zoomed "$2") to=$(zoomed "$5")
-  [[ -n $3 ]] && small "$1"
-  tmux join-pane -fv -d -l "$SMALL" -s "$1" -t "$4" || return
+  local from=$(zoomed "$2") to=$(zoomed "$5") s
+  s=$(slot "$5"); [[ -n $s ]] || s=$(mkslot "$4" "$5") || return
+  small "$s"; place "$s" "$5"
+  [[ -n $3 || $(tmux display -p -t "$1" '#{pane_height}') != "$SMALL" ]] && small "$1"
+  tmux swap-pane -d -s "$1" -t "$s" || return
+  # the keyboard leaves the slot for the pane it had before the bar
+  [[ $(tmux display -p -t "$2" '#{@reader_slot}') == 1 ]] && tmux last-pane -t "$2"
   rezoom "$2" "$from"
   rezoom "$5" "$to"
 }
 
-start() {   # across the bottom of window $2, below its sidebar $1
-  local last id was
+start() {   # in window $2 (sidebar $1): its slot becomes the reader (no slot: one is made first)
+  local last id
   last=$(tmux show -gv @tabrail_reader_started 2>/dev/null)
   (( EPOCHSECONDS - ${last:-0} < 10 )) && return
   tmux set -g @tabrail_reader_started "$EPOCHSECONDS"
-  was=$(zoomed "$2")
-  id=$(tmux split-window -fv -d -l "$SMALL" -t "$1" -P -F '#{pane_id}' "$CMD")
-  [[ -n $id ]] && tmux set -p -t "$id" @reader 1
-  rezoom "$2" "$was"
+  id=$(slot "$2"); [[ -n $id ]] || id=$(mkslot "$1" "$2") || return
+  tmux respawn-pane -k -t "$id" "$CMD" && tmux set -p -t "$id" @reader 1 \; set -pu -t "$id" @reader_slot
 }
 
 follow() {
@@ -70,6 +93,7 @@ away() {
 }
 
 case $1 in
-  follow | fit | away) "$@"; exit 0 ;;   # run-shell -b shows a failure in the pane
-  *) echo "usage: tabrail-reader follow [SESSION] | fit WINDOW | away WINDOW" >&2; exit 2 ;;
+  follow | slots | fit | grow | away) "$@"; exit 0 ;;   # run-shell -b shows a failure in the pane
+  *) echo "usage: tabrail-reader follow [SESSION] | slots [WINDOW] | fit WINDOW | grow WINDOW |" \
+          "away WINDOW" >&2; exit 2 ;;
 esac

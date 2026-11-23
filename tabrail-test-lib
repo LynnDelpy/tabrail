@@ -1,0 +1,53 @@
+# shellcheck shell=bash
+# Shared by the reader bar's tests (tabrail-*-test), sourced after setting L: throwaway tmux servers,
+# never the default one. -L tabrail-$L runs tabrail from $T/conf (with @tabrail_reader
+# 'cd / && exec sleep 99999'; a test may add lines before serve), shown inside -L tabrail-$L-o
+# (-f /dev/null) for clicks, keys and the screen. Needs target/release/tabrail.
+unset TMUX TMUX_PANE
+R=$(dirname "$(readlink -f "$0")")
+T=$(mktemp -d)
+fails=0 spids=()
+check() { if eval "$2"; then echo "ok   $1"; else echo "FAIL $1"; fails=$((fails + 1)); fi; }
+t() { tmux -L "tabrail-$L" "$@"; }
+o() { tmux -L "tabrail-$L-o" "$@"; }
+settle() { sleep "${1:-1.5}"; }
+press() { o send-keys -t o -l $'\e[<0;'"$1;$2M"; o send-keys -t o -l $'\e[<0;'"$1;$2m"; }
+click() { press "$@"; settle; }
+dblclick() { press "$@"; press "$@"; settle; }
+rd() { local f='#{pane_id}'; t list-panes -a -f '#{@reader}' -F "${1:-$f}"; }   # the reader
+slot() { local f='#{pane_id}'; t list-panes -t "$1" -f '#{@reader_slot}' -F "${2:-$f}"; }   # a tab's
+own() { t list-panes -t "$1" -f '#{!:#{@sidebar}#{@reader}#{@reader_slot}}' -F '#{pane_id}'; }   # own panes
+sizes() { t list-panes -t "$1" -F '#{pane_width}x#{pane_height}' | tr '\n' ' '; }
+fixed() {   # the sizes of a tab's panes but the bar's and the slot's
+  t list-panes -t "$1" -f '#{!:#{@reader}#{@reader_slot}}' -F '#{pane_width}x#{pane_height}' | tr '\n' ' '
+}
+widths() { t list-panes -t "$1" -f '#{!:#{@reader}#{@reader_slot}}' -F '#{pane_width}' | tr '\n' ' '; }   # but bar's, slot's
+side() { local f='#{pane_id}'; t list-panes -t "$1" -f '#{@sidebar}' -F "${2:-$f}"; }     # a tab's sidebar
+at() { rd '#{window_index} #{pane_width}x#{pane_height} #{pane_left},#{pane_top}'; }   # the bar's place
+win() { t display -p -t "$1" '#{window_id}'; }
+tabs() { t list-windows -t main | wc -l; }
+marked() {   # per tab of main: how many panes are the reader or a slot
+  local w
+  for w in $(t list-windows -t main -F '#{window_id}'); do
+    t list-panes -t "$w" -f '#{||:#{@reader},#{@reader_slot}}' -F 1 | wc -l
+  done | tr '\n' ' '
+}
+cleanup() {   # this server's menu files only: they start with its pid
+  local p
+  t kill-server 2>/dev/null; o kill-server 2>/dev/null
+  for p in "${spids[@]}"; do rm -f "${XDG_RUNTIME_DIR:-/tmp}/tabrail/$p-"*.conf; done
+  rm -rf "$T"
+}
+trap cleanup EXIT
+mkdir "$T/work"
+printf '%s\n' 'set -g base-index 1' 'set -g mouse on' 'set -g status off' \
+  "set -g @tabrail_reader 'cd / && exec sleep 99999'" "source-file $R/tabrail.tmux" > "$T/conf"
+inner() {   # the tabrail server with session main (SESSION) in $T/work, 160x46
+  t -f "$T/conf" new -d -s "${1:-main}" -x 160 -y 46 -c "$T/work"
+  spid=$(t display -p '#{pid}') && spids+=("$spid")
+}
+serve() {   # both servers, three tabs; the reader starts in tab 1
+  inner
+  o -f /dev/null new -d -s o -x 160 -y 46 "TMUX= tmux -L tabrail-$L attach -t main; sleep 60"
+  o set -g status off; t new-window -d -c "$T/work"; t new-window -d -c "$T/work"; settle 2
+}

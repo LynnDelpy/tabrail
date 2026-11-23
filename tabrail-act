@@ -24,8 +24,8 @@ new() {
   tmux set -w -t "$id" @group "$1"
 }
 
-dup() {   # the tab's own pane: its active one, else its first; not the sidebar or the reader pane
-  local id dir=$(tmux list-panes -t "$1" -f '#{!:#{@sidebar}#{@reader}}' -F '#{pane_active} #{pane_current_path}' |
+dup() {   # the tab's own pane: its active one, else its first; not the sidebar, reader pane or slot
+  local id dir=$(tmux list-panes -t "$1" -f '#{!:#{@sidebar}#{@reader}#{@reader_slot}}' -F '#{pane_active} #{pane_current_path}' |
     sort -rsk1,1 | head -1)
   id=$(tmux new-window -a -t "$1" -P -F '#{window_id}' -c "${dir#[01] }")
   tmux set -w -t "$id" @group "$(tmux show -wv -t "$1" @group)"

@@ -38,13 +38,17 @@ grouped by project, with what each one is doing.
   drag any sidebar's border (or `resize-pane` it) to change it for all tabs until tmux stops.
 - Reader pane (optional, `@tabrail_reader`): one chat in a bar across the full width of the tab
   shown, under the sidebar and the tab's own panes, 4 rows high; it moves along from tab to tab, the
-  same process and conversation. Clicked into (or given the keyboard), it grows to two thirds of the
-  height, only in height: every pane keeps its width. A click into the tab's own pane shrinks it
-  again. It follows into another session too (switch-client, the tree), gets its size back after a
-  terminal resize, and goes back across the bottom after a layout command (prefix Space) or a sidebar
-  added beside it. A tab left with only the sidebar and the reader pane closes, the pane moving on
-  first, as does a tab closed with the menus' Close or prefix `&`; `tabrail-tmux restart` leaves it
-  running.
+  same process and conversation. Every other tab keeps an idle slot of the same size in its place
+  (`tabrail-slot`), which the bar swaps places with: a tab switch resizes no other pane, so nothing
+  in the tabs redraws, except in a zoomed tab, which unzooms for the swap and zooms again. A click
+  into the bar gives it the keyboard at 4 rows; a double-click grows it to two thirds of the height,
+  only in height (every pane keeps its width), and another double-click or a click into the tab's
+  own pane shrinks it again; it shrinks as well in a tab it leaves. It follows into another session
+  too (switch-client, the tree); it and the slots get their size back after a terminal resize and go
+  back across the bottom after a layout command (prefix Space) or a sidebar added beside them. A tab
+  left with only the sidebar and the reader pane or its slot closes, the pane moving on first, as
+  does a tab closed with the menus' Close or prefix `&`; `tabrail-tmux restart` leaves the reader and
+  the slots running.
 - Fast: each sidebar keeps one tmux control-mode connection and redraws when tmux reports a change;
   nothing is spawned on a tab switch (~15 ms until the sidebar shows it) but, with the reader pane, the
   helper that moves it. Rust, standard library only.
@@ -79,18 +83,25 @@ Optional inputs, shown when present:
   the sidebar ignores them until `claude` runs there again.
 - Command timers: the shell's OSC 133 marks (`\e]133;C\a` before a command, `\e]133;D;$?\a` after).
 - The reader pane: `set -g @tabrail_reader '~/Dev/vmConfig/journal-reader/start'`, the command it
-  runs (here the agent journal's reader chat). Unset, tabrail starts no pane and spawns nothing for
-  it. If its program ends, the next tab switch or closed pane starts it again, at most every 10 s.
+  runs (here the agent journal's reader chat). Unset, tabrail starts no pane or slot and spawns
+  nothing for it, and `tabrail-tmux ensure` removes the slots left. If its program ends, the next
+  tab switch or closed pane starts it again in the shown tab's slot, at most every 10 s.
+  tabrail.tmux binds `DoubleClick1Pane`, replacing a binding of your own made before it; one made
+  after it replaces tabrail's: give it tabrail's `#{@reader}` branch first. With tmux-resurrect, add
+  `"~tabrail-slot->/path/to/tabrail/tabrail-slot"` to `@resurrect-processes` so that restored slot
+  panes are slots again: the slot waits in a child process named `tabrail-slot` for that.
 
 ## Files
 
 | File | Job |
 |---|---|
 | `src/` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus, `width.rs` one width for all |
-| `tabrail.tmux` | What tmux.conf loads: mouse bindings, hooks, prefix M and & |
-| `tabrail-tmux` | Housekeeping from the hooks: a sidebar for every tab, restart, close tabs with only a sidebar (and the reader pane), the menus' Close |
-| `tabrail-reader`, `tabrail-reader-size` | The reader pane, a bar across the bottom: follow to the tab shown, move away before its tab closes; grow and shrink with the keyboard; back across the bottom when tmux moved it |
-| `tabrail-reader-test` | The reader pane's tests, on throwaway tmux servers |
+| `tabrail.tmux` | What tmux.conf loads: mouse bindings (the reader bar's double-click too), hooks, prefix M and & |
+| `tabrail-tmux` | Housekeeping from the hooks: a sidebar (and a reader slot) for every tab, restart, close tabs with only a sidebar (and the reader pane or its slot), the menus' Close |
+| `tabrail-reader`, `tabrail-reader-size` | The reader pane, a bar across the bottom: a slot in every tab, swap places with the shown tab's slot, start in it, move away before its tab closes; grow and shrink on a double-click; back across the bottom when tmux moved it or a slot |
+| `tabrail-slot` | A tab's slot: marks its pane, then waits in a child named `tabrail-slot` (for resurrect) |
+| `tabrail-reader-test`, `tabrail-slot-test` | The reader bar's tests and its slots' (with ~/Dev/vmConfig's mouse config and a resurrect save and restore), on throwaway tmux servers |
+| `tabrail-test-lib` | What both tests share: the throwaway servers, clicks, checks |
 | `tabrail-act` | What the menus and group drags do: new tab, duplicate, fold, new group, rename group, move group |
 | `tabrail-move`, `tabrail-pick` | Move a tab to a group in a picker; the picker (Claude Code's option-list style, fzf), or a name field with `-q` |
 | `tabrail-name` | The menus' Rename, Rename group and New group…: a name field in a popup, Esc cancels whatever `status-keys` is |

@@ -2,8 +2,10 @@
 
 ## The bar (tmux)
 
-- `tabrail-reader` places the pane with full-size splits: `split-window -fv` / `join-pane -fv` against any pane of the target window put it across the bottom at full width.
-- Sizes stay in `tabrail-reader-size` (`SMALL`, `big`, `small`, `fit`); the hooks in `tabrail.tmux` and the calls from `tabrail-tmux` keep their names and arguments.
+- Every tab holds one slot (pane option `@reader_slot`, process `tabrail-slot`) or the bar, never both: `tabrail-reader slots` makes missing ones with a full-size split, `split-window -fv -d -l 4` against the tab's sidebar, across the bottom at full width.
+- Following a tab, the bar swaps places with that tab's slot, `swap-pane -d -s <bar> -t <slot>`: both 4 rows, so no other pane in either tab resizes (verified on tmux 3.8): first the bar goes to 4 rows in the tab it leaves (big or dragged), and the slot to 4 rows across the bottom. A new reader takes the shown tab's slot, `respawn-pane -k` with the reader command.
+- `join-pane -fv` against the tab's sidebar only puts a bar or slot that tmux moved (layout command, sidebar added beside it) back across the bottom of its own tab; never into another tab.
+- Sizes stay in `tabrail-reader-size` (`SMALL`, `big`, `small`, `fit`, `grow`); a double-click into the bar (`DoubleClick1Pane`, `#{@reader}` branch) runs `tabrail-reader grow`. The hooks in `tabrail.tmux` and the calls from `tabrail-tmux` keep their names and arguments.
 
 ## The frontend (`tabrail-chat`)
 

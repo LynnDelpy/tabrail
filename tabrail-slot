@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# A tab's slot for the reader bar (tabrail-reader slots): an idle pane across the bottom, as big as
+# the small bar, that the bar swaps places with. Not across the full width at the bottom (resurrect
+# also matches a pane whose program's command line names tabrail-slot; it restores layouts first) or
+# @tabrail_reader unset: it exits. It marks its pane @reader_slot, unless the pane is the reader by
+# now; if its tab has the reader or a slot already (a restored slot that started late) it closes
+# instead: one tmux command, so no other tmux command runs between the look and the mark.
+# Then it waits in a child named tabrail-slot: resurrect saves a pane's child processes, and the
+# @resurrect-processes entry "~tabrail-slot->~/Dev/tabrail/tabrail-slot" starts it again in its pane.
+p=$TMUX_PANE
+across='#{&&:#{pane_at_bottom},#{==:#{pane_width},#{window_width}}}'
+[[ $(tmux display -p -t "$p" "#{&&:#{@tabrail_reader},$across}") == 1 ]] || exit 0
+other="#{P:#{?#{&&:#{!=:#{pane_id},$p},#{||:#{@reader},#{@reader_slot}}},1,}}"
+tmux if -F -t "$p" "#{&&:#{!:#{@reader}},$other}" "kill-pane -t $p" \; \
+  if -F -t "$p" "#{!:#{||:#{@reader},$other}}" "set -p -t $p @reader_slot 1"
+cd / || exit   # it keeps no folder busy
+(exec -a tabrail-slot sleep infinity)

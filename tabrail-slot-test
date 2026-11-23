@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# Tests for the reader bar's slots (tabrail-slot; tabrail-reader slots, follow, fit; tabrail-tmux) on
+# throwaway tmux servers (tabrail-test-lib), with copies of ~/Dev/vmConfig's mouse config (sourced
+# after tabrail.tmux) and resurrect entry, patched by stories/5-vmconfig.patch unless it is applied;
+# the restore runs tmux-resurrect with its own @resurrect-dir. One line per check, exits 1 if one fails.
+L=st
+source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
+V=$HOME/Dev/vmConfig P=$R/_bmad-output/specs/spec-reader-bar/stories/5-vmconfig.patch
+RES=$HOME/.tmux/plugins/tmux-resurrect/scripts
+mkdir "$T/vm" && cp "$V/tmux.conf" "$V/tmux-mouse.conf" "$T/vm/"
+patch -s -R --dry-run -p0 -d "$T/vm" < "$P" >/dev/null 2>&1 || patch -s -N -t -p0 -d "$T/vm" < "$P" ||
+  { echo "FAIL 5-vmconfig.patch does not apply to copies of ~/Dev/vmConfig's tmux.conf, tmux-mouse.conf"; exit 1; }
+{ echo "source-file $T/vm/tmux-mouse.conf"; echo "set -g @resurrect-dir $T/resurrect"
+  grep '^set -g @resurrect-processes' "$T/vm/tmux.conf" | sed "s|~/Dev/tabrail/|$R/|g"; } >> "$T/conf"
+serve
+allslots() { t list-panes -a -f '#{@reader_slot}' -F "$1" | sort -u | tr '\n' ' '; }
+check "every tab holds one slot or the reader; slots 160x4 across the bottom" \
+  '[[ $(marked) == "1 1 1 " && $(allslots "#{pane_width}x#{pane_height} #{pane_left},#{pane_top}") == "160x4 0,42 " ]]'
+check "a slot waits in a child named tabrail-slot, in /" \
+  '[[ $(ps -o args= --ppid "$(slot :2 "#{pane_pid}")") == *tabrail-slot* && $(slot :2 "#{pane_current_path}") == / ]]'
+t split-window -fv -l 4 -d -t :2 "$R/tabrail-slot"; t split-window -fv -l 4 -d -t :1 "$R/tabrail-slot"; settle
+check "a second slot in a tab, or one in the reader's tab, closes itself" \
+  '[[ $(marked) == "1 1 1 " && $(t list-panes -t :1 | wc -l) == 3 && $(t list-panes -t :2 | wc -l) == 3 ]]'
+t kill-pane -t "$(slot :2)"; settle; t select-window -t :2; settle
+check "a tab without a slot: one made there, then swapped; the tab left holds a slot" \
+  '[[ $(at) == "2 160x4 0,42" && -z $(slot :2) && -n $(slot :1) && $(marked) == "1 1 1 " ]]'
+t select-window -t :1; settle
+t new-window -c "$T/work"; settle 2
+check "new tab: a sidebar and the bar, tab 1 holds a slot" \
+  '[[ $(at) == "4 160x4 0,42" && -n $(side :4) && -n $(slot :1) && $(marked) == "1 1 1 1 " ]]'
+t split-window -h -d -t "$(own :1)" -l 100 -c "$T/work"; t split-window -v -d -t "$(own :3)" -c "$T/work"
+settle; f1=$(fixed :1) f3=$(fixed :3) same=1
+for w in 1 3 1 3; do
+  t select-window -t ":$w"; settle
+  [[ $(at) == "$w 160x4 0,42" && $(fixed :1) == "$f1" && $(fixed :3) == "$f3" ]] || same=
+done
+check "tabs 1, 3, 1, 3: the bar at each one's bottom; no other pane of either resized" '[[ -n $same ]]'
+z1=$(own :1 | head -1) z3=$(own :3 | head -1) s1=$(slot :1)   # tab 1 loses its slot: one is made
+t set -pu -t "$s1" @reader_slot; t resize-pane -Z -t "$z1"; t resize-pane -Z -t "$z3"
+t run-shell "$R/tabrail-reader slots"; settle; same=1
+zz() { [[ $(t display -p -t :1 '#{window_zoomed_flag} #{pane_id}') == "1 $z1" &&
+          $(t display -p -t :3 '#{window_zoomed_flag} #{pane_id}') == "1 $z3" ]]; }
+zz || same=; for w in 1 3; do t select-window -t ":$w"; settle; zz && [[ $(rd '#{window_index}') == "$w" ]] || same=; done
+check "own panes zoomed in tabs 1 and 3: a slot made, tabs 1, 3: both stay zoomed on them" '[[ -n $same ]]'
+t resize-pane -Z -t :1; t resize-pane -Z -t :3; t kill-pane -t "$s1"; settle
+t run-shell "$R/tabrail-reader fit $(win :1)"; settle   # s1's rows went to tab 1's slot
+t select-pane -t "$(slot :2)"; settle
+check "a slot active in tab 2: every tab's row names its own pane" \
+  '[[ $(t capture-pane -p -t "$(side :3)" | grep -c " work") == 4 ]]'
+t last-pane -t :2; b1=$(sizes :1) b3=$(sizes :3)
+dblclick 5 44
+check "double-click with vmConfig's mouse config: big" '[[ $(rd "#{@reader_big} #{pane_height} #{pane_active}") == "1 30 1" ]]'
+t select-window -t :1; settle
+check "left while big: small in tab 1, swapped; tabs 1 and 3 keep their sizes" \
+  '[[ $(at) == "1 160x4 0,42" && $(sizes :1) == "$b1" && $(sizes :3) == "$b3" ]]'
+dblclick 5 44; dblclick 5 20
+check "double-click into a big bar with vmConfig's mouse config: small, the keyboard stays" \
+  '[[ $(rd "#{@reader_big} #{pane_height} #{pane_active}") == " 4 1" ]]'
+t resize-pane -t "$(rd)" -y 8; t resize-pane -t "$(slot :3)" -y 8; t select-window -t :3; settle
+check "bar and tab 3's slot 8 rows, tab 3 selected: the bar 4 rows there, the slot left in tab 1 too" \
+  '[[ $(at) == "3 160x4 0,42" && $(slot :1 "#{pane_height} #{pane_at_bottom}") == "4 1" &&
+     $(sizes :1) == "$b1" && $(sizes :3) == "$b3" ]]'
+t select-window -t :1; settle; t select-layout -t :3 even-horizontal; settle 2
+check "layout command in a tab with a slot: the slot back across the bottom, the sidebar 26" \
+  '[[ $(slot :3 "#{pane_width}x#{pane_height} #{pane_left},#{pane_top}") == "160x4 0,42" && $(side :3 "#{pane_width}") == 26 ]]'
+t resize-window -t :3 -x 190 -y 50; settle 2   # as a terminal resize does to a tab shown elsewhere
+check "a tab with a slot resized: the slot back to 4 rows across the bottom, the sidebar 26" \
+  '[[ $(slot :3 "#{pane_width}x#{pane_height} #{pane_at_bottom}") == "190x4 1" && $(side :3 "#{pane_width}") == 26 ]]'
+t set -wu -t :3 window-size; o resize-window -t o -x 180 -y 50; settle 2; same=1
+for w in 2 3 4 1; do   # tmux resizes a tab when it is shown
+  t select-window -t ":$w"; settle
+  [[ $(at) == "$w 180x4 0,46" && $(side ":$w" "#{pane_width}") == 26 ]] || same=
+done
+check "terminal resize: in each tab shown the bar 180x4 across the bottom, the sidebar 26; every slot" \
+  '[[ -n $same && $(allslots "#{pane_width}x#{pane_height} #{pane_at_bottom}") == "180x4 1 " ]]'
+o resize-window -t o -x 160 -y 46; settle 2
+ids=$(allslots '#{pane_id}:#{pane_pid}'); t run-shell "$R/tabrail-tmux restart"; settle
+check "restart keeps every slot" '[[ $(allslots "#{pane_id}:#{pane_pid}") == "$ids" ]]'
+t select-pane -t "$(slot :2)"; t run-shell "$R/tabrail-act dup $(win :2)"; settle 2
+check "Duplicate with the slot active: the tab's own folder" '[[ $(t display -p -t :3 "#{pane_current_path}") == "$T/work" ]]'
+n=$(tabs) w=$(win :2)
+for p in $(own "$w"); do t kill-pane -t "$p"; done; settle 2
+check "only sidebar and slot left: the tab closes" '[[ $(tabs) == $((n - 1)) && $(marked) == "1 1 1 1 " ]]'
+check "@sidebar_width never written" '[[ -z $(t show -gv @sidebar_width 2>/dev/null) ]]'
+check "no failure shown in any pane" '[[ -z $(t list-panes -a -F "#{pane_in_mode}" | grep 1) ]]'
+
+n=$(tabs) saved=$(allslots '#{pane_id}' | wc -w)
+t run-shell "$RES/save.sh quiet"; t kill-server; settle 1
+inner boot; o respawn-pane -k -t o "TMUX= tmux -L tabrail-$L attach -t boot; sleep 60"; settle 2
+t run-shell "$RES/restore.sh"
+for i in {1..60}; do [[ $(tabs 2>/dev/null) == "$n" && -z $(marked | tr -d ' 1') ]] && break; sleep 0.5; done
+settle 4
+check "restore: every tab holds exactly one slot or the reader" \
+  '[[ $(tabs) == "$n" && $(marked | tr -d " 1") == "" && $(t list-panes -t boot -f "#{||:#{@reader},#{@reader_slot}}" -F 1) == 1 ]]'
+check "restore: the saved slots are slots again, across the bottom, waiting in tabrail-slot" \
+  '[[ $(t list-panes -a -f "#{&&:#{@reader_slot},#{!:#{pane_start_command}}}" -F "#{pane_pid}" | wc -l) == "$saved" &&
+     $(allslots "#{e|-:#{window_width},#{pane_width}} #{pane_height} #{pane_at_bottom}") == "0 4 1 " &&
+     -z $(for p in $(allslots "#{pane_pid}"); do ps -o args= --ppid "$p" | grep -q tabrail-slot || echo x; done) ]]'
+exit $((fails > 0))

@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Speed test (spec-performance): per tab count N (default 5 50) a fresh throwaway tabrail server
+# (tabrail-test-lib), N tabs tab1…tabN, the reader bar on, shown in an outer server tall enough for
+# every row. After SETTLE s (60 + 2 per tab) one line per N: switch median and max (select-window until
+# ❯ on the tab's row, renamed just before so no old frame matches), the same under hook calls (one per
+# 100 ms unless 4 run) and their rate, reader median, the server's CPU over IDLE (60) s in % of a core,
+# ms per HOOK call (~/Dev/vmConfig/tmux-claude-state; missing: n/a). Waits timed out (10 s) and idle
+# halves over 25% and 5 ticks apart go to stderr. Exits 1 if setup times out, 2 on a bad count.
+(( $# )) || set -- 5 50
+for n; do [[ $n =~ ^[1-9][0-9]{0,3}$ ]] && (( n >= 2 )) || { echo "usage: tabrail-perf-test [N…] (2-9999)" >&2; exit 2; }; done
+L=pt
+source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
+HOOK=${HOOK:-$HOME/Dev/vmConfig/tmux-claude-state} IDLE=${IDLE:-60} loop='' j=0
+trap '[[ -n $loop ]] && kill "$loop" 2>/dev/null; cleanup' EXIT
+trap 'exit 130' INT; trap 'exit 143' TERM
+
+ready() {   # every tab a sidebar and the reader or a slot, a reader pane; the outer shows tab1 current, tabN
+  local s; s=$(t list-panes -a -F '#{window_id} #{?@sidebar,s,}#{?@reader,r,}#{?@reader_slot,r,}' | awk '
+    { s[$1] = s[$1] $2 } END { for (w in s) n += s[w] ~ /s/ && s[w] ~ /r/; print n + 0 }')
+  [[ $s == "$N" && -n $(rd) && $(o capture-pane -p -t o) == *"❯ tab1 "*" tab$N "* ]]
+}
+
+setup() {   # fresh servers with N tabs; 1 if not ready within 60 s + 2 s per tab
+  local k end=$((EPOCHSECONDS + 60 + 2 * N))
+  inner; t rename-window -t :1 tab1
+  o -f /dev/null new -d -s o -x 160 -y $((N + 10 > 46 ? N + 10 : 46)) \
+    "TMUX= tmux -L tabrail-$L attach -t main; sleep 60"; o set -g status off
+  for ((k = 2; k <= N; k++)); do t new-window -d -t ":$k" -c "$T/work"; t rename-window -t ":$k" "tab$k"; done
+  until ready; do (( EPOCHSECONDS < end )) || return 1; sleep 0.5; done
+}
+
+us() { printf -v "$1" %s "${EPOCHREALTIME/[.,]/}"; }   # now in µs into variable $1, no fork
+late() { (( ${EPOCHREALTIME/[.,]/} - t0 > 10000000 )) && miss=$((miss + 1)); }   # 10 s since the switch
+
+pass() {   # 20 switches, each: µs until ❯ on its row, µs until the reader is in it
+  local i k t0 a b c r
+  c=$(t display -p -t main '#{window_index}') r=$(rd)
+  for ((i = 1; i <= 20; i++)); do   # every tab up to 20 tabs, else spread over them; never the current
+    k=$(( (c - 1 + (N > 20 ? i * N / 20 : i)) % N + 1 )) j=$((j + 1))
+    t rename-window -t ":$k" "tab$k-$j"; sleep 1   # hidden now: no frame of it shows this name yet
+    us t0; t select-window -t ":$k"
+    until [[ $(o capture-pane -p -t o) == *"❯ tab$k-$j "* ]]; do late && break; done; us a
+    until [[ $(t display -p -t "$r" '#{window_index}') == "$k" ]]; do late && break; sleep 0.005; done; us b
+    echo "$((a - t0)) $((b - t0))"
+  done
+}
+
+hook() {   # one call on tab 1's own pane: PreToolUse for an even $1, PostToolUse for an odd one
+  local e=PreToolUse; (( $1 % 2 )) && e=PostToolUse
+  TMUX="$sock,0,0" TMUX_PANE=$pane "$HOOK" <<< "{\"hook_event_name\":\"$e\",\"tool_name\":\"Bash\"}"
+}
+load() {   # while $T/load exists a call every 100 ms unless 4 are running, each a line in $T/done
+  local i=0 run=0
+  while [[ -e $T/load ]]; do
+    (( run < 4 )) || { wait -n; run=$((run - 1)); }
+    { hook "$i"; echo >> "$T/done"; } 2>/dev/null & run=$((run + 1)) i=$((i + 1)); sleep 0.1
+  done
+  wait   # the calls in flight
+}
+
+cpu() {   # utime + stime of the inner server in ticks (/proc stat fields 14, 15, after "(comm)")
+  local s f; s=$(< "/proc/$spid/stat"); s=${s##*) }; read -ra f <<< "$s"; echo $((f[11] + f[12]))
+}
+idle() {   # % of one core over IDLE s, in two halves: a warning on stderr if over 25% and 5 ticks apart
+  local a b c h=$((IDLE / 2)).$((IDLE % 2 * 5))
+  a=$(cpu); sleep "$h"; b=$(cpu); sleep "$h"; c=$(cpu)
+  awk -v x=$((b - a)) -v y=$((c - b)) -v hz="$(getconf CLK_TCK)" -v s="$IDLE" -v n="$N" 'BEGIN {
+    printf "%.2f", (x + y) * 100 / hz / s; d = x > y ? x - y : y - x
+    if (d * 4 > (x < y ? x : y) && d > 5) printf "tabs=%d: idle halves %.2f%% and %.2f%% are over 25%% apart\n",
+      n, x * 200 / hz / s, y * 200 / hz / s > "/dev/stderr" }'
+}
+
+med() {   # median of column $1 of file $2, µs in, ms out
+  cut -d' ' -f"$1" "$2" | sort -n | awk '{ a[NR] = $1 }
+    END { printf "%.0f", (NR % 2 ? a[(NR + 1) / 2] : (a[NR / 2] + a[NR / 2 + 1]) / 2) / 1000 }'
+}
+
+for N; do
+  setup || { echo "tabs=$N: setup timed out, a tab without its sidebar, reader or slot" >&2; exit 1; }
+  sleep "${SETTLE:-$((60 + 2 * N))}"
+  idle=$(idle) miss=0
+  pass > "$T/pass"
+  max=$(cut -d' ' -f1 "$T/pass" | sort -n | tail -1)
+  sock=$(t display -p '#{socket_path}') pane=$(own :1 | head -1) hk=n/a busy=n/a rate=n/a
+  if [[ -x $HOOK && -n $sock ]]; then
+    us t0; for ((i = 0; i < 100; i++)); do hook "$i"; done; us a
+    hk=$(awk -v d="$((a - t0))" 'BEGIN { printf "%.1fms", d / 100 / 1000 }')
+    : > "$T/done"; touch "$T/load"; load & loop=$!
+    us p0; pass > "$T/busy"; us p1; rm "$T/load"
+    rate=$(awk -v n="$(wc -l < "$T/done")" -v d="$((p1 - p0))" 'BEGIN { printf "%.1f/s", n * 1e6 / d }')
+    wait "$loop"; loop='' busy=$(med 1 "$T/busy")ms
+  fi
+  echo "tabs=$N switch=$(med 1 "$T/pass")ms max=$(((max + 500) / 1000))ms switch@hooks=$busy hooks=$rate" \
+    "reader=$(med 2 "$T/pass")ms idle=$idle% hook=$hk"
+  (( miss )) && echo "tabs=$N: $miss waits timed out (10 s after the switch)" >&2
+  t kill-server; o kill-server; settle 1
+done
+exit 0

@@ -54,8 +54,8 @@ grouped by project, with what each one is doing.
 - `tabrail-chat [claude options…]` is a small-pane Claude Code frontend the reader command can run. It
   runs `claude -p` over stream-json (Claude Code's `claude` on PATH, or `$TABRAIL_CHAT_CLAUDE`) in its
   caller's folder and environment with those options, and spends every row on the conversation: the
-  question bold, the answer as plain text wrapped at the full width while it streams in, each tool
-  call one dim line (`⚙ Bash ./journal-search -R tmux`, never its output), above the input (`❯ `,
+  question bold, the answer as plain text wrapped at the full width while it streams in (no tool
+  calls: the text before a tool call is narration and goes when the call comes), above the input (`❯ `,
   wrapped over the rows it needs, a dim `… 12s` while a turn runs; Enter sends nothing until the turn
   is over). Wheel and PgUp/PgDn scroll back; a key or new answer text goes back to the bottom. Ctrl-C
   clears the input, Ctrl-D on an empty one quits. When claude ends or a turn fails, a dim line says
@@ -64,7 +64,7 @@ grouped by project, with what each one is doing.
   takes the mouse: select its text with Shift-drag. Permission prompts are denied for now
   (`--permission-prompts none`). As the reader (it finds its pane by its terminal) it sizes the bar
   while the bar has the keyboard: when the input or the conversation changes, to the rows of the
-  input and the latest question and answer (tool lines too), rounded up to a multiple of 4, from 4
+  input and the latest question and answer, rounded up to a multiple of 4, from 4
   rows to a third of the window, at most once every 500 ms. While a new question is typed (no turn
   running) only the input counts, with one row above it, so a short question after a long answer
   stays at 4 rows; from Enter on the answer counts again. `▲` at the end of the input's last row
@@ -119,7 +119,7 @@ Optional inputs, shown when present:
 | File | Job |
 |---|---|
 | `src/*.rs` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus, `width.rs` one width for all |
-| `src/chat/` | `tabrail-chat`: `main.rs` loop and drawing, `chat.rs` keys and claude's events, `session.rs` claude across restarts (`--resume`), `claude.rs` the claude process, `stream.rs` its stream-json lines, `json.rs` JSON, `tool.rs` a tool call's line, `view.rs` the conversation, `input.rs` the input, `keys.rs` keys, `mouse.rs` wheel and clicks, `term.rs` the terminal, `bar.rs` the reader bar's height and buttons, `tmux.rs` its pane and `tabrail-reader size` |
+| `src/chat/` | `tabrail-chat`: `main.rs` loop and drawing, `chat.rs` keys and claude's events, `session.rs` claude across restarts (`--resume`), `claude.rs` the claude process, `stream.rs` its stream-json lines, `json.rs` JSON, `view.rs` the conversation, `input.rs` the input, `keys.rs` keys, `mouse.rs` wheel and clicks, `term.rs` the terminal, `bar.rs` the reader bar's height and buttons, `tmux.rs` its pane and `tabrail-reader size` |
 | `tabrail.tmux` | What tmux.conf loads: mouse bindings, hooks, prefix M and & |
 | `tabrail-tmux` | Housekeeping from the hooks: a sidebar (and a reader slot) for every tab, restart, close tabs with only a sidebar (and the reader pane or its slot), the menus' Close |
 | `tabrail-reader`, `tabrail-reader-size` | The reader pane, a bar across the bottom: a slot in every tab, swap places with the shown tab's slot, start in it, move away before its tab closes; its height as tabrail-chat asks (`size`); back across the bottom when tmux moved it or a slot |

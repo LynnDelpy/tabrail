@@ -41,7 +41,8 @@ check "a size set by ▲ holds: 8 rows after Enter, ▲ 15; more answer text: st
 ask hi; settle 0.5
 check "the next question: its own height again, 4 rows" '[[ $(h) == 4 && $(row 3) == "hi two" ]]'
 ask tools; settle 0.5
-check "a reply with tool lines: ❯ tools, 3 tool lines, the input: 8 rows" '[[ $(h) == 8 && $(row 7) == "◎ Read ~/notes.md" ]]'
+check "a reply after tool calls: ❯ tools, the answer, the input (not the 3 rows of narration): 4 rows" \
+  '[[ $(h) == 4 && $(row 3) == "found it" ]]'
 up; click 100 10; click 5 44; t send-keys -t "$C" -l "$x"; settle
 check "▲, the own pane clicked (4 rows), back, typing: its own height again, 8 rows" '[[ $(h) == 8 ]]'
 keys C-c; ask hi; rm -f "$T/go"; ask 'lines 1 more'; r0=$(row 4); t send-keys -t "$C" -l "${x:0:152}"; settle 0.5

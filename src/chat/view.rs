@@ -1,4 +1,4 @@
-//! The conversation: questions, answers and dim lines (tool calls, errors), wrapped at the pane's
+//! The conversation: questions, answers and dim lines (errors), wrapped at the pane's
 //! width, and the rows a height shows of it, scrolled back from the bottom.
 use crate::keys::Key;
 
@@ -30,6 +30,11 @@ impl View {
         }
     }
 
+    /// A tool call: the answer so far was narration; only answers show, no tool calls (Lynn, 2026-11-24).
+    pub fn narration(&mut self) {
+        self.changed |= matches!(self.entries.last(), Some(Entry::Answer(_))) && self.entries.pop().is_some();
+    }
+
     /// The wheel 3 rows, PgUp and PgDn a `page` of rows, back from the bottom or towards it.
     pub fn scroll(&mut self, key: Key, page: usize) {
         self.back = match key {
@@ -50,7 +55,7 @@ impl View {
         lines
     }
 
-    /// The rows of the latest question and what came after it (its answer, tool lines), at `width`.
+    /// The rows of the latest question and what came after it (its answer), at `width`.
     pub fn latest(&self, width: usize) -> usize {
         let from = self.entries.iter().rposition(|e| matches!(e, Entry::Question(_))).unwrap_or(0);
         self.entries[from..].iter().map(|entry| lines(entry, width).len()).sum()

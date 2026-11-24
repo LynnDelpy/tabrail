@@ -31,15 +31,12 @@ while IFS= read -r line; do
       delta "$(words w ' ' 1 20) "; delta "$(words w ' ' 21 37)"
       while [[ ! -e $log/go ]]; do sleep 0.1; done ;;   # the test looks while it streams
     *'"content":"tools"'*)
+      delta 'let me\nlook\naround\n'
       tool Bash '{"description":"search","command":"./journal-search -R tmux"}'
       tool Bash "{\"command\":\"$(printf 'x%.0s' {1..200})\"}"
       tool Read "{\"file_path\":\"$HOME/notes.md\",\"limit\":[1,{\"a\":null}]}"
       tool Bash '{"command":"SUBAGENT"}' '"t1"'
-      delta 'SUBAGENT' '"t1"' ;;
-    *'"content":"tools2"'*)
-      tool Grep '{"pattern":"TODO","path":"src"}'; tool Edit '{"file_path":"/etc/hosts","old_string":"a"}'
-      tool Agent '{"description":"look around","prompt":"p"}' ;;
-    *'"content":"tools3"'*) tool Skill '{"skill":"journal-search"}'; tool Mystery '{"n":1,"b":true}' ;;
+      delta 'SUBAGENT' '"t1"'; delta 'found it' ;;
     *'"content":"layout"'*) delta 'a\n\nb\nx\ty\u001b[2Jz' ;;
     *'"content":"wide"'*) delta "$(printf 'y%.0s' {1..130}) end" ;;
     *'"content":"escapes"'*)

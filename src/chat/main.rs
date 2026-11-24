@@ -12,7 +12,6 @@ mod session;
 mod stream;
 mod term;
 mod tmux;
-mod tool;
 mod view;
 
 use std::sync::mpsc;

@@ -60,8 +60,8 @@ grouped by project, with what each one is doing.
   is over). Wheel and PgUp/PgDn scroll back; a key or new answer text goes back to the bottom. Ctrl-C
   clears the input, Ctrl-D on an empty one quits. When claude ends or a turn fails, a dim line says
   why and the next Enter starts claude again with `--resume` on the same conversation (as it was
-  started under `--no-session-persistence`; on a new one when claude could not resume it). The bar
-  takes the mouse: select its text with Shift-drag. Permission prompts are denied for now
+  started under `--no-session-persistence`; on a new one when claude could not resume it). A drag
+  in the bar copies its text as in any pane (copy mode). Permission prompts are denied for now
   (`--permission-prompts none`). As the reader (it finds its pane by its terminal) it sizes the bar
   while the bar has the keyboard: when the input or the conversation changes, to the rows of the
   input and the latest question and answer, rounded up to a multiple of 4, from 4

@@ -12,6 +12,9 @@ set -gF @tabrail_dir "#{d:current_file}"
 bind -n MouseDown1Pane if -F -t = "#{@sidebar}" "send-keys -M -t =" "select-pane -t = ; send-keys -M -t ="
 bind -n MouseUp1Pane send-keys -M -t =
 bind -n MouseDragEnd1Pane send-keys -M -t =
+# A drag in the reader bar copies as in any pane (copy mode), unless its program takes drags itself:
+# tabrail-chat asks only for presses (the wheel, its buttons), so tmux would drop its drags
+bind -n MouseDrag1Pane if -F -t = "#{||:#{pane_in_mode},#{?#{@reader},#{||:#{mouse_button_flag},#{mouse_all_flag}},#{mouse_any_flag}}}" "send-keys -M -t =" "copy-mode -M -t ="
 # Right button up over a sidebar: tmux opens the menu the sidebar keeps for that row (a menu takes
 # clicks only when opened from a mouse binding like this one)
 bind -n MouseUp3Pane if -F -t = "#{@sidebar}" "source-file -q -F '$MENUS/#{pid}-#{pane_id}-#{mouse_y}.conf'" "send-keys -M -t ="

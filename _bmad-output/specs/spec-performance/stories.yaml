@@ -1,0 +1,42 @@
+- id: "1"
+  title: Speed test at 5 and 50 tabs
+  description: >-
+    tabrail-perf-test prints switch and reader medians, idle tmux CPU and hook
+    cost per tab count on a throwaway server (SPEC.md CAP-7).
+  invoke_dev_with: >-
+    Build on tabrail-test-lib; record the baseline of `tabrail-perf-test 5 50`
+    in Implementation Notes before anything else changes.
+- id: "2"
+  title: Hidden sidebars stay idle
+  description: >-
+    A sidebar whose tab is not shown sends tmux nothing until it is shown again,
+    and the shown one lists only tabs' own panes (SPEC.md CAP-1..3).
+  invoke_dev_with: >-
+    control.rs is 106 lines, main.rs 99: split by job. Check on tmux 3.8 which
+    notifications a control client gets when another client attaches or
+    detaches before relying on them.
+- id: "3"
+  title: Reader bar follows with fewer tmux calls
+  description: >-
+    tabrail-reader follow reads its state in one call and moves the bar in one
+    chained call (SPEC.md CAP-5).
+  invoke_dev_with: >-
+    tabrail-reader-test, tabrail-slot-test and tabrail-bar-test must pass
+    unchanged; count tmux execs per follow before and after.
+- id: "4"
+  title: Claude hook in one tmux call
+  description: >-
+    tmux-claude-state sets an event's options and the refresh buffer with one
+    tmux client call (SPEC.md CAP-4, CAP-3).
+  invoke_dev_with: >-
+    ~/Dev/vmConfig is a separate repo: branch lde/claude-state-fast there.
+    spec-claude-jump story 2 adds @claude_waits to the same file; keep it if it
+    has landed.
+- id: "5"
+  title: Slots without a waiting bash
+  description: >-
+    A reader slot's pane runs a sleep whose child is tabrail-slot, so no bash
+    waits per tab and resurrect still restores it (SPEC.md CAP-6).
+  invoke_dev_with: >-
+    Saving is about 1.5 MB per tab. No orphan sleep may survive a closed pane
+    or a killed server.

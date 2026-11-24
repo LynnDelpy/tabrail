@@ -18,14 +18,8 @@ touch "$T/go"; settle 0.5
 check "turn over: no timer, the text still in the input" '[[ $(row 4) == "❯ next" ]]'
 keys C-c
 ask tools
-check "tool: dim one-row lines (Bash's command, cut at the width; Read with ~); no subagent lines" \
-  '[[ $(row 1) == "⚙ Bash ./journal-search -R tmux" && $(row 2) == "⚙ Bash $(printf "x%.0s" {1..113})" &&
-     $(row 3) == "◎ Read ~/notes.md" ]] && dim 1 && dim 3'
-ask tools2
-check "tool: Grep its pattern, Edit its file, Agent its first string" \
-  '[[ $(row 1) == "⌕ Grep TODO" && $(row 2) == "✎ Edit /etc/hosts" && $(row 3) == "⧉ Agent look around" ]]'
-ask tools3
-check "tool: another · and its skill, or only its name" '[[ $(row 2) == "· Skill journal-search" && $(row 3) == "· Mystery" ]]'
+check "tools: only the answer after them; no tool lines, no narration before them, no subagent text" \
+  '[[ $(row 2) == "❯ tools" && $(row 3) == "found it" ]] && ! t capture-pane -p -S - -t main | grep -q "⚙\|◎\|let me\|around\|SUBAGENT"'
 ask escapes
 check "escapes: newline, quote, é, 😀; the bad JSON lines skipped" \
   '[[ $(row 1) == "❯ escapes" && $(row 2) == "say \"hi\"" && $(row 3) == "café é 😀 😀" ]]'

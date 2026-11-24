@@ -2,11 +2,10 @@
 //! `event.delta.type/text`, `message.content[]`, `parent_tool_use_id`, `session_id`, `is_error` and
 //! `result` are read; a subagent's lines (`parent_tool_use_id` set) are left out.
 use crate::json::Value;
-use crate::tool;
 
 pub enum Out {
     Text(String),        // answer text as it is written (text_delta); thinking is left out
-    Tool(String),        // a tool call's line
+    Tool,                // a tool call: the answer text before it was narration
     End(Option<String>), // a turn's result: its error if it failed
     Session(String),     // the conversation's id, when it changes
     Exit(String),        // claude ended: its last line on stderr
@@ -29,8 +28,9 @@ pub fn outs(v: &Value, session: &mut String) -> Vec<Out> {
         }
         Some("assistant") => {
             if let Value::Arr(blocks) = v.get("message").get("content") {
-                let tools = blocks.iter().filter(|b| b.get("type").str() == Some("tool_use"));
-                outs.extend(tools.map(|b| Out::Tool(tool::line(b.get("name").str().unwrap_or("?"), b.get("input")))));
+                if blocks.iter().any(|b| b.get("type").str() == Some("tool_use")) {
+                    outs.push(Out::Tool);
+                }
             }
         }
         Some("result") => {

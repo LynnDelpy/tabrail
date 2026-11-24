@@ -69,7 +69,7 @@ impl Chat {
     pub fn claude(&mut self, gen: u32, out: Out) {
         match self.claude.heard(gen, out) {
             Some(Out::Text(text)) => self.view.text(&text),
-            Some(Out::Tool(line)) => self.view.push(Entry::Dim(line)),
+            Some(Out::Tool) => self.view.narration(),
             Some(Out::End(None)) => self.turn = None,
             Some(Out::End(Some(error))) => self.failed(format!("claude failed: {error}")),
             Some(Out::Exit(tail)) if tail.is_empty() => self.failed("claude ended".into()),

@@ -4,7 +4,7 @@
 # the full width of the tab shown last, under its sidebar and own panes; every other tab holds a slot
 # there (tabrail-slot, @reader_slot), an idle pane as big as the small bar, that the bar swaps places
 # with: same process and conversation, no other pane resizes. Its size: tabrail-reader-size. From
-# tabrail.tmux hooks and bindings and tabrail-tmux; none while resurrect restores (ensure then follows):
+# tabrail.tmux hooks and bindings and tabrail-tmux; idle while resurrect restores this server:
 #   follow [SESSION]  move it to the tab SESSION shows (else the last used one); start it if it is
 #                     gone, in that tab's slot, not within 10 s of the last start (@tabrail_reader_started)
 #   slots [WINDOW]    a slot in every tab (or WINDOW) that holds neither a slot nor the reader
@@ -12,10 +12,10 @@
 #                     tmux moved it (layout command, terminal resize); in a tab without it, its slot
 #   size PANE ROWS|up|down  tabrail-chat in the bar (PANE) sizing it: its own height or a button's step
 #   away WINDOW       before WINDOW closes: move it to the tab tmux shows next
-CMD=$(tmux show -gv @tabrail_reader 2>/dev/null)
-[[ -n $CMD ]] && ! pgrep -f '^bash [^ ]*/tmux-resurrect/scripts/restore[.]sh' >/dev/null || exit 0
-exec 8> "/tmp/tabrail-reader-$UID.lock"   # one at a time: hooks fire in bursts
-flock -w 5 8 || exit 0
+CMD=$(tmux show -gv @tabrail_reader 2>/dev/null); [[ -n $CMD ]] || exit 0
+for p in $(pgrep -u "$UID" -f '^bash [^ ]*/tmux-resurrect/scripts/restore[.]sh'); do
+  grep -qaF "TMUX=${TMUX%%,*}," "/proc/$p/environ" 2>/dev/null && exit 0; done   # ensure follows
+exec 8> "/tmp/tabrail-reader-$UID.lock"; flock -w 5 8 || exit 0   # one at a time (hooks burst)
 D=$(dirname "$(readlink -f "$0")")
 source "$D/tabrail-reader-size"   # height, small, fit, size, place, tall; they use reader, slot, sidebar
 

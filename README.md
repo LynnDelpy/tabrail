@@ -117,8 +117,8 @@ Optional inputs, shown when present:
   pane is saved as its `claude -p --input-format stream-json …`: make it a slot too
   (`"~--input-format stream-json->/path/to/tabrail/tabrail-slot"`) and keep an entry for Claude
   Code's own TUI off it (`"~^claude( --(continue|resume)|$)->claude --continue"`, not `~claude`), as
-  resurrect types the command of every entry that matches. While resurrect restores, tabrail-reader
-  does nothing; `tabrail-tmux ensure` starts the reader once it is done. Load tmux-continuum with
+  resurrect types the command of every entry that matches. While resurrect restores this tmux server,
+  tabrail-reader does nothing; `tabrail-tmux ensure` starts the reader once it is done. Load tmux-continuum with
   `run-shell -b`: without it, its restore at tmux's start holds tmux's command queue until it ends
   (no hook runs: the bar follows no tab switch), and for good once resurrect's spinner hangs.
 

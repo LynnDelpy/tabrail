@@ -44,5 +44,12 @@ tmux.conf loads. `README.md` is the reference for behaviour and setup. BMAD plan
 - Pane ids repeat across tmux servers: files keyed by pane carry the server pid.
 - Releasing a drag on another tab's row must not switch tabs on the press: the release then reaches
   the other tab's sidebar, which knows nothing of the drag. Switch on release.
+- A `run-shell` without `-b` in tmux.conf holds tmux's global command queue until its job's output
+  closes: notify hooks (`session-window-changed`, `window-resized`, `window-layout-changed`,
+  `pane-exited`) wait behind it, `after-*` hooks and key bindings do not. tmux-continuum's restore
+  keeps that output open for the whole restore, resurrect's spinner for good once one of its
+  `display-message` clients is held (a client that becomes the first while the config loads waits).
+- `pgrep -f` for resurrect's restore: anchor it (`^bash …/restore[.]sh`), or it matches any command
+  line that names the file, your own shell's included.
 - tmux.conf `$VAR` and `~` expand only outside single quotes; hooks run `run-shell` with formats
   expanded (`#{@tabrail_dir}`), not with tmux.conf variables.

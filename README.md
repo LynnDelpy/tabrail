@@ -113,7 +113,14 @@ Optional inputs, shown when present:
   tabrail.tmux binds no `DoubleClick1Pane`; drop a `tabrail-reader grow` branch from a binding of
   your own (that command is gone). With tmux-resurrect, add
   `"~tabrail-slot->/path/to/tabrail/tabrail-slot"` to `@resurrect-processes` so that restored slot
-  panes are slots again: the slot waits in a child process named `tabrail-slot` for that.
+  panes are slots again: the slot waits in a child process named `tabrail-slot` for that. The reader
+  pane is saved as its `claude -p --input-format stream-json …`: make it a slot too
+  (`"~--input-format stream-json->/path/to/tabrail/tabrail-slot"`) and keep an entry for Claude
+  Code's own TUI off it (`"~^claude( --(continue|resume)|$)->claude --continue"`, not `~claude`), as
+  resurrect types the command of every entry that matches. While resurrect restores, tabrail-reader
+  does nothing; `tabrail-tmux ensure` starts the reader once it is done. Load tmux-continuum with
+  `run-shell -b`: without it, its restore at tmux's start holds tmux's command queue until it ends
+  (no hook runs: the bar follows no tab switch), and for good once resurrect's spinner hangs.
 
 ## Files
 

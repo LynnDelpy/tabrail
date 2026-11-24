@@ -69,6 +69,11 @@ check "tab switch at 12 rows: 4 rows across tab 3's bottom, more text: still 4; 
 t select-window -t :1; settle
 check "and back to tab 1: 4 rows there; no pane of tab 1 or 3 resized" \
   '[[ $(at) == "1 160x4 0,42" && $(fixed :1) == "$f1" && $(fixed :3) == "$f3" ]]'
+mkdir -p "$T/tmux-resurrect/scripts"; echo 'sleep 3' > "$T/tmux-resurrect/scripts/restore.sh"
+bash "$T/tmux-resurrect/scripts/restore.sh" & settle 0.5   # what pgrep takes for a restore
+t select-window -t :2; settle; d=$(at); wait $!; t select-window -t :3; settle; e=$(at); t select-window -t :1; settle
+check "while resurrect restores, a tab switch leaves the bar in place; after it, the bar follows" \
+  '[[ $d == "1 "* && $e == "3 "* && $(at) == "1 "* ]]'
 p=$(own :1); t respawn-pane -k -t "$p" "printf tabrailword; exec sleep 99"; settle; dblclick 30 1
 check "double-click on a word in an own pane: tmux's own, the word copied; the bar unchanged" \
   '[[ $(t show-buffer 2>/dev/null) == tabrailword && $(h) == 4 ]]'

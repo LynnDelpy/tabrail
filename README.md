@@ -44,8 +44,9 @@ grouped by project, with what each one is doing.
   into the bar gives it the keyboard at 4 rows. Only with `tabrail-chat` as the reader command does
   the bar size itself to what it shows while it has the keyboard, with buttons to make it bigger and
   smaller (below), only in height (every pane keeps its width); another reader command (Claude Code's
-  own TUI as a fallback) stays at 4 rows. A click into the tab's own pane shrinks it to 4 rows,
-  where it stays while answers arrive, and it leaves a tab at 4 rows and arrives at 4. It follows
+  own TUI as a fallback) stays at 4 rows. Dragging its border changes nothing (a hook puts the
+  height back). A click into the tab's own pane shrinks it to 4 rows, where it stays while answers
+  arrive, and it leaves a tab at 4 rows and arrives at 4. It follows
   into another session too (switch-client, the tree); it and the slots get their size back after a
   terminal resize and go back across the bottom after a layout command (prefix Space) or a sidebar
   added beside them. A tab left with only the sidebar and the reader pane or its slot closes, the

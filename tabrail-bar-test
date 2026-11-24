@@ -40,10 +40,12 @@ check "a size set by ▲ holds: 8 rows after Enter, ▲ 15; more answer text: st
   '[[ $m == 8 && $b == 15 && $(h) == 15 && $(row 14) == "more 3" ]]'
 ask hi; settle 0.5
 check "the next question: its own height again, 4 rows" '[[ $(h) == 4 && $(row 3) == "hi two" ]]'
-drag() { o send-keys -t o -l "$E[<0;$1;$3M" "$E[<32;$1;$3M" "$E[<32;$2;$3M" "$E[<0;$2;$3m"; settle; }
-drag 1 6 45; b=$(t show-buffer 2>/dev/null); drag 2 9 30
+drag() { o send-keys -t o -l "$E[<0;$1;$2M" "$E[<32;$1;$2M" "$E[<32;$3;$4M" "$E[<0;$3;$4m"; settle; }
+drag 1 45 6 45; b=$(t show-buffer 2>/dev/null); drag 2 30 9 30
 check "a drag over the bar's text copies it; one in the sidebar goes to it, neither left in copy mode" \
   '[[ $b == "hi two" && -z $(t list-panes -a -F "#{pane_in_mode}" | grep 1) && $(h) == 4 ]]'
+click 100 10; drag 100 42 100 30
+check "the bar's border dragged up 12 rows: still 4 rows" '[[ $(h) == 4 ]]'
 ask tools; settle 0.5
 check "a reply after tool calls: ❯ tools, the answer, the input (not the 3 rows of narration): 4 rows" \
   '[[ $(h) == 4 && $(row 3) == "found it" ]]'

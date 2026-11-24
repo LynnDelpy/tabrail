@@ -9,8 +9,9 @@ SMALL=4
 tall() { echo $(( $(tmux display -p -t "$1" '#{window_height}') * 2 / 3 )); }   # the most, in window $1
 
 height() {   # reader $1 to $2 rows, kept in @reader_big above SMALL; also a slot back to SMALL rows
-  tmux resize-pane -t "$1" -y "$2"
+  # @reader_big first: tabrail.tmux's window-layout-changed hook puts back any other height
   if (( $2 > SMALL )); then tmux set -p -t "$1" @reader_big "$2"; else tmux set -pu -t "$1" @reader_big; fi
+  tmux resize-pane -t "$1" -y "$2"
 }
 
 small() { height "$1" "$SMALL"; }

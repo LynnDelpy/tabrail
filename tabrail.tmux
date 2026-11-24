@@ -63,6 +63,14 @@ set-hook -g window-pane-changed[50] {
     run-shell -b "#{@tabrail_dir}/tabrail-reader fit '#{window_id}'"
   }
 }
+# Its height and a slot's is tabrail-reader's (@reader_big, else 4 rows, tabrail-reader-size): any
+# other (its border dragged, rows spread by tmux) is put back before tmux draws it; a hook's own
+# resize fires no hook
+set-hook -g window-layout-changed[50] {
+  if -F "#{&&:#{!:#{window_zoomed_flag}},#{P:#{?#{&&:#{||:#{@reader},#{@reader_slot}},#{!=:#{pane_height},#{?@reader_big,#{@reader_big},4}}},1,}}}" {
+    run -C "#{P:#{?#{||:#{@reader},#{@reader_slot}},resize-pane -t #{pane_id} -y #{?@reader_big,#{@reader_big},4},}}"
+  }
+}
 set-hook -g window-resized[50] {
   if -F "#{&&:#{@tabrail_reader},#{P:#{@reader}#{@reader_slot}}}" {
     run-shell -b "#{@tabrail_dir}/tabrail-reader fit '#{window_id}'"

@@ -1,0 +1,20 @@
+--- tmux-mouse.conf
++++ tmux-mouse.conf
+@@ -2,8 +2,7 @@
+ # Drag, double click (word; paths and URLs stay whole) or triple click (line) copies and stays
+ # highlighted, a scrolled-back view stays put. A click clears it and leaves copy mode unless scrolled
+ # back; middle click pastes PRIMARY. Shift+drag skips tmux: Konsole's own selection, across panes.
+-# Panes that take the mouse (nvim, Claude fullscreen) keep it. A double click into tabrail's reader
+-# bar grows it or shrinks it again (tabrail-reader grow), as tabrail.tmux binds it.
++# Panes that take the mouse (nvim, Claude fullscreen) keep it.
+ # CLIPBOARD is set by Konsole via OSC 52 (set-clipboard on), xsel only sets PRIMARY: with xsel on
+ # CLIPBOARD as well, two owners raced on every copy.
+ set -s copy-command 'xsel -ip'
+@@ -19,6 +18,6 @@
+ bind -T copy-mode-vi MouseDown1Pane select-pane \; if -F "#{scroll_position}" { send -X clear-selection } { send -X cancel }
+ bind -T copy-mode-vi DoubleClick1Pane select-pane \; send -X select-word \; send -X copy-pipe-no-clear
+ bind -T copy-mode-vi TripleClick1Pane select-pane \; send -X select-line \; send -X copy-pipe-no-clear
+-bind -n DoubleClick1Pane if -F -t = "#{@reader}" { select-pane -t = ; run -b -t = "#{@tabrail_dir}/tabrail-reader grow '#{window_id}'" } { select-pane -t = ; if -F "#{||:#{pane_in_mode},#{mouse_any_flag}}" { send -M } { copy-mode -H ; send -X select-word ; send -X copy-pipe-no-clear } }
++bind -n DoubleClick1Pane select-pane -t = \; if -F "#{||:#{pane_in_mode},#{mouse_any_flag}}" { send -M } { copy-mode -H ; send -X select-word ; send -X copy-pipe-no-clear }
+ bind -n TripleClick1Pane select-pane -t = \; if -F "#{||:#{pane_in_mode},#{mouse_any_flag}}" { send -M } { copy-mode -H ; send -X select-line ; send -X copy-pipe-no-clear }
+ bind -n MouseDown2Pane select-pane -t = \; if -F "#{mouse_any_flag}" { send -M } { copy-mode -q ; run "xsel -op | tmux load-buffer -b primary - && tmux paste-buffer -p -d -b primary -t #{pane_id}" }

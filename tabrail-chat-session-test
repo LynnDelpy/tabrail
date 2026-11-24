@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Tests for the claude behind tabrail-chat: its options, what is sent, a crash or failed turn and the
+# restart after it (--resume, or not), claude not starting, the way out; against a fake claude in a
+# throwaway tmux server (tabrail-chat-test-lib). One line per check, exits 1 if one failed.
+L=chat-session
+source "$(dirname "$(readlink -f "$0")")/tabrail-chat-test-lib"
+init='"subtype":"initialize"' fixed='-p --input-format stream-json --output-format stream-json --verbose --include-partial-messages --permission-prompts none'
+want='{"type":"user","message":{"role":"user","content":"say \"hi\" \\ there"}}'
+chat -r old --resume=x --session-id s1 --session-id=s2 -c --model m
+check "claude: its stream-json options, then the caller's; initialize sent first" \
+  '[[ $(head -1 "$T/args") == "$fixed -r old --resume=x --session-id s1 --session-id=s2 -c --model m" &&
+     $(head -1 "$T/in") == *"$init"* ]]'
+ask 'say "hi" \ there'
+check "a question with \" and \\: the line sent is exact JSON" '[[ $(tail -1 "$T/in") == "$want" ]]'
+ask crash; settle 0.5
+n=$(wc -l < "$T/args")
+check "crash: one dim line with stderr's last line" '[[ $(row 3) == "claude ended: boom" ]] && dim 3'
+ask again
+check "Enter: claude again, --resume <its session> for -r, --resume=, --session-id and -c; the answer shown" \
+  '[[ $(tail -1 "$T/args") == "$fixed --model m --resume sid-$n" && $(row 3) == "again two" ]]'
+n=$(wc -l < "$T/args") pid=$(tail -1 "$T/pids")
+ask fail
+check "is_error result: one dim line with the error" '[[ $(row 3) == "claude failed: API Error: 529" ]] && dim 3'
+ask again
+check "Enter: the failed claude ended, a new one with --resume, nothing heard from the old one" \
+  '! kill -0 "$pid" 2>/dev/null && [[ $(tail -1 "$T/args") == "$fixed --model m --resume sid-$n" &&
+     $(row 1) == "❯ again" && $(row 3) == "again two" ]]'
+ask failexit; settle 0.5
+check "error result without result, then claude exits: one dim line, its subtype" \
+  '[[ $(row 2) == "❯ failexit" && $(row 3) == "claude failed: error_during_execution" ]] && dim 3'
+touch "$T/noresume"; ask again; settle 0.5
+check "resume refused: claude ends before it names a session, the reason shown" \
+  '[[ $(tail -1 "$T/args") == *" --resume sid-"* && $(row 3) == "claude ended: No conversation found with session ID: sid-"* ]]'
+rm "$T/noresume"; ask again
+check "the next Enter: a new conversation, no --resume" '[[ $(tail -1 "$T/args") == "$fixed --model m" && $(row 3) == "again two" ]]'
+
+chat --model m --no-session-persistence -c
+ask crash; settle 0.5; ask again
+check "--no-session-persistence: claude again as it was started, no --resume" \
+  '[[ $(tail -1 "$T/args") == "$fixed --model m --no-session-persistence -c" && $(row 3) == "again two" ]]'
+keys C-d; settle 1
+check "Ctrl-D on the empty line: ends; main screen, mouse off, autowrap on, stty sane; claude gone" \
+  '[[ -s $T/stty && $(t display -p -t main "#{alternate_on} #{mouse_any_flag} #{wrap_flag}") == "0 0 1" ]] &&
+   grep -q " icanon" "$T/stty" && grep -q " echo " "$T/stty" && ! kill -0 "$(tail -1 "$T/pids")" 2>/dev/null'
+
+CHAT_CLAUDE=$T/nowhere chat --model m
+check "claude not found: one dim line at the start" '[[ $(row 1) == "claude did not start: "* ]] && dim 1'
+ask hi
+check "and after Enter: the question, again the line" '[[ $(row 2) == "❯ hi" && $(row 3) == "claude did not start: "* ]]'
+exit $((fails > 0))

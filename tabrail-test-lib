@@ -14,6 +14,7 @@ settle() { sleep "${1:-1.5}"; }
 press() { o send-keys -t o -l $'\e[<0;'"$1;$2M"; o send-keys -t o -l $'\e[<0;'"$1;$2m"; }
 click() { press "$@"; settle; }
 dblclick() { press "$@"; press "$@"; settle; }
+size() { t run-shell "$R/tabrail-reader size $*"; settle 0.5; }   # PANE ROWS|up|down, as tabrail-chat asks
 rd() { local f='#{pane_id}'; t list-panes -a -f '#{@reader}' -F "${1:-$f}"; }   # the reader
 slot() { local f='#{pane_id}'; t list-panes -t "$1" -f '#{@reader_slot}' -F "${2:-$f}"; }   # a tab's
 own() { t list-panes -t "$1" -f '#{!:#{@sidebar}#{@reader}#{@reader_slot}}' -F '#{pane_id}'; }   # own panes

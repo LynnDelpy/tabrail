@@ -5,7 +5,7 @@
 - Every tab holds one slot (pane option `@reader_slot`, process `tabrail-slot`) or the bar, never both: `tabrail-reader slots` makes missing ones with a full-size split, `split-window -fv -d -l 4` against the tab's sidebar, across the bottom at full width.
 - Following a tab, the bar swaps places with that tab's slot, `swap-pane -d -s <bar> -t <slot>`: both 4 rows, so no other pane in either tab resizes (verified on tmux 3.8): first the bar goes to 4 rows in the tab it leaves (big or dragged), and the slot to 4 rows across the bottom. A new reader takes the shown tab's slot, `respawn-pane -k` with the reader command.
 - `join-pane -fv` against the tab's sidebar only puts a bar or slot that tmux moved (layout command, sidebar added beside it) back across the bottom of its own tab; never into another tab.
-- Sizes stay in `tabrail-reader-size` (`SMALL`, `big`, `small`, `fit`, `grow`); a double-click into the bar (`DoubleClick1Pane`, `#{@reader}` branch) runs `tabrail-reader grow`. The hooks in `tabrail.tmux` and the calls from `tabrail-tmux` keep their names and arguments.
+- Sizes stay in `tabrail-reader-size` (`SMALL`, `height`, `small`, `fit`, `size`). `tabrail-chat` in the bar finds its pane by its terminal (`/proc/self/fd/0` against `#{pane_tty}`; the reader command unsets `TMUX_PANE`) and runs `tabrail-reader size <pane> <rows|up|down>`: rows its own height (4 up to a third of the window), up and down a sixth of the window (4 up to 2/3), taken only while the pane is the reader and its tab's active pane, the tab not zoomed. `@reader_big` holds a height above 4 rows, which `fit` applies again after a terminal resize unless the tab's own pane is active. tabrail binds no `DoubleClick1Pane`. The hooks in `tabrail.tmux` and the calls from `tabrail-tmux` keep their names and arguments.
 
 ## The frontend (`tabrail-chat`)
 
@@ -26,4 +26,4 @@
   Claude sends `control_request` subtype `can_use_tool` (`tool_name`, `input`, `description`) and blocks the turn until the frontend answers with a `control_response` carrying the same `request_id` and `{"behavior":"allow","updatedInput":<input>}` or `{"behavior":"deny","message":"…"}`.
   Replies arrive out of order: match by `request_id`.
 - `/clear`: end the claude process and start it again without `--continue`, `-c`, `--resume <id>` or `-r <id>`.
-- Terminal: raw input with `stty` as the sidebar does (`src/main.rs`), alternate screen, SGR mouse reporting (`?1000h ?1006h`) for the wheel; redraw only changed lines (`draw::changes` pattern).
+- Terminal: raw input with `stty` as the sidebar does (`src/main.rs`), alternate screen, SGR mouse reporting (`?1000h ?1006h`) for the wheel and the bar's buttons (left presses); redraw only changed lines (`draw::changes` pattern).

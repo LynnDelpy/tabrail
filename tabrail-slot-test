@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # Tests for the reader bar's slots (tabrail-slot; tabrail-reader slots, follow, fit; tabrail-tmux) on
 # throwaway tmux servers (tabrail-test-lib), with copies of ~/Dev/vmConfig's mouse config (sourced
-# after tabrail.tmux) and resurrect entry, patched by stories/5-vmconfig.patch unless it is applied;
+# after tabrail.tmux) and resurrect entry, patched by stories/5- and 6-vmconfig.patch where not applied;
 # the restore runs tmux-resurrect with its own @resurrect-dir. One line per check, exits 1 if one fails.
 L=st
 source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
-V=$HOME/Dev/vmConfig P=$R/_bmad-output/specs/spec-reader-bar/stories/5-vmconfig.patch
+V=$HOME/Dev/vmConfig P=$R/_bmad-output/specs/spec-reader-bar/stories
 RES=$HOME/.tmux/plugins/tmux-resurrect/scripts
 mkdir "$T/vm" && cp "$V/tmux.conf" "$V/tmux-mouse.conf" "$T/vm/"
-patch -s -R --dry-run -p0 -d "$T/vm" < "$P" >/dev/null 2>&1 || patch -s -N -t -p0 -d "$T/vm" < "$P" ||
-  { echo "FAIL 5-vmconfig.patch does not apply to copies of ~/Dev/vmConfig's tmux.conf, tmux-mouse.conf"; exit 1; }
+vm() { patch -s -f -p0 -d "$T/vm" "${@:2}" < "$P/$1-vmconfig.patch" >/dev/null 2>&1; }   # N [patch options]
+{ ! vm 5 --dry-run || vm 5; } && { vm 6 -R --dry-run || vm 6; } ||   # 5 where none is applied, then 6
+  { echo "FAIL 5-, 6-vmconfig.patch do not apply to copies of ~/Dev/vmConfig's tmux.conf, tmux-mouse.conf"; exit 1; }
 { echo "source-file $T/vm/tmux-mouse.conf"; echo "set -g @resurrect-dir $T/resurrect"
   grep '^set -g @resurrect-processes' "$T/vm/tmux.conf" | sed "s|~/Dev/tabrail/|$R/|g"; } >> "$T/conf"
 serve
@@ -48,14 +49,12 @@ t select-pane -t "$(slot :2)"; settle
 check "a slot active in tab 2: every tab's row names its own pane" \
   '[[ $(t capture-pane -p -t "$(side :3)" | grep -c " work") == 4 ]]'
 t last-pane -t :2; b1=$(sizes :1) b3=$(sizes :3)
-dblclick 5 44
-check "double-click with vmConfig's mouse config: big" '[[ $(rd "#{@reader_big} #{pane_height} #{pane_active}") == "1 30 1" ]]'
-t select-window -t :1; settle
-check "left while big: small in tab 1, swapped; tabs 1 and 3 keep their sizes" \
-  '[[ $(at) == "1 160x4 0,42" && $(sizes :1) == "$b1" && $(sizes :3) == "$b3" ]]'
-dblclick 5 44; dblclick 5 20
-check "double-click into a big bar with vmConfig's mouse config: small, the keyboard stays" \
-  '[[ $(rd "#{@reader_big} #{pane_height} #{pane_active}") == " 4 1" ]]'
+dblclick 5 44; m=$(rd '#{@reader_big} #{pane_height} #{pane_active} #{pane_mode}'); t send-keys -t "$(rd)" -X cancel
+check "double-click with vmConfig's mouse config: its own (word copy), the bar 4 rows" \
+  '[[ $m == " 4 1 copy-mode" && $(t list-keys -T root DoubleClick1Pane) != *tabrail-reader* ]]'
+size "$(rd)" up; u=$(rd '#{pane_height}'); t select-window -t :1; settle
+check "left while 11 rows: small in tab 1, swapped; tabs 1 and 3 keep their sizes" \
+  '[[ $u == 11 && $(at) == "1 160x4 0,42" && $(sizes :1) == "$b1" && $(sizes :3) == "$b3" ]]'
 t resize-pane -t "$(rd)" -y 8; t resize-pane -t "$(slot :3)" -y 8; t select-window -t :3; settle
 check "bar and tab 3's slot 8 rows, tab 3 selected: the bar 4 rows there, the slot left in tab 1 too" \
   '[[ $(at) == "3 160x4 0,42" && $(slot :1 "#{pane_height} #{pane_at_bottom}") == "4 1" &&

@@ -2,7 +2,7 @@
 # Tests for a click on a group's time or ▷ (drag.rs, head.rs's columns) on throwaway tmux servers
 # (tabrail-test-lib) with real SGR presses and releases: stop and resume, both sessions, the fold
 # state kept, a folded row; beside the time, on the name, off the time, no time, a drag from the time
-# and a tab row act as before. A group without a time: the ▷ in the last column, beside and off it, a
+# and a tab row act as before. A group without a time: the ▷ one column in from the edge, beside and off it, a
 # drag from it, a start from it in both sessions, Reset brings it back, a folded row. One line per
 # check, exits 1 if one failed.
 L=click
@@ -57,8 +57,8 @@ drg "$c" "$r" "$c" "$ri"
 check "Drag: press on the time, release on Infra's row: Website's line moves below, timer unchanged" \
   '[[ $(head -1 "$T/groups.conf") == Infra* && $(line $W) == "$s" ]]'
 ri=$(y "▲ Infra"); e=$(x "▲ Infra" "▷"); wd=$(t display -p -t "$(side main:1)" '#{pane_width}')
-check "▷: Infra, no time, ends in it, in the last column ($e of $wd); none on Website's timed row" \
-  '[[ $e == "$wd" && $(bar "▲ Infra") == *" ▷" && $(bar "▲ Infra" two:1) == *" ▷" && $(bar "◆ $W") != *▷* ]]'
+check "▷: Infra, no time, ends in it, one in from the edge ($e of $wd); none on Website's timed row" \
+  '[[ $e == $((wd - 1)) && $(bar "▲ Infra") == *" ▷" && $(bar "▲ Infra" two:1) == *" ▷" && $(bar "◆ $W") != *▷* ]]'
 clk $((e - 1)) "$ri"
 check "Beside the ▷ (col $((e - 1))): folds, no timer" '[[ $(bar "▲ Infra") == "▸ "*" ▷" && -z $(line Infra) ]]'
 drg "$e" "$ri" 5 "$ri"

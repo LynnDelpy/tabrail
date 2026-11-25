@@ -36,12 +36,12 @@ Pain for the sidebar's user: a group is one project, and there is no way to meas
   - **success:** Rename group A with a time to C: C's header shows the same time, running or stopped as before.
 - **CAP-7**
   - **intent:** A group without a timer shows a start button at its header row's right edge; a click on it starts the timer.
-  - **success:** Group A never timed: its row ends in a dim `▷` in the last column; a press and release on it shows a running time after A's name within 1 s in every sidebar and the `▷` is gone; Reset timer brings the `▷` back.
+  - **success:** Group A never timed: its row ends in a dim `▷` one column in from the right edge; a press and release on it shows a running time after A's name within 1 s in every sidebar and the `▷` is gone; Reset timer brings the `▷` back.
 
 ## Constraints
 
 - The time sits in the group's header row right after the group's name, before a folded group's `N tabs`. A long name is cut first; the time is never cut.
-- Without a time the row's last column holds a dim `▷` instead, never cut either: a folded group's count goes first, then the name. No `▷` on a running or stopped row (there the time is the button), nor for a name `clean()` changes (its click folds).
+- Without a time the row's second-to-last column holds a dim `▷` instead, a space between it and the pane's border, never cut either: a folded group's count goes first, then the name. No `▷` on a running or stopped row (there the time is the button), nor for a name `clean()` changes (its click folds).
 - Timer state lives in its own file that survives a reboot: not in the groups file (the user's config) and not only in tmux options (gone with the server).
 - Time is wall-clock: a start epoch plus the time accumulated before it, never a count a sidebar process keeps, so restarts neither lose nor double-count time.
 - State writes are atomic (temp file renamed into place). A missing or unreadable state file means no timers; the sidebar still draws.

@@ -1,6 +1,6 @@
 //! A group's header row: fold arrow, icon and name, the group's timer right after the name, then a
-//! folded group's tab count, bold on the group's tint to the row's end. Without a timer a dim ▷ in the
-//! last column starts one (none for a name clean() changes: it has no timer, drag.rs folds there).
+//! folded group's tab count, bold on the group's tint to the row's end. Without a timer a dim ▷ one
+//! column in from the edge starts one (none for a name clean() changes: no timer, drag.rs folds there).
 //! Neither the time nor the ▷ is cut: the count goes first (shown whole or not at all), then the name.
 use crate::draw::{fg, fit, rgb};
 use crate::menu::clean;
@@ -13,9 +13,10 @@ pub fn row((name, tint, icon): &(String, String, String), fold: bool, n: usize, 
            width: usize) -> (String, Option<(usize, usize)>) {
     let len = |s: &str| s.chars().count();
     let start = if time.is_none() && clean(name) == *name { "▷" } else { "" };
+    let pad = if start.is_empty() { "" } else { " " }; // the ▷ off the pane's border
     let (time, kind) = time.unwrap_or_default();
     let gap = if time.is_empty() { "" } else { " " }; // in the name's colour: the time's starts at its marker
-    let right = len(&time) + 2 * len(start); // never cut: the time, or a space at least and the ▷
+    let right = len(&time) + 2 * len(start) + len(pad); // never cut: the time, or a space, the ▷ and its pad
     let full = format!("{} {icon} {name}", if fold { "▸" } else { "▾" });
     let room = width.saturating_sub(len(gap) + right);
     // a cut ending in a space loses it: no double space before the time
@@ -28,7 +29,7 @@ pub fn row((name, tint, icon): &(String, String, String), fold: bool, n: usize, 
     let span = |at: usize, s: &str| (!s.is_empty()).then(|| (at + 1, at + len(s)));
     let span = span(len(&head), &time).or(span(len(&head) + len(&count), start));
     let (text, dim) = (fg("text"), fg("dim"));
-    (format!("{tint}{text}\x1b[1m{head}{}{time}{text}{count}{dim}{start}\x1b[0m", fg(kind)), span)
+    (format!("{tint}{text}\x1b[1m{head}{}{time}{text}{count}{dim}{start}{pad}\x1b[0m", fg(kind)), span)
 }
 
 #[cfg(test)]

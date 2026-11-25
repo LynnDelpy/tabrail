@@ -12,24 +12,27 @@
 #                     tmux moved it (layout command, terminal resize); in a tab without it, its slot
 #   size PANE ROWS|up|down  tabrail-chat in the bar (PANE) sizing it: its own height or a button's step
 #   away WINDOW       before WINDOW closes: move it to the tab tmux shows next
-CMD=$(tmux show -gv @tabrail_reader 2>/dev/null); [[ -n $CMD ]] || exit 0
+# follow and fit read @tabrail_reader in their one query (a tab switch: two tmux calls), the rest here
+[[ $1 == follow || $1 == fit ]] || { CMD=$(tmux show -gv @tabrail_reader 2>/dev/null); [[ -n $CMD ]] || exit 0; }
 for p in $(pgrep -u "$UID" -f '^bash [^ ]*/tmux-resurrect/scripts/restore[.]sh'); do
   grep -qaF "TMUX=${TMUX%%,*}," "/proc/$p/environ" 2>/dev/null && exit 0; done   # ensure follows
 exec 8> "/tmp/tabrail-reader-$UID.lock"; flock -w 5 8 || exit 0   # one at a time (hooks burst)
 D=$(dirname "$(readlink -f "$0")")
-source "$D/tabrail-reader-size"   # height, small, fit, size, place, tall; they use reader, slot, sidebar
+source "$D/tabrail-reader-size"   # height, fit, size, place, tall; they use reader, sidebar
+source "$D/tabrail-reader-move"   # state, move: follow's one query and one chained call
 
-# the reader's pane, its window and its height if taller than small; a window's slot and sidebar pane
+# the reader's pane, its window and its height if taller than small; a window's sidebar pane
 reader() { tmux list-panes -a -f '#{@reader}' -F '#{pane_id} #{window_id} #{@reader_big}' | head -1; }
-slot() { tmux list-panes -t "$1" -f '#{@reader_slot}' -F '#{pane_id}' 2>/dev/null | head -1; }
 sidebar() { tmux list-panes -t "$1" -f '#{@sidebar}' -F '#{pane_id}' 2>/dev/null | head -1; }
 zoomed() { tmux display -p -t "$1" '#{window_zoomed_flag}'; }
 # zoomed tabs stay zoomed: split-window and swap-pane unzoom them (WINDOW, its flag before)
 rezoom() { [[ $2 == 1 && $(zoomed "$1") == 0 ]] && tmux resize-pane -Z -t "$1"; }
 
+# a slot's pane across the bottom of the window of sidebar $1, not marked yet; prints it (mkslot, move)
+newslot() { tmux split-window -fv -d -l "$SMALL" -t "$1" -P -F '#{pane_id}' "$D/tabrail-slot"; }
 mkslot() {   # a slot across the bottom of window $2, below its sidebar $1; prints its pane
   local id was=$(zoomed "$2")
-  id=$(tmux split-window -fv -d -l "$SMALL" -t "$1" -P -F '#{pane_id}' "$D/tabrail-slot") || return
+  id=$(newslot "$1") || return
   tmux set -p -t "$id" @reader_slot 1; rezoom "$2" "$was"; echo "$id"
 }
 
@@ -43,44 +46,26 @@ slots() {   # also puts a slot out of place (a sidebar added beside it) back acr
     END { for (i in side) if (i in out) print "p", out[i], i; else if (!(i in has)) print "m", side[i], i }')
 }
 
-# pane $1 (in window $2, taller if $3) swaps places with window $5's slot, made below its sidebar $4 if
-# it has none; both SMALL rows across the bottom first, or the swap hands on another size or place
-move() {
-  local from=$(zoomed "$2") to=$(zoomed "$5") s
-  s=$(slot "$5"); [[ -n $s ]] || s=$(mkslot "$4" "$5") || return
-  small "$s"; place "$s" "$5"
-  [[ -n $3 || $(tmux display -p -t "$1" '#{pane_height}') != "$SMALL" ]] && small "$1"
-  tmux swap-pane -d -s "$1" -t "$s" || return
-  # the keyboard leaves the slot for the pane it had before the bar
-  [[ $(tmux display -p -t "$2" '#{@reader_slot}') == 1 ]] && tmux last-pane -t "$2"
-  rezoom "$2" "$from"
-  rezoom "$5" "$to"
-}
-
-start() {   # in window $2 (sidebar $1): its slot becomes the reader (no slot: one is made first)
-  local last id
+start() {   # in window win: its slot becomes the reader (no slot: one is made first)
+  local last id=$s
   last=$(tmux show -gv @tabrail_reader_started 2>/dev/null)
   (( EPOCHSECONDS - ${last:-0} < 10 )) && return
   tmux set -g @tabrail_reader_started "$EPOCHSECONDS"
-  id=$(slot "$2"); [[ -n $id ]] || id=$(mkslot "$1" "$2") || return
+  [[ -n $id ]] || id=$(mkslot "$side" "$win") || return
   tmux respawn-pane -k -t "$id" "$CMD" && tmux set -p -t "$id" @reader 1 \; set -pu -t "$id" @reader_slot
 }
 
 follow() {
-  local win side r rwin isbig
-  win=$(tmux display -p ${1:+-t "$1"} '#{window_id}') || return
-  side=$(sidebar "$win")
-  [[ -n $side ]] || return   # no sidebar yet: tabrail-tmux ensure follows once it has one
-  read -r r rwin isbig < <(reader)
-  if [[ -z $r ]]; then start "$side" "$win"
-  elif [[ $rwin != "$win" ]]; then move "$r" "$rwin" "$isbig" "$side" "$win"
+  state "$1"
+  [[ -n $CMD && -n $side ]] || return   # no sidebar yet: tabrail-tmux ensure follows once it has one
+  if [[ -z $r ]]; then start
+  elif [[ $rwin != "$win" ]]; then move
   else fit "$win"; fi
 }
 
 away() {
-  local r rwin isbig next side
-  read -r r rwin isbig < <(reader)
-  [[ $rwin == "$1" ]] || return
+  local next
+  state "$1"; [[ -n $r && $rwin == "$1" ]] || return
   # what tmux shows once WINDOW is gone: if it is the current tab the last one, else the one before
   # it (round), else the current tab
   next=$(tmux list-windows -t "$1" -F '#{window_id} #{window_active}#{window_last_flag}' |
@@ -88,8 +73,7 @@ away() {
       substr($2, 1, 1) == 1 { cur = $1 } substr($2, 2, 1) == 1 { last = $1 }
       { if (me) end = $1; else before = $1 }
       END { print !current ? cur : last ? last : before ? before : end }')
-  side=$(sidebar "$next")
-  [[ -n $side ]] && move "$r" "$rwin" "$isbig" "$side" "$next"
+  state "$next"; [[ -n $side && -n $r ]] && move
 }
 
 case $1 in

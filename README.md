@@ -78,9 +78,11 @@ grouped by project, with what each one is doing.
   shown (a tab switch, an attach, `switch-client`), then draw at once; meanwhile a terminal attaching,
   detaching or switching sessions costs each one `list-clients`, and a layout change of its own tab
   one `display` (and a `resize-pane` if its width is off). Nothing is spawned on a tab switch but,
-  with the reader pane, the helper that moves it. `tabrail-perf-test`, reader bar on: a tab switch
-  shows its sidebar current after ~8 ms at 5 tabs and ~18 ms at 50 (~16 ms with Claude hook calls 10
-  times a second), and tmux idles at 0.1% and 0.4% of a core.
+  with the reader pane, the helper that moves it, in two tmux calls (one to look, one to move).
+  `tabrail-perf-test`, reader bar on: a tab switch shows its sidebar current after ~8 ms at 5 tabs and
+  ~18 ms at 50 (~16 ms with Claude hook calls 10 times a second), the bar is in the new tab after ~70
+  and ~95 ms (most of it `pgrep` looking for a resurrect restore, before the first call), and tmux
+  idles at 0.1% and 0.4% of a core.
   A `swap-window` onto the tab shown tells the control connections nothing: that tab's sidebar shows
   its last frame until the next tab switch or a click on it (the reader bar does not follow either). Rust, standard
   library only.
@@ -139,9 +141,10 @@ Optional inputs, shown when present:
 | `src/chat/` | `tabrail-chat`: `main.rs` loop and drawing, `chat.rs` keys and claude's events, `session.rs` claude across restarts (`--resume`), `claude.rs` the claude process, `stream.rs` its stream-json lines, `json.rs` JSON, `view.rs` the conversation, `input.rs` the input, `keys.rs` keys, `mouse.rs` wheel and clicks, `term.rs` the terminal, `bar.rs` the reader bar's height and buttons, `tmux.rs` its pane and `tabrail-reader size` |
 | `tabrail.tmux` | What tmux.conf loads: mouse bindings, hooks, prefix M and & |
 | `tabrail-tmux` | Housekeeping from the hooks: a sidebar (and a reader slot) for every tab, restart, close tabs with only a sidebar (and the reader pane or its slot), the menus' Close |
-| `tabrail-reader`, `tabrail-reader-size` | The reader pane, a bar across the bottom: a slot in every tab, swap places with the shown tab's slot, start in it, move away before its tab closes; its height as tabrail-chat asks (`size`); back across the bottom when tmux moved it or a slot |
+| `tabrail-reader`, `tabrail-reader-size`, `tabrail-reader-move` | The reader pane, a bar across the bottom: a slot in every tab, swap places with the shown tab's slot, start in it, move away before its tab closes; its height as tabrail-chat asks (`size`); back across the bottom when tmux moved it or a slot; `-move`: what a tab switch decides on in one tmux call, the move in one more |
 | `tabrail-slot` | A tab's slot: marks its pane, then waits in a child named `tabrail-slot` (for resurrect) |
 | `tabrail-reader-test`, `tabrail-slot-test` | The reader bar's tests and its slots' (with ~/Dev/vmConfig's mouse config and a resurrect save and restore), on throwaway tmux servers |
+| `tabrail-move-test` | The reader bar's move in tmux calls, counted by a logging `tmux` first in PATH: a tab switch at most 4, `fit` with the bar or slot in place 1; a slot out of place and a zoomed tab without a slot switched to, on throwaway tmux servers |
 | `tabrail-chat-test`, `tabrail-chat-session-test` | `tabrail-chat`'s tests on a throwaway tmux server: what it shows and its keys; its claude's options, restarts and the way out |
 | `tabrail-bar-test` | The reader bar sized by `tabrail-chat` in it (its height, buttons, away, tab switch, zoom), against the fake claude on throwaway tmux servers |
 | `tabrail-shown-test` | Only the sidebar shown works: which sidebars write per tab switch, hook burst, detach, attach, width set while hidden, new tab, second session and `switch-client`, on throwaway tmux servers |

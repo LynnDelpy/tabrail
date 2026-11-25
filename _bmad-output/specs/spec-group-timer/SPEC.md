@@ -34,14 +34,18 @@ Pain for the sidebar's user: a group is one project, and there is no way to meas
 - **CAP-6**
   - **intent:** A group's timer follows the group when it is renamed.
   - **success:** Rename group A with a time to C: C's header shows the same time, running or stopped as before.
+- **CAP-7**
+  - **intent:** A group without a timer shows a start button at its header row's right edge; a click on it starts the timer.
+  - **success:** Group A never timed: its row ends in a dim `▷` in the last column; a press and release on it shows a running time after A's name within 1 s in every sidebar and the `▷` is gone; Reset timer brings the `▷` back.
 
 ## Constraints
 
 - The time sits in the group's header row right after the group's name, before a folded group's `N tabs`. A long name is cut first; the time is never cut.
+- Without a time the row's last column holds a dim `▷` instead, never cut either: a folded group's count goes first, then the name. No `▷` on a running or stopped row (there the time is the button), nor for a name `clean()` changes (its click folds).
 - Timer state lives in its own file that survives a reboot: not in the groups file (the user's config) and not only in tmux options (gone with the server).
 - Time is wall-clock: a start epoch plus the time accumulated before it, never a count a sidebar process keeps, so restarts neither lose nor double-count time.
 - State writes are atomic (temp file renamed into place). A missing or unreadable state file means no timers; the sidebar still draws.
-- A press and release on the time toggles the timer; anywhere else on the row folds as now, and a drag that starts on the time still moves the group.
+- A press and release on the time or the `▷` toggles the timer; anywhere else on the row folds as now, and a drag that starts on either still moves the group.
 - Every sidebar of every session shows a start, stop or reset on its next redraw (`sidebar-refresh`), no restart.
 - `README.md` is the behaviour reference: its groups, mouse and menu text and the Files table change with this work.
 
@@ -56,7 +60,7 @@ Pain for the sidebar's user: a group is one project, and there is no way to meas
 
 ## Success signal
 
-On a throwaway tmux server with two groups holding tabs: SGR right-click on group A's row, Start timer, and `capture-pane -p` of every sidebar shows a time after A's name that grows; an SGR left press and release on that time freezes it across two captures 3 s apart, marked stopped; Reset timer removes it; with A stopped at a value, `kill-server` and a fresh server running tabrail show A's same value.
+On a throwaway tmux server with two groups holding tabs: SGR right-click on group A's row, Start timer, and `capture-pane -p` of every sidebar shows a time after A's name that grows; an SGR press and release on group B's `▷` starts B's the same way; an SGR left press and release on that time freezes it across two captures 3 s apart, marked stopped; Reset timer removes it; with A stopped at a value, `kill-server` and a fresh server running tabrail show A's same value.
 
 ## Assumptions
 
@@ -65,4 +69,4 @@ On a throwaway tmux server with two groups holding tabs: SGR right-click on grou
 - One timer per group name, shared by all sessions; Default gets one too.
 - State file: `$XDG_STATE_HOME/tabrail/timers`, else `~/.local/state/tabrail/timers`.
 - A timer whose group was removed from the groups file stays in the state file unseen and shows again if a group of that name comes back.
-- A click on a stopped time resumes it; a reset timer has no time to click, so it starts from the menu.
+- A click on a stopped time resumes it; a never-started or reset timer starts from its `▷` or the menu.

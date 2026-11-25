@@ -16,12 +16,3 @@
     Causes and repro in brownfield.md; MouseDragEnd1Border is unbound and free.
     No run-shell per resize or tab switch. tabrail-tmux ensure drops WIDTH=26
     for the option. Test viewer with -f /dev/null.
-- id: "3"
-  title: Hide the sidebar when the terminal is narrow
-  description: >-
-    Below a width threshold the sidebar hides and comes back at the shared
-    width when the terminal is wide again (SPEC.md CAP-4).
-  invoke_dev_with: >-
-    Needs story 2. The threshold is an open question in SPEC.md: settle it with
-    the user at the plan checkpoint. ensure must not re-add a hidden sidebar
-    and reap must not close its tab.

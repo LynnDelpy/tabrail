@@ -26,16 +26,12 @@ Pain, for the one user of the sidebar: resizing feels clunky and breaks the side
 - **CAP-3**
   - **intent:** After any change of its size, the sidebar shows exactly its current rows: no fragments, no stale or duplicated tab rows.
   - **success:** After a narrow-and-widen and after a drag, `capture-pane` of the sidebar equals a freshly started sidebar's at the same size (row 1 blank, no `2 tmp` leftover).
-- **CAP-4**
-  - **intent:** When the terminal is too narrow for the sidebar plus a usable content pane, the sidebar hides; once wide enough, it is back at the shared width.
-  - **success:** Below the threshold the tab shows only its content pane and stays open; widening past it shows the sidebar at the shared width with current rows.
 
 ## Constraints
 
 - One width per tmux server, held in tmux (no file), so every sidebar and `tabrail-tmux ensure` (`WIDTH=26` today) use the same value; default 26, settable in tmux.conf.
 - Nothing spawned per resize or tab switch (README's speed promise): corrections go over the sidebar's control connection or through hooks and bindings without `run-shell`.
 - Drawing only changed lines and pausing while a menu is open (AGENTS.md pitfalls) stay; a full repaint happens only when the size changes.
-- A hidden sidebar is not re-added by `tabrail-tmux ensure` (client attach, new tab) while the terminal stays narrow, and `reap` does not close its tab.
 - `README.md` (setup, behaviour) and AGENTS.md's option list gain the width option and the drag rule.
 - Verification only on throwaway tmux servers, the viewer started with `-f /dev/null`; never the user's tmux.
 
@@ -43,12 +39,13 @@ Pain, for the one user of the sidebar: resizing feels clunky and breaks the side
 
 - Per-tab or per-session widths.
 - A hide/show toggle, or the sidebar on the right.
+- Hiding the sidebar when the terminal is narrow (CAP-4, retired 2026-11-25).
 - How rows are cut at narrow widths (tab-rows owns the row layout).
 - Zoom (prefix z) behaviour.
 
 ## Success signal
 
-On a throwaway tmux server running tabrail with three tabs: after narrowing the viewer to 73 columns, widening it to 200, visiting every tab and dragging tab 1's border to 34, every sidebar's `pane_width` is 34, `capture-pane` of each shows only current rows, and a new tab opens at 34. Below the hide threshold the current tab shows no sidebar; widening brings it back at 34.
+On a throwaway tmux server running tabrail with three tabs: after narrowing the viewer to 73 columns, widening it to 200, visiting every tab and dragging tab 1's border to 34, every sidebar's `pane_width` is 34, `capture-pane` of each shows only current rows, and a new tab opens at 34.
 
 ## Assumptions
 
@@ -60,5 +57,4 @@ On a throwaway tmux server running tabrail with three tabs: after narrowing the 
 
 ## Open Questions
 
-- Hide threshold: terminal below N columns, or content pane below N (e.g. 80)?
 - tmux layout commands (prefix Space `next-layout`, `select-layout`) move or resize the sidebar: restore it to the left at the shared width, or out of scope?

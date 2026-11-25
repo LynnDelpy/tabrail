@@ -195,3 +195,12 @@ status: open
 - source_spec: `_bmad-output/specs/spec-reader-bar/stories/6-the-bar-sizes-to-the-chat.md`
   summary: AGENTS.md still calls `@reader_big` "whether it is grown" (it now holds the bar's height in rows) and lacks story 6's cross-process contract and pitfall.
   evidence: tabrail-chat runs `$(tmux show -gv @tabrail_dir)/tabrail-reader size PANE ROWS|up|down`; the reader command unsets TMUX_PANE, so tabrail-chat finds its pane by `#{pane_tty}` against /proc/self/fd/0. Agent-context file, so deferred.
+- source_spec: `_bmad-output/specs/spec-performance/stories/1-speed-test-at-5-and-50-tabs.md`
+  summary: Test servers take the same `/tmp/tabrail-$UID.lock` and `/tmp/tabrail-reader-$UID.lock` as the user's live tmux, so a test run can make a live `tabrail-reader follow` give up (5 s) and live switches leak into test reader times.
+  evidence: medium, pre-existing. The lock paths in tabrail-tmux and tabrail-reader are keyed by UID, not by tmux server; every tabrail-*-test shares them, tabrail-perf-test holds the first for 49 ensures in a row at 50 tabs. Fix: key the locks by the server's socket or pid.
+- source_spec: `_bmad-output/specs/spec-performance/stories/1-speed-test-at-5-and-50-tabs.md`
+  summary: Story 1's AC 3 and its manual check freeze a sidebar with `kill -STOP`, which tmux undoes, and AGENTS.md lacks that pitfall; the working check (XOFF) is only in the story's Implementation Notes.
+  evidence: medium. tmux sends SIGCONT to a pane process that stops (a stopped pane ran again within 50 ms, tmux 3.8). Freezing the sidebar's output works: `t send-keys -t <tab K's sidebar> C-s` before the switch, `C-q` after, gives `max≈10000ms` and `tabs=N: 1 waits timed out` on stderr (the sidebar's `stty -icanon -echo` leaves IXON on). Fix: reword AC 3 and the Verification bullet, add the pitfall to AGENTS.md (agent-context file).
+- source_spec: `_bmad-output/specs/spec-performance/stories/1-speed-test-at-5-and-50-tabs.md`
+  summary: `tabrail-perf-test` matches the `for t in ./tabrail-*-test` sweep in stories 2-4's verification, adding ~12 min per sweep and a pass that carries no signal (it always exits 0).
+  evidence: medium. `2-hidden-sidebars-stay-idle.md:84` runs the glob; SPEC.md:44 asks every `tabrail-*-test` to pass. The name is fixed by story 1's intent; exclude it in those sweeps (e.g. `[[ $t == *perf-test ]] && continue`).

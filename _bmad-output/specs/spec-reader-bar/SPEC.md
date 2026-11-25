@@ -35,12 +35,6 @@ Pain for the user of the reader pane (spec-agent-journal): the chat sits 26 colu
 - **CAP-6**
   - **intent:** Each tool call Claude makes shows as one dim line naming the tool and a short form of its argument, never its output.
   - **success:** A turn that runs `./journal-search -R tmux` twice and reads one file adds three one-line entries (two Bash with their command, one Read with its path), each cut to the bar's width, and no tool output.
-- **CAP-7**
-  - **intent:** When Claude Code asks permission for a tool call, the user answers allow or deny in the bar.
-  - **success:** A Bash call outside the folder's allowlist shows one question line naming the tool and its command; `y` runs it, `n` denies it and Claude continues the turn; an allowlisted call never asks.
-- **CAP-8**
-  - **intent:** `/clear` starts a new conversation and `/model <name>` switches the model; other slash commands are refused in the bar.
-  - **success:** After `/clear` the bar is empty and the next question has no memory of earlier ones; after `/model sonnet` the next answer comes from Sonnet; `/compact` shows a one-line "not supported" and nothing is sent to Claude.
 
 ## Constraints
 
@@ -54,7 +48,8 @@ Pain for the user of the reader pane (spec-agent-journal): the chat sits 26 colu
 
 ## Non-goals
 
-- Replacing Claude Code's TUI for work tabs: no other slash commands, attachments, images, diffs, plan or subagent views.
+- Replacing Claude Code's TUI for work tabs: no slash commands, attachments, images, diffs, plan or subagent views.
+- Answering permission prompts in the bar, interrupting an answer with Esc, `/clear` and `/model` (CAP-7, CAP-8, retired 2026-11-25): permission requests stay refused (`--permission-prompts none`).
 - Rendering markdown.
 - Editing, rewinding or forking earlier turns.
 - More than one reader chat, or hiding the bar.
@@ -70,7 +65,6 @@ Through a day of normal work the 4-row bar along the bottom of every tab shows t
 - Each tab's slot is a pane of its own (`@reader_slot`, running `tabrail-slot`), as big as the small bar; the bar takes its place with `swap-pane`, so tab switches resize no other pane. A slot comes back after a resurrect restore through its `@resurrect-processes` entry.
 - The bar grows only when the chat's content changes while it has the keyboard, or on its `▲` button; never on a click, a double-click, focus or a tab switch alone: a single click right under the work pane's prompt popped it up too often, and a double-click went unnoticed (tmux counts one only within about 300 ms, and nothing on screen hints at it). tabrail binds no `DoubleClick1Pane`.
 - Answers show as plain text wrapped at the bar's width; one character is one column.
-- Enter sends a single input line; Esc interrupts a running answer.
+- Enter sends a single input line.
 - Scroll back covers the running frontend's turns; after a restart the conversation continues in Claude's context but earlier turns are not shown.
-- `/model` lasts until the frontend restarts; then the start command's model applies again.
 - `journal-reader/start` and its CLAUDE.md (~/Dev/vmConfig) change to run the frontend and drop "lines under 80 columns" and "under the sidebar"; committed in vmConfig.

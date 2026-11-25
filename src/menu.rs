@@ -1,15 +1,13 @@
 //! Right-click menus: one per sidebar row (a tab: new tab, rename, duplicate, move to group, new
-//! group, close; a group: new tab, new group, rename, fold, start or stop and reset its timer; empty
-//! space: new tab, new group), as tmux display-menu commands at the mouse. A menu only takes clicks
-//! when tmux opens it from a mouse key binding, so the sidebar keeps them as files
+//! group, close; a group: new tab, new group, rename, colour, fold, start or stop and reset its
+//! timer; empty space: new tab, new group), as tmux display-menu commands at the mouse. A menu only
+//! takes clicks when tmux opens it from a mouse key binding, so the sidebar keeps them as files
 //! ($XDG_RUNTIME_DIR/tabrail/SERVERPID-PANE-ROW.conf) and tmux.conf's right-button binding runs the
 //! one under the mouse. Item commands are tmux { } blocks; menus are rounded as set in tmux.conf.
 use crate::draw::Row;
 use crate::model::Tab;
 use crate::timer::Timers;
-use std::collections::HashSet;
-use std::path::PathBuf;
-use std::{env, fs};
+use std::{collections::HashSet, env, fs, path::PathBuf};
 
 pub struct Place<'a> {
     pub pane: &'a str,   // the sidebar's pane, for the session of a new tab
@@ -17,6 +15,7 @@ pub struct Place<'a> {
     pub mover: &'a str,  // tabrail-move
     pub namer: &'a str,  // tabrail-name
     pub timer: &'a str,  // tabrail-timer
+    pub colourer: &'a str, // tabrail-colour
 }
 
 /// One sidebar's menu files and what each holds.
@@ -80,8 +79,9 @@ pub fn for_row(row: Option<&Row>, tabs: &[Tab], folded: &HashSet<String>, timers
         Some(Row::Group(raw, _)) => {
             let name = clean(raw);
             let mut items = vec![new_tab(&name), new_group(p.pane)];
-            if name != "Default" {
+            if name != "Default" { // Colour… as the timer below: a cleaned name is another group's line
                 items.push(format!("'Rename group' r {}", namer("group", &name, &name)));
+                items.extend((name == *raw).then(|| format!("'Colour…' c {{ run-shell -b \"{} '{name}' '#{{client_name}}'\" }}", p.colourer)));
             }
             let fold = if folded.contains(&name) { "Unfold" } else { "Fold" };
             items.push(format!("{fold} f {{ run-shell -b '{h} fold {name}' }}"));

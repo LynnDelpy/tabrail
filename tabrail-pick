@@ -4,6 +4,8 @@
 # lines (labels may carry ANSI colours), prints the chosen value. Colours: Catppuccin Mocha.
 #   -n       numbered list without a search line, 1-9 pick a row directly (for short lists)
 #   -q TEXT  a name field holding TEXT instead of a list: prints the field on Enter, nothing on Esc
+# Without either: a search line; a label in parts ("value<TAB>swatch<TAB>name") shows them side by
+# side, and the search looks at its last part only.
 # Example: printf 'a\tFirst\nb\tSecond\n' | tabrail-pick -n "Which one?"
 numbered=0 field=0
 [[ $1 == -n ]] && { numbered=1; shift; }
@@ -23,5 +25,6 @@ elif (( numbered )); then
   awk -F'\t' '{ printf "%s\t%d. %s\n", $1, NR, $2 }' |
     fzf "${opts[@]}" "${binds[@]}" --no-input --footer=' Enter to select · ↑/↓ to navigate · Esc to cancel'
 else
-  fzf "${opts[@]}" --prompt='⌕ ' --ghost='Search…' --footer=' Enter to select · ↑/↓ to navigate · Esc to cancel'
+  fzf "${opts[@]}" --nth=-1 --tabstop=1 --prompt='⌕ ' --ghost='Search…' \
+    --footer=' Enter to select · ↑/↓ to navigate · Esc to cancel'
 fi

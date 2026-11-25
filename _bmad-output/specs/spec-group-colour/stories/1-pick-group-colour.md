@@ -2,7 +2,8 @@
 title: 'Pick a group colour from its menu'
 type: 'feature'
 created: '2026-11-20'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: '0aa0a52a4e7ce14a5370d44a785d85408262fa23'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -51,11 +52,11 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `palette` -- new, the 25 lines from Design Notes as `#rrggbb Name` -- one list for picker and auto-pick
-- [ ] `tabrail-act` -- `new_group` takes the first palette hex not used by any group line; drop `TINTS` -- one palette
-- [ ] `tabrail-colour` -- new: `tabrail-colour GROUP CLIENT` builds the swatch list and opens the popup (height `min(rows + 5, client_height)`); `--pick GROUP LIST` runs `tabrail-pick "Colour for GROUP?"`, writes column 2 safely, refreshes -- the picker and the write
-- [ ] `src/menu.rs`, `src/main.rs` -- `Place.colourer`; group menu item `'Colour…' c` after Rename group, not for Default, name through `clean()` -- the entry point
-- [ ] `README.md`, `groups.conf.example` -- Colour… in the groups and mouse text, `tabrail-colour` and `palette` in Files -- README is the behaviour reference
+- [x] `palette` -- new, the 25 lines from Design Notes as `#rrggbb Name` -- one list for picker and auto-pick
+- [x] `tabrail-act` -- `new_group` takes the first palette hex not used by any group line; drop `TINTS` -- one palette
+- [x] `tabrail-colour` -- new: `tabrail-colour GROUP CLIENT` builds the swatch list and opens the popup (height `min(rows + 5, client_height)`); `--pick GROUP LIST` runs `tabrail-pick "Colour for GROUP?"`, writes column 2 safely, refreshes -- the picker and the write
+- [x] `src/menu.rs`, `src/main.rs` -- `Place.colourer`; group menu item `'Colour…' c` after Rename group, not for Default, name through `clean()` -- the entry point
+- [x] `README.md`, `groups.conf.example` -- Colour… in the groups and mouse text, `tabrail-colour` and `palette` in Files -- README is the behaviour reference
 
 **Acceptance Criteria:**
 - Given two groups with tabs on a `tmux -L test` server, when New group… adds a third, then it gets the first palette colour no group uses.
@@ -85,3 +86,26 @@ Swatch label: `\e[48;2;R;G;Bm\e[1;38;2;205;214;244m ICON NAME \e[0m  Colour name
 - `bash -n tabrail-colour tabrail-act && wc -l tabrail-colour tabrail-act src/menu.rs` -- expected: syntax ok, each under 100
 - On `tmux -L test` with `@tabrail_groups` pointing at a temp copy (AGENTS.md): SGR right-click a group row, Colour…, type `teal d`, Enter -- expected: `capture-pane -e` of every sidebar shows `48;2;65;89;96` on that row; `diff` against the copy shows only column 2 of that line
 - Same, ending in Esc -- expected: `cmp` identical
+
+## Review Triage Log
+
+| # | Source | Finding | Verdict | Evidence | Route |
+|---|--------|---------|---------|----------|-------|
+| 1 | verification-gap 1-4, blind 3 | No repo test runs `tabrail-colour`'s write, Colour… presence/absence, New group…'s palette auto-pick or the `--nth=-1` search scope | medium | Pre-verified: no `tabrail-*-test` or `tests.rs` names colour/palette/new-group; dropping `readlink -f`, `chmod`, the empty-pick exit or `--nth` fails nothing | patch |
+| 2 | edge-case 1, blind 4 | Colour… offered for a group whose name `clean()` changes (`Q'a`): picker edits nothing, or recolours a group `Qa` | low | `clean()` drops `' " { } ; \ $ #` (menu.rs:49); awk then matches no line or the other group; the timer items already guard with `name == *raw` | patch |
+| 3 | edge-case 2 | Picker opens for a group with no line: blank icon, Enter silently no-op | false | Matrix row "Group gone" prescribes file untouched, exit 0; the cleaned-name trigger is #2 | reject |
+| 4 | edge-case 3, blind 5a | Popup width fixed at 60: on a client under 60 columns `display-popup` fails "width too large" | low | Blind reproduced on tmux 3.8; height is clamped to the client, width is not | patch |
+| 5 | blind 5b | A group name over ~26 chars pushes the colour name and `· current` off the 60-column row | low | Row is name+30 columns; group names are one word, such names are rare and the fix (truncating) adds logic | reject |
+| 6 | edge-case 4, 12 | No lock against tabrail-act's group-file writers: a concurrent New group… or rename could be lost | low | Needs two writes within the same ms from one user; tabrail-act's own writers do not lock each other either; fix adds cross-script locking | reject |
+| 7 | edge-case 5, 11 (exhausted) | With all 25 palette colours used, New group… reuses the last | low | Same as the old 7-tint loop; SPEC Assumptions allow shared colours; needs 25+ groups | reject |
+| 8 | edge-case 6, 11 (case), blind 6a | `new_group`'s used check is case-sensitive while the picker's current mark is not: a hand-written `#3B2F2A` counts as unused | low | `grep -qF` at tabrail-act:81 vs `${hex,,}` in tabrail-colour; one-flag fix on a line this change rewrote | patch |
+| 9 | edge-case 7, blind 6b | Missing `palette` leaves the tint empty, New group… writes a 2-field line model.rs drops | low | `palette` is tracked beside the scripts; only a broken checkout triggers it; fix is a guard | reject |
+| 10 | edge-case 8 | `palette` without a final newline drops its last colour from the picker | low | The tracked file ends with a newline (diff shows none missing); only a hand-edit triggers it; fix is a guard | reject |
+| 11 | edge-case 9, blind 6c | Blank, comment or tab-separated `palette` lines break printf or the auto-pick | low | Tracked file with one fixed format; fix is a guard | reject |
+| 12 | edge-case 10 | A hand-written tint cannot be picked back after changing it | false | Never: custom hex input; matrix row "Hand-written tint" prescribes no mark | reject |
+| 13 | blind 1a | Typing `te` also lists Rosewater faint and deep, so SPEC CAP-3's "only the teal rows" does not hold | low | `fzf --filter=te` on the built list: Teal, Teal deep, Teal faint, Rosewater deep, Rosewater faint (teals first); fuzzy fzf is a SPEC constraint, fixes are a SPEC edit or replacing fzf's matching | reject |
+| 14 | blind 1b | Typing `cur` filters to the current row | false | Harmless: `· current` is part of the searched label; no wrong outcome | reject |
+| 15 | blind 2 | Near-duplicate palette colours (Plum/Red faint ΔE 3.0, Blue/Blue faint 3.2, Teal/Green faint 3.4) | low | The palette is the spec's Design Notes list; fix is a spec edit | reject |
+| 16 | blind 7 | The popup's temp list file in /tmp leaks if the popup is killed mid-pick | low | Only on kill-server or detach mid-pick, ~2 KB; same pattern as tabrail-move; fix restructures the script | reject |
+| 17 | blind 8, verification-gap other | A groups file without a final newline gets one on write | low | Same as move_group, the prescribed model; tabrail-act's appends and editors end files with a newline; fix adds awk branches | reject |
+| 18 | blind 9 | README Files table not updated for tabrail-pick's search mode | false | The Files table gives each file's job, not its flags (no `-n` either); the search contract sits in tabrail-pick's header with the other modes | reject |

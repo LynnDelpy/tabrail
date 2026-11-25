@@ -15,8 +15,13 @@ grouped by project, with what each one is doing.
 ```
 
 - Groups by folder (groups.conf), each with a faint tint and an icon; fold them with a click, reorder
-  them by dragging. The order is the groups file's line order, which is also the order a new tab's
-  folder is matched in (the first group whose folder holds it); Default is always last.
+  them by dragging. A group's menu (not Default's) has Colour…: a picker of the 25 named colours in
+  `palette`, each a swatch with the group's icon and name on it, the group's own marked `· current`;
+  typing part of a colour's name narrows the list, Enter writes the pick into column 2 of the group's
+  line in the groups file (nothing else in it changes) and every sidebar shows it, Esc changes
+  nothing. New group… takes the first palette colour no group uses. The order is the groups file's
+  line order, which is also the order a new tab's folder is matched in (the first group whose folder
+  holds it); Default is always last.
 - A timer per group, Default too, started and stopped by hand from the group's right-click menu or a
   click on its time or `▷`: the time right after the group's name (before a folded group's `N tabs`),
   `▶ 12m` while it runs, `⏸ 12m` dimmed while stopped, in every sidebar of every session. Start timer
@@ -45,11 +50,10 @@ grouped by project, with what each one is doing.
   of sight.
 - Mouse: click a tab to go there, drag it onto another tab or a group; click a group's row to fold it,
   its time (`▶ 12m` or `⏸ 12m`, the marker included; press and release both on it) to stop or resume
-  its timer, the `▷` at a timeless group's right edge to start it; drag the row (from its time or `▷`
-  too) onto another group's row or one of its tabs to move its line in the groups file there (above
-  that group moving up, below it moving down); right-click for menus (new tab, new group, rename,
-  duplicate, move to group, close, fold; a group's Start timer or Stop timer, and Reset timer once it
-  has a time).
+  its timer; drag the row (from its time too) onto another group's row or one of its tabs to move its
+  line in the groups file there (above that group moving up, below it moving down); right-click for
+  menus (new tab, new group, rename, duplicate, move to group, close, fold; a group's Colour…, Start
+  timer or Stop timer, and Reset timer once it has a time).
 - One width: every tab's sidebar keeps the same width through terminal resizes and layout commands;
   drag any sidebar's border (or `resize-pane` it) to change it for all tabs until tmux stops.
 - Reader pane (optional, `@tabrail_reader`): one chat in a bar across the full width of the tab
@@ -165,8 +169,9 @@ Optional inputs, shown when present:
 | `tabrail-move-test` | The reader bar's move in tmux calls, counted by a logging `tmux` first in PATH: a tab switch at most 4, `fit` with the bar or slot in place 1; a slot out of place and a zoomed tab without a slot switched to, on throwaway tmux servers |
 | `tabrail-chat-test`, `tabrail-chat-session-test` | `tabrail-chat`'s tests on a throwaway tmux server: what it shows and its keys; its claude's options, restarts and the way out |
 | `tabrail-bar-test` | The reader bar sized by `tabrail-chat` in it (its height, buttons, away, tab switch, zoom), against the fake claude on throwaway tmux servers |
-| `tabrail-timer-test` | The group timers in the sidebar on throwaway tmux servers, state in a temp `XDG_STATE_HOME`: the menu's items (Default's, none and no `▷` for a name with quotes), start, stop, resume and reset by right-click, the time's colour, two groups, a second session, rename, folded, kill-server, a narrow sidebar, a garbled file, a group's last tab closed |
-| `tabrail-timer-click-test` | A click on a group's time or `▷` on throwaway tmux servers, real SGR presses: stop and resume (both sessions, fold state kept, folded too); beside it, the name, off the time, no time, a drag from it and a tab row as before; the `▷` in the last column, beside and off it, a drag from it, a start from it in both sessions, back after Reset, folded |
+| `tabrail-timer-test` | The group timers in the sidebar on throwaway tmux servers, state in a temp `XDG_STATE_HOME`: the menu's items (Default's, none for a name with quotes), start, stop, resume and reset by right-click, the time's colour, two groups, a second session, rename, folded, kill-server, a narrow sidebar, a garbled file, a group's last tab closed |
+| `tabrail-colour-test` | A group's colour on throwaway tmux servers, the groups file a symlink to a temp copy: Colour… in the menus (none for Default or a name `clean()` changes), New group…'s palette tint (the first unused, in any case), the picker's swatches, current mark and search on colour names only, the pick in column 2 alone (link and mode kept), every sidebar, Esc, a hand-written tint, the group renamed meanwhile, the same tint again, a 50x20 client |
+| `tabrail-timer-click-test` | A click on a group's time on throwaway tmux servers, real SGR presses: stop and resume (both sessions, fold state kept, folded too); beside it, the name, off the time, no time, a drag from it and a tab row as before |
 | `tabrail-timer-state-test` | `tabrail-timer` and its state file alone, no tmux server: toggle, start twice, reset, rename, no file, usage, garbage dropped, racing writes |
 | `tabrail-shown-test` | Only the sidebar shown works: which sidebars write per tab switch, hook burst, detach, attach, width set while hidden, new tab, second session and `switch-client`, on throwaway tmux servers |
 | `tabrail-perf-test [N…]` | Speed at N tabs (default 5 and 50) on throwaway tmux servers, the reader bar on: per N one line with the tab switch median and max (until the new tab's sidebar marks it), the same under Claude hook calls (one every 100 ms unless 4 run) and the rate they reached, the reader's median (until it is in the new tab), idle tmux CPU and ms per hook call. `SETTLE=` seconds to wait before measuring (60 + 2 per tab), `IDLE=` seconds of idle measured (60), `HOOK=` the hook (`~/Dev/vmConfig/tmux-claude-state`; missing: n/a); `5 50` takes ~12 min. On stderr: waits timed out after 10 s (their values near 10000 ms) and idle halves too far apart to be steady; exit 1 when setup times out |
@@ -175,5 +180,7 @@ Optional inputs, shown when present:
 | `tabrail-act` | What the menus and group drags do: new tab, duplicate, fold, new group, rename group, move group |
 | `tabrail-timer` | The group timers' state file, its only writer: start, stop, toggle, reset, rename (under flock, renamed into place) |
 | `tabrail-move`, `tabrail-pick` | Move a tab to a group in a picker; the picker (Claude Code's option-list style, fzf), or a name field with `-q` |
+| `tabrail-colour` | The group menu's Colour…: `palette` as swatches in a picker, the pick written into column 2 of the group's line (through a symlink, mode kept, renamed into place) |
+| `palette` | The group colours, `#rrggbb Name` per line: Colour…'s swatches and New group…'s tint (the first no group uses) |
 | `tabrail-name` | The menus' Rename, Rename group and New group…: a name field in a popup, Esc cancels whatever `status-keys` is |
 | `groups.conf.example` | The groups file format |

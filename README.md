@@ -4,11 +4,11 @@ A vertical tab rail for tmux: a sidebar on the left of every tab that lists all 
 grouped by project, with what each one is doing.
 
 ```
-▾ ◆ Website              ▷         the group has no timer: a click on ▷ starts one
+▾ ◆ Website             ▷          the group has no timer: a click on ▷ starts one
  ❯ Fix login redire ✳ ⚙ 2m         Claude's topic, cut; Claude running a command for 2 min
    website·release-2 ✳   ◇         folder and git branch; Claude idle
    deploy · vim                    named by hand; vim runs in it
-▾ ▲ Infra                ▷
+▾ ▲ Infra               ▷
    lde@app01 in · ssh ⏱ 4m         ssh: remote user, host, folder, cut; 4 min
    infra               ✗ 2         the last command failed
     14:41  Wed 18.11.
@@ -26,7 +26,7 @@ grouped by project, with what each one is doing.
   click on its time or `▷`: the time right after the group's name (before a folded group's `N tabs`),
   `▶ 12m` while it runs, `⏸ 12m` dimmed while stopped, in every sidebar of every session. Start timer
   (or a click on a stopped time) counts on from the stopped value; never started or reset, the row
-  shows no time but a dim `▷` in its last column, which starts it from zero (no `▷` for a name
+  shows no time but a dim `▷` one column in from its right edge, which starts it from zero (no `▷` for a name
   with quotes or other characters the menus drop: it has no timer items either). Reset timer
   drops it, Rename group takes it along. Wall-clock (seconds before plus the time since its start),
   kept in `$XDG_STATE_HOME/tabrail/timers`, else `~/.local/state/tabrail/timers`: it survives

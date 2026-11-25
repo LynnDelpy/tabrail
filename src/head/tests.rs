@@ -24,7 +24,7 @@ fn text(name: &str, fold: bool, n: usize, time: Option<&str>, width: usize) -> S
 fn time_after_the_name_then_the_count() {
     assert_eq!(text("Website", false, 3, Some("▶ 12m"), 26), "▾ ◆ Website ▶ 12m         ");
     assert_eq!(text("Ops", true, 1, Some("▶ 5s"), 26), "▸ ◆ Ops ▶ 5s  1 tab       ");
-    assert_eq!(text("Infra", true, 3, None, 26), "▸ ◆ Infra  3 tabs        ▷");
+    assert_eq!(text("Infra", true, 3, None, 26), "▸ ◆ Infra  3 tabs       ▷ ");
 }
 
 #[test]
@@ -32,7 +32,7 @@ fn the_count_goes_whole_before_the_name_is_cut() {
     // 26 - 13 for "▸ ◆ Abcdefghi" - 7 for " ▶ 2h0m" = 6: "  3 tabs" does not fit, so none
     assert_eq!(text("Abcdefghi", true, 3, Some("▶ 2h0m"), 26), "▸ ◆ Abcdefghi ▶ 2h0m      ");
     assert_eq!(text("Abcdefghijklmnopqrstuvwxyz0123", true, 3, Some("▶ 2h0m"), 26), "▸ ◆ Abcdefghijklmno ▶ 2h0m");
-    assert_eq!(text("Abcdefghijklmnopqrstuvwxyz", true, 3, None, 26), "▸ ◆ Abcdefghijklmnopqrst ▷");
+    assert_eq!(text("Abcdefghijklmnopqrstuvwxyz", true, 3, None, 26), "▸ ◆ Abcdefghijklmnopqrs ▷ ");
 }
 
 #[test]
@@ -62,22 +62,22 @@ fn the_time_columns_follow_the_cut_name() {
     let span = |name: &str, width| row(&group(name), false, 3, Some(("▶ 2h0m".into(), "busy")), width).1;
     assert_eq!(span("Abcdefghijklmnopqrstuvwxyz0123", 26), Some((21, 26))); // ▾ ◆ Abcdefghijklmno ▶ 2h0m
     assert_eq!(span("Abcdefghij", 11), Some((5, 10))); // ▾ ◆ ▶ 2h0m: the cut's space dropped
-    assert_eq!(row(&group("A"), false, 1, None, 26).1, Some((26, 26))); // the ▷
+    assert_eq!(row(&group("A"), false, 1, None, 26).1, Some((25, 25))); // the ▷, one in from the edge
 }
 
 #[test]
-fn without_a_time_a_start_button_in_the_last_column() {
-    assert_eq!(text("Infra", false, 3, None, 26), format!("▾ ◆ Infra{}▷", " ".repeat(16)));
+fn without_a_time_a_start_button_one_in_from_the_edge() {
+    assert_eq!(text("Infra", false, 3, None, 26), format!("▾ ◆ Infra{}▷ ", " ".repeat(15)));
     // the count whole with a space before the ▷, else none; then the name is cut, its space dropped
-    assert_eq!(text("Abcdefghijkl", true, 3, None, 26), "▸ ◆ Abcdefghijkl  3 tabs ▷");
-    assert_eq!(text("Abcdefghijklm", true, 3, None, 26), "▸ ◆ Abcdefghijklm        ▷");
-    assert_eq!(text("Abcdefghij", false, 1, None, 11), "▾ ◆ Abcde ▷");
-    assert_eq!(text("Abcdefghij", false, 1, None, 6), "▾ ◆  ▷");
+    assert_eq!(text("Abcdefghijk", true, 3, None, 26), "▸ ◆ Abcdefghijk  3 tabs ▷ ");
+    assert_eq!(text("Abcdefghijkl", true, 3, None, 26), "▸ ◆ Abcdefghijkl        ▷ ");
+    assert_eq!(text("Abcdefghij", false, 1, None, 11), "▾ ◆ Abcd ▷ ");
+    assert_eq!(text("Abcdefghij", false, 1, None, 6), "▾ ◆ ▷ ");
     for (name, fold, width) in [("Infra", false, 26), ("Infra", true, 26), ("Abcdefghijklm", true, 26), ("Ab", false, 11)] {
-        assert_eq!(row(&group(name), fold, 3, None, width).1, Some((width, width)), "{name} at {width}");
+        assert_eq!(row(&group(name), fold, 3, None, width).1, Some((width - 1, width - 1)), "{name} at {width}");
     }
     let line = row(&group("A"), false, 1, None, 12).0; // dim on the tint, bold on
-    assert!(line.starts_with("\x1b[48;2;40;49;71m") && line.ends_with("\x1b[38;2;108;112;134m▷\x1b[0m"));
+    assert!(line.starts_with("\x1b[48;2;40;49;71m") && line.ends_with("\x1b[38;2;108;112;134m▷ \x1b[0m"));
     assert_eq!(line.matches("\x1b[0m").count(), 1);
 }
 

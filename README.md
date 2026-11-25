@@ -4,11 +4,11 @@ A vertical tab rail for tmux: a sidebar on the left of every tab that lists all 
 grouped by project, with what each one is doing.
 
 ```
-▾ ◆ Website
+▾ ◆ Website              ▷         the group has no timer: a click on ▷ starts one
  ❯ Fix login redire ✳ ⚙ 2m         Claude's topic, cut; Claude running a command for 2 min
    website·release-2 ✳   ◇         folder and git branch; Claude idle
    deploy · vim                    named by hand; vim runs in it
-▾ ▲ Infra
+▾ ▲ Infra                ▷
    lde@app01 in · ssh ⏱ 4m         ssh: remote user, host, folder, cut; 4 min
    infra               ✗ 2         the last command failed
     14:41  Wed 18.11.
@@ -23,16 +23,18 @@ grouped by project, with what each one is doing.
   line order, which is also the order a new tab's folder is matched in (the first group whose folder
   holds it); Default is always last.
 - A timer per group, Default too, started and stopped by hand from the group's right-click menu or a
-  click on its time: the time right after the group's name (before a folded group's `N tabs`),
+  click on its time or `▷`: the time right after the group's name (before a folded group's `N tabs`),
   `▶ 12m` while it runs, `⏸ 12m` dimmed while stopped, in every sidebar of every session. Start timer
-  (or a click on a stopped time) counts on from the stopped value; never started or reset, it shows
-  no time to click. Reset timer drops it, Rename group takes it along. Wall-clock (seconds before plus
-  the time since its start), kept in `$XDG_STATE_HOME/tabrail/timers`, else
-  `~/.local/state/tabrail/timers`: it survives `tabrail-tmux restart`, a tmux restart and a reboot,
-  and a running one counts the time tmux was down. Where the row is too narrow the count goes first,
-  then the name is cut; the time is never cut. A group without tabs shows only while it has a timer
-  (its header, no tab rows), so its time and menu stay in reach. A group removed from groups.conf
-  keeps its timer unseen, shown again if the name comes back; `tabrail-timer reset NAME` drops it.
+  (or a click on a stopped time) counts on from the stopped value; never started or reset, the row
+  shows no time but a dim `▷` in its last column, which starts it from zero (no `▷` for a name
+  with quotes or other characters the menus drop: it has no timer items either). Reset timer
+  drops it, Rename group takes it along. Wall-clock (seconds before plus the time since its start),
+  kept in `$XDG_STATE_HOME/tabrail/timers`, else `~/.local/state/tabrail/timers`: it survives
+  `tabrail-tmux restart`, a tmux restart and a reboot, and a running one counts the time tmux was
+  down. Where the row is too narrow the count goes first (whole or not at all), then the name is cut;
+  the time and the `▷` are never cut. A group without tabs shows only while it has a timer (its
+  header, no tab rows), so its time and menu stay in reach. A group removed from groups.conf keeps
+  its timer unseen, shown again if the name comes back; `tabrail-timer reset NAME` drops it.
 - Tab names: a name given by hand, else Claude Code's topic, the running command (without `VAR=value`
   in front), or folder and branch. An ssh tab shows the remote's `user@host folder`, vim's file
   (`vim nginx.conf`), else what the remote titles, or the host until the remote sends a title.

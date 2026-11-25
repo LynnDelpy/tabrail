@@ -1,10 +1,11 @@
 //! The left button, acting on the release. Pressing and letting go on the same tab goes there, on the
-//! same group's row folds or unfolds it, both on its time (the columns draw reports) stops or starts
-//! its timer (tabrail-timer toggle). Letting go over another tab puts the pressed tab right there,
-//! in that tab's group; over a group's row it joins that group at its end. A group's row let go over
-//! another group's row or one of its tabs moves its line in the groups file (tabrail-act move-group):
-//! above that group moving up, below it moving down; Default stays last. Nothing switches before the
-//! release: the release must reach this same sidebar, which only the current tab shows.
+//! same group's row folds or unfolds it, both on its time or the ▷ a row without one ends in (the
+//! columns draw reports) stops or starts its timer (tabrail-timer toggle). Letting go over another tab
+//! puts the pressed tab right there, in that tab's group; over a group's row it joins that group at
+//! its end. A group's row let go over another group's row or one of its tabs moves its line in the
+//! groups file (tabrail-act move-group): above that group moving up, below it moving down; Default
+//! stays last. Nothing switches before the release: the release must reach this same sidebar, which
+//! only the current tab shows.
 use crate::draw::Row;
 use crate::input::Click;
 use crate::menu::{clean, Place};
@@ -29,7 +30,7 @@ pub fn left(click: &Click, row: Option<&Row>, tabs: &[Tab], folded: &HashSet<Str
     match drag.take() {
         Some((from, _, Row::Tab(src))) if from != click.row => drop_on(&src, row, tabs),
         Some((_, _, Row::Tab(src))) => vec![format!("select-window -t {src}")],
-        // both on the time as it was at the press; a name clean() changes folds, as its menu has no
+        // both on the time or ▷ as it was at the press; a name clean() changes folds, as its menu has no
         // timer items (the cleaned name would key another group's timer); tabrail-timer redraws all
         Some((from, col, Row::Group(src, time))) if from == click.row && on(col, time) && on(click.col, time)
             && clean(&src) == src => vec![format!("run-shell -b \"{} toggle '{src}'\"", p.timer)],

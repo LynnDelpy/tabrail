@@ -17,6 +17,7 @@ dblclick() { press "$@"; press "$@"; settle; }
 size() { t run-shell "$R/tabrail-reader size $*"; settle 0.5; }   # PANE ROWS|up|down, as tabrail-chat asks
 rd() { local f='#{pane_id}'; t list-panes -a -f '#{@reader}' -F "${1:-$f}"; }   # the reader
 slot() { local f='#{pane_id}'; t list-panes -t "$1" -f '#{@reader_slot}' -F "${2:-$f}"; }   # a tab's
+allslots() { t list-panes -a -f '#{@reader_slot}' -F "$1" | sort -u | tr '\n' ' '; }   # every one's FORMAT
 own() { t list-panes -t "$1" -f '#{!:#{@sidebar}#{@reader}#{@reader_slot}}' -F '#{pane_id}'; }   # own panes
 sizes() { t list-panes -t "$1" -F '#{pane_width}x#{pane_height}' | tr '\n' ' '; }
 fixed() {   # the sizes of a tab's panes but the bar's and the slot's
@@ -25,6 +26,16 @@ fixed() {   # the sizes of a tab's panes but the bar's and the slot's
 widths() { t list-panes -t "$1" -f '#{!:#{@reader}#{@reader_slot}}' -F '#{pane_width}' | tr '\n' ' '; }   # but bar's, slot's
 side() { local f='#{pane_id}'; t list-panes -t "$1" -f '#{@sidebar}' -F "${2:-$f}"; }     # a tab's sidebar
 at() { rd '#{window_index} #{pane_width}x#{pane_height} #{pane_left},#{pane_top}'; }   # the bar's place
+pids() {   # the processes of the slots list-panes ARGS lists: each one's pane process and its children
+  local p; for p in $(t list-panes "$@" -f '#{@reader_slot}' -F '#{pane_pid}'); do echo "$p"; pgrep -P "$p"; done | xargs
+}
+gone() { [[ -n $1 ]] && ! ps -p "${1// /,}" >/dev/null; }   # none of these processes (pids) is left
+badslots() {   # the slots whose pane's process is not a plain sleep with one child, a sleep named tabrail-slot
+  local p
+  for p in $(allslots '#{pane_pid}'); do
+    [[ $(ps -o args= -p "$p" --ppid "$p" | sort | xargs) == "sleep infinity tabrail-slot infinity" ]] || echo "$p"
+  done
+}
 win() { t display -p -t "$1" '#{window_id}'; }
 tabs() { t list-windows -t main | wc -l; }
 marked() {   # per tab of main: how many panes are the reader or a slot

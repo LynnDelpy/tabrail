@@ -59,7 +59,7 @@ pub fn groups(conf: &str) -> Vec<(String, String, String)> {
     out
 }
 
-fn ago(seconds: i64) -> String {
+pub fn ago(seconds: i64) -> String {
     let s = seconds.max(0);
     match s {
         0..=59 => format!("{s}s"),

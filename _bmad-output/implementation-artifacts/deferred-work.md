@@ -219,3 +219,12 @@ status: open
 - source_spec: `_bmad-output/specs/spec-performance/stories/4-claude-hook-in-one-tmux-call.md`
   summary: ~/.claude/settings.json calls tmux-claude-state for six events but not PreToolUse, so the writing/running/reading/searching/delegating states never show.
   evidence: jq over settings.json hooks lists SessionStart, UserPromptSubmit, PostToolUse, Notification, Stop, SessionEnd; the hook's header, cost-today.md and the perf test's Pre/Post load assume PreToolUse.
+- source_spec: `_bmad-output/specs/spec-group-timer/stories/1-group-timer-from-the-menu.md`
+  summary: The timers file's fallback path (`${XDG_STATE_HOME:-$HOME/.local/state}/tabrail/timers`) is worked out twice, in `src/timer.rs` and `tabrail-timer`, and no test runs with `XDG_STATE_HOME` unset to check they agree.
+  evidence: low. Every test exports `XDG_STATE_HOME`; a drift (e.g. Rust not treating an empty value as unset) would show a dead timer while the file is written. A check needs a server started with a temp HOME and no XDG_STATE_HOME.
+- source_spec: `_bmad-output/specs/spec-group-timer/stories/1-group-timer-from-the-menu.md`
+  summary: AGENTS.md does not name the timers state file: Conventions lacks `$XDG_STATE_HOME/tabrail/timers` (+ `timers.lock`, `tabrail-timer` its only writer), and Building and testing does not say a hand-run `tmux -L test` server needs `XDG_STATE_HOME` on a temp dir.
+  evidence: medium. Timer state is per user, not per server: a test server's menu or rename-group writes the user's real timers. `tabrail-test-lib` now sets it for the scripted tests; manual test servers still do not. Agent-context file, so deferred.
+- source_spec: `_bmad-output/specs/spec-group-timer/stories/1-group-timer-from-the-menu.md`
+  summary: rename-group with an unwritable groups.conf is untested: the timer must stay under OLD (the `&&` after the `mv`).
+  evidence: low. Putting the call back before the awk or `;` instead of `&&` passes every test; a check needs `chmod a-w` on the groups folder around the call.

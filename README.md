@@ -17,6 +17,16 @@ grouped by project, with what each one is doing.
 - Groups by folder (groups.conf), each with a faint tint and an icon; fold them with a click, reorder
   them by dragging. The order is the groups file's line order, which is also the order a new tab's
   folder is matched in (the first group whose folder holds it); Default is always last.
+- A timer per group, Default too, started and stopped by hand from the group's right-click menu: its
+  time right after the group's name (before a folded group's `N tabs`), `▶ 12m` while it runs,
+  `⏸ 12m` dimmed while stopped, in every sidebar of every session. Start timer counts on from the
+  stopped value, Reset timer drops it, Rename group takes it along. Wall-clock (seconds before plus
+  the time since its start), kept in `$XDG_STATE_HOME/tabrail/timers`, else
+  `~/.local/state/tabrail/timers`: it survives `tabrail-tmux restart`, a tmux restart and a reboot,
+  and a running one counts the time tmux was down. Where the row is too narrow the count goes first,
+  then the name is cut; the time is never cut. A group without tabs shows only while it has a timer
+  (its header, no tab rows), so its time and menu stay in reach. A group removed from groups.conf
+  keeps its timer unseen, shown again if the name comes back; `tabrail-timer reset NAME` drops it.
 - Tab names: a name given by hand, else Claude Code's topic, the running command (without `VAR=value`
   in front), or folder and branch. An ssh tab shows the remote's `user@host folder`, vim's file
   (`vim nginx.conf`), else what the remote titles, or the host until the remote sends a title.
@@ -33,7 +43,8 @@ grouped by project, with what each one is doing.
 - Mouse: click a tab to go there, drag it onto another tab or a group; click a group's row to fold it,
   drag it onto another group's row or one of its tabs to move its line in the groups file there (above
   that group moving up, below it moving down); right-click for menus (new tab, new group, rename,
-  duplicate, move to group, close, fold).
+  duplicate, move to group, close, fold; a group's Start timer or Stop timer, and Reset timer once it
+  has a time).
 - One width: every tab's sidebar keeps the same width through terminal resizes and layout commands;
   drag any sidebar's border (or `resize-pane` it) to change it for all tabs until tmux stops.
 - Reader pane (optional, `@tabrail_reader`): one chat in a bar across the full width of the tab
@@ -139,7 +150,7 @@ Optional inputs, shown when present:
 
 | File | Job |
 |---|---|
-| `src/*.rs` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus, `width.rs` one width for all, `shown.rs` whether its tab is shown (`shown/tests.rs` its tests) |
+| `src/*.rs` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `head.rs` a group's header row (`head/tests.rs` its tests), `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus, `timer.rs` group timers (`timer/tests.rs` its tests), `width.rs` one width for all, `shown.rs` whether its tab is shown (`shown/tests.rs` its tests) |
 | `src/chat/` | `tabrail-chat`: `main.rs` loop and drawing, `chat.rs` keys and claude's events, `session.rs` claude across restarts (`--resume`), `claude.rs` the claude process, `stream.rs` its stream-json lines, `json.rs` JSON, `view.rs` the conversation, `input.rs` the input, `keys.rs` keys, `mouse.rs` wheel and clicks, `term.rs` the terminal, `bar.rs` the reader bar's height and buttons, `tmux.rs` its pane and `tabrail-reader size` |
 | `tabrail.tmux` | What tmux.conf loads: mouse bindings, hooks, prefix M and & |
 | `tabrail-tmux` | Housekeeping from the hooks: a sidebar (and a reader slot) for every tab, restart, close tabs with only a sidebar (and the reader pane or its slot), the menus' Close |
@@ -149,11 +160,14 @@ Optional inputs, shown when present:
 | `tabrail-move-test` | The reader bar's move in tmux calls, counted by a logging `tmux` first in PATH: a tab switch at most 4, `fit` with the bar or slot in place 1; a slot out of place and a zoomed tab without a slot switched to, on throwaway tmux servers |
 | `tabrail-chat-test`, `tabrail-chat-session-test` | `tabrail-chat`'s tests on a throwaway tmux server: what it shows and its keys; its claude's options, restarts and the way out |
 | `tabrail-bar-test` | The reader bar sized by `tabrail-chat` in it (its height, buttons, away, tab switch, zoom), against the fake claude on throwaway tmux servers |
+| `tabrail-timer-test` | The group timers in the sidebar on throwaway tmux servers, state in a temp `XDG_STATE_HOME`: the menu's items (Default's, none for a name with quotes), start, stop, resume and reset by right-click, the time's colour, two groups, a second session, rename, folded, kill-server, a narrow sidebar, a garbled file, a group's last tab closed |
+| `tabrail-timer-state-test` | `tabrail-timer` and its state file alone, no tmux server: toggle, start twice, reset, rename, no file, usage, garbage dropped, racing writes |
 | `tabrail-shown-test` | Only the sidebar shown works: which sidebars write per tab switch, hook burst, detach, attach, width set while hidden, new tab, second session and `switch-client`, on throwaway tmux servers |
 | `tabrail-perf-test [N…]` | Speed at N tabs (default 5 and 50) on throwaway tmux servers, the reader bar on: per N one line with the tab switch median and max (until the new tab's sidebar marks it), the same under Claude hook calls (one every 100 ms unless 4 run) and the rate they reached, the reader's median (until it is in the new tab), idle tmux CPU and ms per hook call. `SETTLE=` seconds to wait before measuring (60 + 2 per tab), `IDLE=` seconds of idle measured (60), `HOOK=` the hook (`~/Dev/vmConfig/tmux-claude-state`; missing: n/a); `5 50` takes ~12 min. On stderr: waits timed out after 10 s (their values near 10000 ms) and idle halves too far apart to be steady; exit 1 when setup times out |
 | `tabrail-chat-test-lib`, `tabrail-chat-fake` | A 120x4 pane for `tabrail-chat` and helpers for rows, keys and the wheel on pane `C` (`main`; only the helpers with `HELPERS_ONLY=1`); the fake claude, canned stream-json per question |
 | `tabrail-test-lib` | What the tests share: the throwaway servers, clicks, checks, slots and their processes |
 | `tabrail-act` | What the menus and group drags do: new tab, duplicate, fold, new group, rename group, move group |
+| `tabrail-timer` | The group timers' state file, its only writer: start, stop, toggle, reset, rename (under flock, renamed into place) |
 | `tabrail-move`, `tabrail-pick` | Move a tab to a group in a picker; the picker (Claude Code's option-list style, fzf), or a name field with `-q` |
 | `tabrail-name` | The menus' Rename, Rename group and New group…: a name field in a popup, Esc cancels whatever `status-keys` is |
 | `groups.conf.example` | The groups file format |

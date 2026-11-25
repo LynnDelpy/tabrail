@@ -14,8 +14,9 @@ echo "set -g @tabrail_groups '$T/groups.conf'" >> "$T/conf"
 inner; wi=$(t new-window -d -P -F '#{window_index}' -c "$T/web"); t new-window -d -c "$T/infra"
 o -f /dev/null new -d -s o -x 160 -y 46 "TMUX= tmux -L tabrail-$L attach -t main; sleep 600"
 o set -g status off; settle 3
-bar() { t capture-pane -p -t "$(side "${2:-main:1}")" | grep -m1 -- "$1"; }
-shown() { o capture-pane -p -t o:0; }
+nf=$'\uEB2C'   # head.rs START, shown here as ▷
+bar() { t capture-pane -p -t "$(side "${2:-main:1}")" | grep -m1 -- "$1" | sed "s/$nf/▷/g"; }
+shown() { o capture-pane -p -t o:0 | sed "s/$nf/▷/g"; }
 y() { shown | grep -n -m1 -- "$1" | cut -d: -f1; }                 # the screen row with TEXT
 x() { local l; l=$(shown | grep -m1 -- "$1"); l=${l%%"$2"*}; echo $((${#l} + 1)); }   # column of $2 in it
 sgr() { o send-keys -t o:0 -l $'\e[<0;'"$1;$2$3"; }                 # COL ROW M|m

@@ -70,3 +70,4 @@ On a throwaway tmux server with two groups holding tabs: SGR right-click on grou
 - State file: `$XDG_STATE_HOME/tabrail/timers`, else `~/.local/state/tabrail/timers`.
 - A timer whose group was removed from the groups file stays in the state file unseen and shows again if a group of that name comes back.
 - A click on a stopped time resumes it; a never-started or reset timer starts from its `▷` or the menu.
+- The `▷` is drawn as Nerd Font nf-cod-play (U+EB2C), an outlined triangle centred on the text: the terminal's MesloLGS NF draws its own ▷ on the baseline, visibly low; tmux counts it as one column.

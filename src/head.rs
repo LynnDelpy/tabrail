@@ -4,9 +4,10 @@
 use crate::draw::{fg, fit, rgb};
 
 /// The row at `width` for a group of `n` tabs, `fold`ed or not; `time` the timer's label and colour
-/// (timer.rs). The time's colour sets the foreground alone: the tint and bold go on past it.
+/// (timer.rs). The time's colour sets the foreground alone: the tint and bold go on past it. With it
+/// the first and last column of the time (1-based, one per char, its marker included) for a click.
 pub fn row((name, tint, icon): &(String, String, String), fold: bool, n: usize, time: Option<(String, &str)>,
-           width: usize) -> String {
+           width: usize) -> (String, Option<(usize, usize)>) {
     let len = |s: &str| s.chars().count();
     let (time, kind) = time.unwrap_or_default();
     let gap = if time.is_empty() { "" } else { " " }; // in the name's colour: the time's starts at its marker
@@ -19,7 +20,8 @@ pub fn row((name, tint, icon): &(String, String, String), fold: bool, n: usize, 
     let room = width.saturating_sub(len(&head) + len(&time));
     let count = fit(if len(&count) <= room { &count } else { "" }, room);
     let tint = tint.strip_prefix('#').map(|h| rgb(48, h)).unwrap_or_default();
-    format!("{tint}{}\x1b[1m{head}{}{time}{}{count}\x1b[0m", fg("text"), fg(kind), fg("text"))
+    let span = (!time.is_empty()).then(|| (len(&head) + 1, len(&head) + len(&time)));
+    (format!("{tint}{}\x1b[1m{head}{}{time}{}{count}\x1b[0m", fg("text"), fg(kind), fg("text")), span)
 }
 
 #[cfg(test)]

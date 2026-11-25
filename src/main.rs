@@ -45,7 +45,7 @@ fn main() {
                        model::FIELDS.map(|f| format!("#{{{f}}}")).join("\t"));
     let mut out = std::io::stdout();
     let _ = write!(out, "\x1b]2;sidebar\x1b\\\x1b[?25l\x1b[?1000h\x1b[?1006h");
-    // the tab or group a left press started on; the lines on screen and their size
+    // the row, column and tab or group a left press started on; the lines on screen and their size
     let (mut drag, mut shown, mut drawn) = (None, Vec::new(), (0, 0));
     // while tmux shows a right-click menu over the sidebar, drawing would paint over it: paused from
     // the right press until the next change or click after the menu's first moment, 10 s at most
@@ -84,7 +84,7 @@ fn main() {
                 t.ask(&format!("last-pane -t {pane}"));
                 menu_open = Some(Instant::now());
             } else if !click.right {
-                for cmd in drag::left(&click, screen.rows.get(click.row), &tabs, &folded, &helper, &mut drag) {
+                for cmd in drag::left(&click, screen.rows.get(click.row), &tabs, &folded, &place, &mut drag) {
                     t.ask(&cmd);
                 }
             }

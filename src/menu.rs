@@ -76,7 +76,7 @@ pub fn for_row(row: Option<&Row>, tabs: &[Tab], folded: &HashSet<String>, timers
                          {{ run-shell -b '#{{@tabrail_dir}}/tabrail-tmux close {id}' }} }}"),
             ])
         }
-        Some(Row::Group(raw)) => {
+        Some(Row::Group(raw, _)) => {
             let name = clean(raw);
             let mut items = vec![new_tab(&name), new_group(p.pane)];
             if name != "Default" { // Colour… as the timer below: a cleaned name is another group's line

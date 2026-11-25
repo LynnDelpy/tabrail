@@ -24,3 +24,14 @@
     has no column today (input.rs drops it): add it without adding lines to
     control.rs (106 already). The time's columns come from draw, which knows
     where it put the label after cutting the name.
+- id: "3"
+  title: Start button at the row's right edge
+  description: >-
+    A group without a timer shows a dim ▷ in its header row's last column; a
+    press and release on it starts the timer (SPEC.md CAP-7, click constraint).
+  invoke_dev_with: >-
+    Needs story 2 (PR #35) merged: its click span and toggle do the clicking,
+    and tabrail-timer toggle already starts a group with no time, so head.rs
+    reporting the ▷'s column as the span should be most of it. draw.rs is at
+    96 lines and control.rs at 106: add nothing there. Test on tmux -L
+    servers with XDG_STATE_HOME on a temp dir, never the user's timers.

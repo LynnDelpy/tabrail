@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Tests for the group timers in the sidebar (src/timer.rs, head.rs, the group menu) on throwaway tmux
 # servers (tabrail-test-lib), state in the temp dir's XDG_STATE_HOME: the menu's items (Default's too,
-# none for a name clean() changes), start, stop, resume and reset by right-click, the time's colour,
-# two groups, a second session, rename, folded, kill-server (a stopped value back, a running one counts
-# the time down), a narrow sidebar, a garbled file, a group's last tab closed. The state file alone:
-# tabrail-timer-state-test. One line per check, exits 1 if one failed.
+# none and no ▷ for a name clean() changes), start, stop, resume and reset by right-click, the time's
+# colour, two groups, a second session, rename, folded, kill-server (a stopped value back, a running
+# one counts the time down), a narrow sidebar, a garbled file, a group's last tab closed. The state
+# file alone: tabrail-timer-state-test. One line per check, exits 1 if one failed.
 L=timer
 source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
 F=$T/state/tabrail/timers W=Website   # XDG_STATE_HOME=$T/state: tabrail-test-lib
@@ -44,7 +44,7 @@ check "the running time grows ($(num "$a") s -> $(num "$b") s)" '(( $(num "$b") 
 menu "• Default"; m=$(shown); pick t
 check "Default: Start timer in its menu, and it runs" '[[ $m == *"Start timer"* && $(bar "• Default") == *"▶ "* ]]'
 menu "■ Q'a"; m=$(shown); pick q
-check "a name clean() changes: a menu without timer items" '[[ $m == *Fold* && $m != *timer* ]]'
+check "a name clean() changes: a menu without timer items, no ▷" '[[ $m == *Fold* && $m != *timer* && $(bar "■ Q") != *▷* ]]'
 
 t new -d -s two -c "$T/web"; o new-window -d "TMUX= tmux -L tabrail-$L attach -t two; sleep 600"; settle 2
 menu "◆ $W"; m=$(shown)
@@ -72,8 +72,8 @@ c=$(bar "▲ Ops")
 check "the running one counted the 4 s down ($(num "$b") s -> $(num "$c") s)" '(( $(num "$c") >= $(num "$b") + 4 ))'
 
 menu "◆ $W"; pick 0; menu "◆ $W"; m=$(shown); pick q
-check "Reset timer: line gone, no time, no Reset timer in the menu" \
-  '[[ -z $(line $W) && $(bar "◆ $W") != *[▶⏸]* && $m == *"Start timer"* && $m != *"Reset timer"* ]]'
+check "Reset timer: line gone, no time, the ▷ back, no Reset timer in the menu" \
+  '[[ -z $(line $W) && $(bar "◆ $W") != *[▶⏸]* && $(bar "◆ $W") == *" ▷" && $m == *"Start timer"* && $m != *"Reset timer"* ]]'
 
 echo "Abcdefghijklmnopqrstuvwxyz0123 0 $((EPOCHSECONDS - 7200))" >> "$F"
 t resize-pane -t "$(side main:1)" -x 26; settle 2; a=$(bar "● ")

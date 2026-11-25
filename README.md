@@ -4,11 +4,11 @@ A vertical tab rail for tmux: a sidebar on the left of every tab that lists all 
 grouped by project, with what each one is doing.
 
 ```
-▾ ◆ Website
+▾ ◆ Website              ▷         the group has no timer: a click on ▷ starts one
  ❯ Fix login redire ✳ ⚙ 2m         Claude's topic, cut; Claude running a command for 2 min
    website·release-2 ✳   ◇         folder and git branch; Claude idle
    deploy · vim                    named by hand; vim runs in it
-▾ ▲ Infra
+▾ ▲ Infra                ▷
    lde@app01 in · ssh ⏱ 4m         ssh: remote user, host, folder, cut; 4 min
    infra               ✗ 2         the last command failed
     14:41  Wed 18.11.
@@ -18,16 +18,18 @@ grouped by project, with what each one is doing.
   them by dragging. The order is the groups file's line order, which is also the order a new tab's
   folder is matched in (the first group whose folder holds it); Default is always last.
 - A timer per group, Default too, started and stopped by hand from the group's right-click menu or a
-  click on its time: the time right after the group's name (before a folded group's `N tabs`),
+  click on its time or `▷`: the time right after the group's name (before a folded group's `N tabs`),
   `▶ 12m` while it runs, `⏸ 12m` dimmed while stopped, in every sidebar of every session. Start timer
-  (or a click on a stopped time) counts on from the stopped value; never started or reset, it shows
-  no time to click. Reset timer drops it, Rename group takes it along. Wall-clock (seconds before plus
-  the time since its start), kept in `$XDG_STATE_HOME/tabrail/timers`, else
-  `~/.local/state/tabrail/timers`: it survives `tabrail-tmux restart`, a tmux restart and a reboot,
-  and a running one counts the time tmux was down. Where the row is too narrow the count goes first,
-  then the name is cut; the time is never cut. A group without tabs shows only while it has a timer
-  (its header, no tab rows), so its time and menu stay in reach. A group removed from groups.conf
-  keeps its timer unseen, shown again if the name comes back; `tabrail-timer reset NAME` drops it.
+  (or a click on a stopped time) counts on from the stopped value; never started or reset, the row
+  shows no time but a dim `▷` in its last column, which starts it from zero (no `▷` for a name
+  with quotes or other characters the menus drop: it has no timer items either). Reset timer
+  drops it, Rename group takes it along. Wall-clock (seconds before plus the time since its start),
+  kept in `$XDG_STATE_HOME/tabrail/timers`, else `~/.local/state/tabrail/timers`: it survives
+  `tabrail-tmux restart`, a tmux restart and a reboot, and a running one counts the time tmux was
+  down. Where the row is too narrow the count goes first (whole or not at all), then the name is cut;
+  the time and the `▷` are never cut. A group without tabs shows only while it has a timer (its
+  header, no tab rows), so its time and menu stay in reach. A group removed from groups.conf keeps
+  its timer unseen, shown again if the name comes back; `tabrail-timer reset NAME` drops it.
 - Tab names: a name given by hand, else Claude Code's topic, the running command (without `VAR=value`
   in front), or folder and branch. An ssh tab shows the remote's `user@host folder`, vim's file
   (`vim nginx.conf`), else what the remote titles, or the host until the remote sends a title.
@@ -43,10 +45,11 @@ grouped by project, with what each one is doing.
   of sight.
 - Mouse: click a tab to go there, drag it onto another tab or a group; click a group's row to fold it,
   its time (`▶ 12m` or `⏸ 12m`, the marker included; press and release both on it) to stop or resume
-  its timer; drag the row (from its time too) onto another group's row or one of its tabs to move its
-  line in the groups file there (above that group moving up, below it moving down); right-click for
-  menus (new tab, new group, rename, duplicate, move to group, close, fold; a group's Start timer or
-  Stop timer, and Reset timer once it has a time).
+  its timer, the `▷` at a timeless group's right edge to start it; drag the row (from its time or `▷`
+  too) onto another group's row or one of its tabs to move its line in the groups file there (above
+  that group moving up, below it moving down); right-click for menus (new tab, new group, rename,
+  duplicate, move to group, close, fold; a group's Start timer or Stop timer, and Reset timer once it
+  has a time).
 - One width: every tab's sidebar keeps the same width through terminal resizes and layout commands;
   drag any sidebar's border (or `resize-pane` it) to change it for all tabs until tmux stops.
 - Reader pane (optional, `@tabrail_reader`): one chat in a bar across the full width of the tab
@@ -162,8 +165,8 @@ Optional inputs, shown when present:
 | `tabrail-move-test` | The reader bar's move in tmux calls, counted by a logging `tmux` first in PATH: a tab switch at most 4, `fit` with the bar or slot in place 1; a slot out of place and a zoomed tab without a slot switched to, on throwaway tmux servers |
 | `tabrail-chat-test`, `tabrail-chat-session-test` | `tabrail-chat`'s tests on a throwaway tmux server: what it shows and its keys; its claude's options, restarts and the way out |
 | `tabrail-bar-test` | The reader bar sized by `tabrail-chat` in it (its height, buttons, away, tab switch, zoom), against the fake claude on throwaway tmux servers |
-| `tabrail-timer-test` | The group timers in the sidebar on throwaway tmux servers, state in a temp `XDG_STATE_HOME`: the menu's items (Default's, none for a name with quotes), start, stop, resume and reset by right-click, the time's colour, two groups, a second session, rename, folded, kill-server, a narrow sidebar, a garbled file, a group's last tab closed |
-| `tabrail-timer-click-test` | A click on a group's time on throwaway tmux servers, real SGR presses: stop and resume (both sessions, fold state kept, folded too); beside it, the name, off the time, no time, a drag from it and a tab row as before |
+| `tabrail-timer-test` | The group timers in the sidebar on throwaway tmux servers, state in a temp `XDG_STATE_HOME`: the menu's items (Default's, none and no `▷` for a name with quotes), start, stop, resume and reset by right-click, the time's colour, two groups, a second session, rename, folded, kill-server, a narrow sidebar, a garbled file, a group's last tab closed |
+| `tabrail-timer-click-test` | A click on a group's time or `▷` on throwaway tmux servers, real SGR presses: stop and resume (both sessions, fold state kept, folded too); beside it, the name, off the time, no time, a drag from it and a tab row as before; the `▷` in the last column, beside and off it, a drag from it, a start from it in both sessions, back after Reset, folded |
 | `tabrail-timer-state-test` | `tabrail-timer` and its state file alone, no tmux server: toggle, start twice, reset, rename, no file, usage, garbage dropped, racing writes |
 | `tabrail-shown-test` | Only the sidebar shown works: which sidebars write per tab switch, hook burst, detach, attach, width set while hidden, new tab, second session and `switch-client`, on throwaway tmux servers |
 | `tabrail-perf-test [N…]` | Speed at N tabs (default 5 and 50) on throwaway tmux servers, the reader bar on: per N one line with the tab switch median and max (until the new tab's sidebar marks it), the same under Claude hook calls (one every 100 ms unless 4 run) and the rate they reached, the reader's median (until it is in the new tab), idle tmux CPU and ms per hook call. `SETTLE=` seconds to wait before measuring (60 + 2 per tab), `IDLE=` seconds of idle measured (60), `HOOK=` the hook (`~/Dev/vmConfig/tmux-claude-state`; missing: n/a); `5 50` takes ~12 min. On stderr: waits timed out after 10 s (their values near 10000 ms) and idle halves too far apart to be steady; exit 1 when setup times out |

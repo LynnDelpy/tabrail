@@ -10,7 +10,7 @@ use std::collections::HashSet;
 pub enum Row {
     Nothing,
     Tab(String),
-    Group(String, Option<(usize, usize)>), // and its time's first and last column (head.rs), if shown
+    Group(String, Option<(usize, usize)>), // and the time's or ▷'s first and last column (head.rs), if shown
 }
 
 pub(crate) fn fg(key: &str) -> String {

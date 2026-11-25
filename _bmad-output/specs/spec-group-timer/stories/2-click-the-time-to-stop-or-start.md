@@ -2,7 +2,8 @@
 title: 'Click the time to stop or start'
 type: 'feature'
 created: '2026-11-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: 'c496d9355a407bfff69726947ddff06aed06008e'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -51,16 +52,38 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/control.rs`, `src/input.rs` -- `Click.col` from `n[1]` -- where the click landed in the row
-- [ ] `src/draw.rs` -- `Screen` carries, per group row with a time, its first and last column -- draw is the only place that knows after cutting the name
-- [ ] `src/drag.rs` -- keep the press column; on release on the same row with both columns inside the span, `run-shell -b '<tabrail-timer> toggle <name>'` plus nothing else; otherwise today's fold, reorder and drop -- CAP-2
-- [ ] `src/main.rs` -- pass the span and the timer path into `drag::left` without growing past 100 lines
-- [ ] `README.md` -- Mouse bullet: clicking a group's time stops or resumes it -- behaviour reference
-- [ ] `src/drag.rs` or `src/draw.rs` unit tests -- span hit and miss at the time's first and last column and one beside each, folded and unfolded rows
+- [x] `src/control.rs`, `src/input.rs` -- `Click.col` from `n[1]` -- where the click landed in the row
+- [x] `src/draw.rs` -- `Screen` carries, per group row with a time, its first and last column -- draw is the only place that knows after cutting the name
+- [x] `src/drag.rs` -- keep the press column; on release on the same row with both columns inside the span, `run-shell -b '<tabrail-timer> toggle <name>'` plus nothing else; otherwise today's fold, reorder and drop -- CAP-2
+- [x] `src/main.rs` -- pass the span and the timer path into `drag::left` without growing past 100 lines
+- [x] `README.md` -- Mouse bullet: clicking a group's time stops or resumes it -- behaviour reference
+- [x] `src/drag.rs` or `src/draw.rs` unit tests -- span hit and miss at the time's first and last column and one beside each, folded and unfolded rows
 
 **Acceptance Criteria:**
 - Given a running group timer shown in two sessions, when the time is clicked in one, then both show it stopped on their next redraw.
 - Given a click on the time, then the group's fold state (`@sidebar_fold`) is unchanged.
+
+## Spec Change Log
+
+## Review Triage Log
+
+Pass 1 (blind B, edge-case E, verification-gap V):
+
+| # | Finding | Verdict | Evidence | Route |
+|---|---|---|---|---|
+| B1, E1, E8, V-o2 | The span saved at the press is never read: both columns are tested against the release row's span, so a label changing width between press and release (`▶ 59s` to `▶ 1m`) folds instead of toggling | low | `drag.rs` release arm matches `Row::Group(src, _)`; `on_time` reads `row` | patch (both columns against the press span) |
+| B2, E2 | Toggle uses whatever group sits on the row at release: a layout shift can start a never-timed group's timer | low | `from == click.row` compares row numbers only; press on untimed A, release over B's time toggles A | patch (same fix: A's press span is None) |
+| B3, E4, E7 | A time click on a name `clean()` changes does nothing, neither toggle nor fold | low | `toggle()` returns `vec![]`; frozen: any other press and release folds | patch (fold) |
+| B5 | Click test's "Off the time" and "Drag" send no motion events, unlike a real drag | low | `tabrail-bar-test:43` sends `\e[<32;…M` | patch (test) |
+| B6 | Click test has no check that the header row and time column were found | low | an empty `r`/`c` makes every later check fail misleadingly | patch (test) |
+| B8 | Click test's "Tab row" only checks the window changed, not to which | low | `window_index` compared with the old one | patch (test) |
+| B10 | `folds()` in drag tests does not check which group folded | low | only the `set -g @sidebar_fold ` prefix is asserted | patch (test) |
+| V-o1, E6 | Click test's "Space after" reuses `last` from the stopped label; past 9 s the resumed label grows onto that column | low | `last` set before Resume | patch (test) |
+| E3, B4 | Wide (emoji, CJK) icon or name chars shift the clickable span | low | frozen: "Columns are counted as draw counts them (one per char)"; all of draw counts chars; groups.conf.example icons are one column; fix needs cell widths everywhere | reject |
+| E5 | Click test counts bytes under a non-UTF-8 locale | low | the other tests assume UTF-8 the same way; run from the user's UTF-8 shell | reject |
+| B7 | Click test duplicates helpers of tabrail-timer-test and the lib | low | each tabrail-*-test keeps its own helpers; a lib refactor is uninvited | reject |
+| B9 | No test clicks Default's time; Resume in the second session unchecked | false | no Default-specific branch in the click path (`head::row`, `drag::left`); Resume shares Stop's path | reject |
+| B11 | Story text drifted (span on `Row::Group`, not `Screen`; `Click` in input.rs); `Place` doc names menus only | false | fix would edit this spec; `Place` has no doc comment, its fields name each helper | reject |
 
 ## Design Notes
 

@@ -35,11 +35,16 @@ group() {
 
 ensure() {
   # During a restore (resurrect) tabs come back one by one, their saved sidebars and slots with them:
-  # wait until it is done, and a moment for the restored ones to start ([t] keeps pgrep off this script)
+  # wait until it is done, and a moment for the restored ones to start ([t] keeps pgrep off this script).
+  # One waiter then sees to every tab; one per restored tab (a pgrep -f each, twice a second) kept the
+  # CPU so busy that a restore of 60 tabs took minutes
   local win id
   if pgrep -f '[t]mux-resurrect/scripts/restore.sh' >/dev/null; then
+    exec 8> "/tmp/tabrail-$UID.wait"
+    flock -n 8 || return 0
     while pgrep -f '[t]mux-resurrect/scripts/restore.sh' >/dev/null; do sleep 0.5; done
     sleep 2
+    set --
   fi
   exec 9> "/tmp/tabrail-$UID.lock"   # one ensure at a time, or two can add a sidebar each
   flock 9

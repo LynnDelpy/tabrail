@@ -1,22 +1,16 @@
 //! One control-mode connection to tmux (`tmux -C`). tmux pushes what changed (tab switched, added,
 //! renamed, closed, resized, and %paste-buffer-changed from `tabrail-tmux refresh`), and commands go
 //! over the same pipe, so nothing is spawned while the sidebar runs.
+use crate::input::Click;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{ChildStdin, Command, Stdio};
 use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender};
 use std::thread;
 use std::time::Duration;
 
-/// A mouse press or release in the sidebar: which button, and the row (1-based).
-pub struct Click {
-    pub right: bool,
-    pub release: bool,
-    pub row: usize,
-}
-
 pub enum Event {
     Click(Click),
-    Changed,
+    Note(String), // a notification line (`%session-window-changed $1 @4`)
     Reply(Vec<String>),
     Gone,
 }
@@ -26,6 +20,7 @@ pub struct Tmux {
     pub rx: Receiver<Event>,
     pub tx: Sender<Event>,
     pub clicks: Vec<Click>,
+    pub notes: Vec<String>,
 }
 
 impl Tmux {
@@ -33,50 +28,48 @@ impl Tmux {
     pub fn attach(session: &str) -> std::io::Result<Tmux> {
         let mut child = Command::new("tmux")
             .args(["-C", "attach-session", "-f", "ignore-size,no-output", "-t", session])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
+            .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null())
             .spawn()?;
         let (tx, rx) = channel();
         let (out, events) = (child.stdout.take().expect("stdout is piped"), tx.clone());
         thread::spawn(move || read(out, events));
-        Ok(Tmux { input: child.stdin.take().expect("stdin is piped"), rx, tx, clicks: Vec::new() })
+        Ok(Tmux { input: child.stdin.take().expect("stdin is piped"), rx, tx, clicks: vec![], notes: vec![] })
     }
 
-    /// Send one command (one per line: each gets its own reply) and wait for its reply; clicks that
-    /// come in meanwhile wait in `clicks`.
+    /// Send one command (one per line: each gets its own reply) and wait for its reply; clicks and
+    /// notifications that come in meanwhile wait in `clicks` and `notes`.
     pub fn ask(&mut self, cmd: &str) -> Vec<String> {
         let _ = writeln!(self.input, "{cmd}").and_then(|_| self.input.flush());
         loop {
             match self.rx.recv() {
                 Ok(Event::Reply(lines)) => return lines,
-                Ok(Event::Click(c)) => self.clicks.push(c),
-                Ok(Event::Changed) => {}
-                Ok(Event::Gone) | Err(_) => std::process::exit(0),
+                event => self.keep(event.unwrap_or(Event::Gone)),
             }
         }
     }
 
-    /// Wait for the next change, a click, or `timeout`; changes that pile up count once. True if
-    /// something happened.
-    pub fn wait(&mut self, timeout: Duration) -> bool {
-        let woke = match self.rx.recv_timeout(timeout) {
-            Ok(Event::Click(c)) => {
-                self.clicks.push(c);
-                true
-            }
-            Ok(Event::Gone) | Err(RecvTimeoutError::Disconnected) => std::process::exit(0),
-            Ok(_) => true,
-            Err(RecvTimeoutError::Timeout) => false,
+    /// Wait for the next notification or click, at most `timeout` (None: as long as it takes); what
+    /// piles up meanwhile comes along. True if something came.
+    pub fn wait(&mut self, timeout: Option<Duration>) -> bool {
+        let first = match timeout.map(|t| self.rx.recv_timeout(t)) {
+            Some(Err(RecvTimeoutError::Timeout)) => return false,
+            Some(event) => event.ok(),
+            None => self.rx.recv().ok(),
         };
-        while let Ok(event) = self.rx.try_recv() {
-            match event {
-                Event::Click(c) => self.clicks.push(c),
-                Event::Gone => std::process::exit(0),
-                _ => {}
-            }
+        let rest: Vec<Event> = self.rx.try_iter().collect();
+        for event in [first.unwrap_or(Event::Gone)].into_iter().chain(rest) {
+            self.keep(event);
         }
-        woke
+        true
+    }
+
+    fn keep(&mut self, event: Event) {
+        match event {
+            Event::Click(c) => self.clicks.push(c),
+            Event::Note(line) => self.notes.push(line),
+            Event::Reply(_) => {}
+            Event::Gone => std::process::exit(0),
+        }
     }
 }
 
@@ -86,19 +79,17 @@ fn read(out: impl Read, events: Sender<Event>) {
     let (mut ours, mut theirs) = (None::<Vec<String>>, false);
     for line in BufReader::new(out).lines().map_while(Result::ok) {
         let end = line.starts_with("%end ") || line.starts_with("%error ");
-        if let Some(lines) = ours.as_mut() {
-            if end {
-                let _ = events.send(Event::Reply(ours.take().unwrap_or_default()));
-            } else {
-                lines.push(line);
-            }
+        if end && ours.is_some() {
+            let _ = events.send(Event::Reply(ours.take().unwrap_or_default()));
+        } else if let Some(lines) = ours.as_mut() {
+            lines.push(line);
         } else if theirs {
             theirs = !end;
         } else if line.starts_with("%begin ") {
             (ours, theirs) = if line.ends_with(" 1") { (Some(vec![]), false) } else { (None, true) };
         } else if line.starts_with("%exit") {
             break;
-        } else if line.starts_with('%') && events.send(Event::Changed).is_err() {
+        } else if line.starts_with('%') && events.send(Event::Note(line)).is_err() {
             return;
         }
     }

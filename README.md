@@ -72,9 +72,18 @@ grouped by project, with what each one is doing.
   (after the timer) grows the bar by a sixth of the window, up to two thirds, `▼` shrinks it by a
   sixth, down to 4 rows; that size holds until the next question or until the bar is back at 4
   rows. A double-click does nothing to it.
-- Fast: each sidebar keeps one tmux control-mode connection and redraws when tmux reports a change;
-  nothing is spawned on a tab switch (~15 ms until the sidebar shows it) but, with the reader pane, the
-  helper that moves it. Rust, standard library only.
+- Fast: only the sidebar shown works. Each keeps one tmux control-mode connection; the one of the tab
+  shown (current in its session, a terminal attached) redraws when tmux reports a change and every
+  second, listing only the tabs' own panes. The others neither draw nor tick until their tab is
+  shown (a tab switch, an attach, `switch-client`), then draw at once; meanwhile a terminal attaching,
+  detaching or switching sessions costs each one `list-clients`, and a layout change of its own tab
+  one `display` (and a `resize-pane` if its width is off). Nothing is spawned on a tab switch but,
+  with the reader pane, the helper that moves it. `tabrail-perf-test`, reader bar on: a tab switch
+  shows its sidebar current after ~8 ms at 5 tabs and ~18 ms at 50 (~16 ms with Claude hook calls 10
+  times a second), and tmux idles at 0.1% and 0.4% of a core.
+  A `swap-window` onto the tab shown tells the control connections nothing: that tab's sidebar shows
+  its last frame until the next tab switch or a click on it (the reader bar does not follow either). Rust, standard
+  library only.
 
 ## Setup
 
@@ -126,7 +135,7 @@ Optional inputs, shown when present:
 
 | File | Job |
 |---|---|
-| `src/*.rs` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus, `width.rs` one width for all |
+| `src/*.rs` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `input.rs` mouse, `drag.rs` left button, `menu.rs` right-click menus, `width.rs` one width for all, `shown.rs` whether its tab is shown (`shown/tests.rs` its tests) |
 | `src/chat/` | `tabrail-chat`: `main.rs` loop and drawing, `chat.rs` keys and claude's events, `session.rs` claude across restarts (`--resume`), `claude.rs` the claude process, `stream.rs` its stream-json lines, `json.rs` JSON, `view.rs` the conversation, `input.rs` the input, `keys.rs` keys, `mouse.rs` wheel and clicks, `term.rs` the terminal, `bar.rs` the reader bar's height and buttons, `tmux.rs` its pane and `tabrail-reader size` |
 | `tabrail.tmux` | What tmux.conf loads: mouse bindings, hooks, prefix M and & |
 | `tabrail-tmux` | Housekeeping from the hooks: a sidebar (and a reader slot) for every tab, restart, close tabs with only a sidebar (and the reader pane or its slot), the menus' Close |
@@ -135,6 +144,7 @@ Optional inputs, shown when present:
 | `tabrail-reader-test`, `tabrail-slot-test` | The reader bar's tests and its slots' (with ~/Dev/vmConfig's mouse config and a resurrect save and restore), on throwaway tmux servers |
 | `tabrail-chat-test`, `tabrail-chat-session-test` | `tabrail-chat`'s tests on a throwaway tmux server: what it shows and its keys; its claude's options, restarts and the way out |
 | `tabrail-bar-test` | The reader bar sized by `tabrail-chat` in it (its height, buttons, away, tab switch, zoom), against the fake claude on throwaway tmux servers |
+| `tabrail-shown-test` | Only the sidebar shown works: which sidebars write per tab switch, hook burst, detach, attach, width set while hidden, new tab, second session and `switch-client`, on throwaway tmux servers |
 | `tabrail-perf-test [N…]` | Speed at N tabs (default 5 and 50) on throwaway tmux servers, the reader bar on: per N one line with the tab switch median and max (until the new tab's sidebar marks it), the same under Claude hook calls (one every 100 ms unless 4 run) and the rate they reached, the reader's median (until it is in the new tab), idle tmux CPU and ms per hook call. `SETTLE=` seconds to wait before measuring (60 + 2 per tab), `IDLE=` seconds of idle measured (60), `HOOK=` the hook (`~/Dev/vmConfig/tmux-claude-state`; missing: n/a); `5 50` takes ~12 min. On stderr: waits timed out after 10 s (their values near 10000 ms) and idle halves too far apart to be steady; exit 1 when setup times out |
 | `tabrail-chat-test-lib`, `tabrail-chat-fake` | A 120x4 pane for `tabrail-chat` and helpers for rows, keys and the wheel on pane `C` (`main`; only the helpers with `HELPERS_ONLY=1`); the fake claude, canned stream-json per question |
 | `tabrail-test-lib` | What the tests share: the throwaway servers, clicks, checks |

@@ -12,19 +12,19 @@ vm() { patch -s -f -p0 -d "$T/vm" "${@:2}" < "$P/$1-vmconfig.patch" >/dev/null 2
 { ! vm 5 --dry-run || vm 5; } && { vm 6 -R --dry-run || vm 6; } ||   # 5 where none is applied, then 6
   { echo "FAIL 5-, 6-vmconfig.patch do not apply to copies of ~/Dev/vmConfig's tmux.conf, tmux-mouse.conf"; exit 1; }
 { echo "source-file $T/vm/tmux-mouse.conf"; echo "set -g @resurrect-dir $T/resurrect"
-  grep '^set -g @resurrect-processes' "$T/vm/tmux.conf" | sed "s|~/Dev/tabrail/|$R/|g"; } >> "$T/conf"
+  grep '^set -g @resurrect-processes' "$T/vm/tmux.conf" | sed "s|~/Dev/tabrail/|$R/./|g"; } >> "$T/conf"   # ./ tells restored slots
 serve
-allslots() { t list-panes -a -f '#{@reader_slot}' -F "$1" | sort -u | tr '\n' ' '; }
 check "every tab holds one slot or the reader; slots 160x4 across the bottom" \
   '[[ $(marked) == "1 1 1 " && $(allslots "#{pane_width}x#{pane_height} #{pane_left},#{pane_top}") == "160x4 0,42 " ]]'
-check "a slot waits in a child named tabrail-slot, in /" \
-  '[[ $(ps -o args= --ppid "$(slot :2 "#{pane_pid}")") == *tabrail-slot* && $(slot :2 "#{pane_current_path}") == / ]]'
+check "a slot: its pane's process a plain sleep, its one child a sleep named tabrail-slot, no bash; in /" \
+  '[[ -z $(badslots) && $(slot :2 "#{pane_current_path}") == / ]]'
 t split-window -fv -l 4 -d -t :2 "$R/tabrail-slot"; t split-window -fv -l 4 -d -t :1 "$R/tabrail-slot"; settle
 check "a second slot in a tab, or one in the reader's tab, closes itself" \
   '[[ $(marked) == "1 1 1 " && $(t list-panes -t :1 | wc -l) == 3 && $(t list-panes -t :2 | wc -l) == 3 ]]'
-t kill-pane -t "$(slot :2)"; settle; t select-window -t :2; settle
+k=$(pids -t :2); t kill-pane -t "$(slot :2)"; settle; t select-window -t :2; settle
 check "a tab without a slot: one made there, then swapped; the tab left holds a slot" \
   '[[ $(at) == "2 160x4 0,42" && -z $(slot :2) && -n $(slot :1) && $(marked) == "1 1 1 " ]]'
+check "kill-pane on a slot: neither of its sleeps left" 'gone "$k"'
 t select-window -t :1; settle
 t new-window -c "$T/work"; settle 2
 check "new tab: a sidebar and the bar, tab 1 holds a slot" \
@@ -77,22 +77,23 @@ ids=$(allslots '#{pane_id}:#{pane_pid}'); t run-shell "$R/tabrail-tmux restart";
 check "restart keeps every slot" '[[ $(allslots "#{pane_id}:#{pane_pid}") == "$ids" ]]'
 t select-pane -t "$(slot :2)"; t run-shell "$R/tabrail-act dup $(win :2)"; settle 2
 check "Duplicate with the slot active: the tab's own folder" '[[ $(t display -p -t :3 "#{pane_current_path}") == "$T/work" ]]'
-n=$(tabs) w=$(win :2)
+n=$(tabs) w=$(win :2) k=$(pids -t :2)
 for p in $(own "$w"); do t kill-pane -t "$p"; done; settle 2
-check "only sidebar and slot left: the tab closes" '[[ $(tabs) == $((n - 1)) && $(marked) == "1 1 1 1 " ]]'
+check "only sidebar and slot left: the tab closes (kill-window), no sleep of its slot left" \
+  '[[ $(tabs) == $((n - 1)) && $(marked) == "1 1 1 1 " ]] && gone "$k"'
 check "@sidebar_width never written" '[[ -z $(t show -gv @sidebar_width 2>/dev/null) ]]'
 check "no failure shown in any pane" '[[ -z $(t list-panes -a -F "#{pane_in_mode}" | grep 1) ]]'
 
-n=$(tabs) saved=$(allslots '#{pane_id}' | wc -w)
+n=$(tabs) saved=$(allslots '#{pane_id}' | wc -w) k=$(pids -a)
 t run-shell "$RES/save.sh quiet"; t kill-server; settle 1
+check "kill-server: no sleep of any slot left" 'gone "$k"'
 inner boot; o respawn-pane -k -t o "TMUX= tmux -L tabrail-$L attach -t boot; sleep 60"; settle 2
 t run-shell "$RES/restore.sh"
 for i in {1..60}; do [[ $(tabs 2>/dev/null) == "$n" && -z $(marked | tr -d ' 1') ]] && break; sleep 0.5; done
 settle 4
 check "restore: every tab holds exactly one slot or the reader" \
   '[[ $(tabs) == "$n" && $(marked | tr -d " 1") == "" && $(t list-panes -t boot -f "#{||:#{@reader},#{@reader_slot}}" -F 1) == 1 ]]'
-check "restore: the saved slots are slots again, across the bottom, waiting in tabrail-slot" \
-  '[[ $(t list-panes -a -f "#{&&:#{@reader_slot},#{!:#{pane_start_command}}}" -F "#{pane_pid}" | wc -l) == "$saved" &&
-     $(allslots "#{e|-:#{window_width},#{pane_width}} #{pane_height} #{pane_at_bottom}") == "0 4 1 " &&
-     -z $(for p in $(allslots "#{pane_pid}"); do ps -o args= --ppid "$p" | grep -q tabrail-slot || echo x; done) ]]'
+check "restore: the saved slots are slots again, across the bottom, respawned without the shell, as new ones" \
+  '[[ $(t list-panes -a -f "#{&&:#{@reader_slot},#{m:*/./tabrail-slot*,#{pane_start_command}}}" -F 1 | wc -l) == "$saved" &&
+     $(allslots "#{e|-:#{window_width},#{pane_width}} #{pane_height} #{pane_at_bottom}") == "0 4 1 " && -z $(badslots) ]]'
 exit $((fails > 0))

@@ -5,8 +5,14 @@
 # @tabrail_reader unset: it exits. It marks its pane @reader_slot, unless the pane is the reader by
 # now; if its tab has the reader or a slot already (a restored slot that started late) it closes
 # instead: one tmux command, so no other tmux command runs between the look and the mark.
-# Then it waits in a child named tabrail-slot: resurrect saves a pane's child processes, and the
-# @resurrect-processes entry "~tabrail-slot->~/Dev/tabrail/tabrail-slot" starts it again in its pane.
+# Then it waits without a shell (a bash per tab adds up): it starts a sleep named tabrail-slot and
+# becomes a plain sleep itself, the pane's process. Resurrect saves a pane's child processes, and the
+# @resurrect-processes entry "~tabrail-slot->~/Dev/tabrail/tabrail-slot" types it into the restored
+# pane's shell: run in its pane's shell (that, or a default-shell -c that forks, as fish does), it
+# respawns its pane as itself, once, so the shell goes and the child resurrect saves next is
+# tabrail-slot again, not a sleep. Closing the pane hangs up the sleep (it leads the pane's session),
+# whose exit hangs up its process group, the tabrail-slot. The sleep does not notice that child dying
+# (pkill, OOM): the pane stays a slot without it, and the next save records no tabrail-slot.
 p=$TMUX_PANE
 across='#{&&:#{pane_at_bottom},#{==:#{pane_width},#{window_width}}}'
 [[ $(tmux display -p -t "$p" "#{&&:#{@tabrail_reader},$across}") == 1 ]] || exit 0
@@ -14,4 +20,11 @@ other="#{P:#{?#{&&:#{!=:#{pane_id},$p},#{||:#{@reader},#{@reader_slot}}},1,}}"
 tmux if -F -t "$p" "#{&&:#{!:#{@reader}},$other}" "kill-pane -t $p" \; \
   if -F -t "$p" "#{!:#{||:#{@reader},$other}}" "set -p -t $p @reader_slot 1"
 cd / || exit   # it keeps no folder busy
-(exec -a tabrail-slot sleep infinity)
+if [[ -z $TABRAIL_SLOT_RESPAWNED && $(tmux display -p -t "$p" '#{pane_pid}') == "$PPID" ]]; then
+  # still that shell's pane: the reader may have taken it meanwhile (tabrail-reader start); exec: a
+  # default-shell that forks is replaced too
+  exec tmux if -F -t "$p" "#{==:#{pane_pid},$PPID}" \
+    "respawn-pane -k -e TABRAIL_SLOT_RESPAWNED=1 -t $p \"exec '$0'\""
+fi
+(exec -a tabrail-slot sleep infinity) &
+exec sleep infinity

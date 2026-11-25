@@ -122,7 +122,9 @@ Optional inputs, shown when present:
   tabrail.tmux binds no `DoubleClick1Pane`; drop a `tabrail-reader grow` branch from a binding of
   your own (that command is gone). With tmux-resurrect, add
   `"~tabrail-slot->/path/to/tabrail/tabrail-slot"` to `@resurrect-processes` so that restored slot
-  panes are slots again: the slot waits in a child process named `tabrail-slot` for that. The reader
+  panes are slots again: the slot waits as a plain `sleep` whose child carries the name
+  `tabrail-slot` for that, and a restored one respawns its pane as itself, so no shell stays behind
+  it. The reader
   pane is saved as its `claude -p --input-format stream-json …`: make it a slot too
   (`"~--input-format stream-json->/path/to/tabrail/tabrail-slot"`) and keep an entry for Claude
   Code's own TUI off it (`"~^claude( --(continue|resume)|$)->claude --continue"`, not `~claude`), as
@@ -140,14 +142,14 @@ Optional inputs, shown when present:
 | `tabrail.tmux` | What tmux.conf loads: mouse bindings, hooks, prefix M and & |
 | `tabrail-tmux` | Housekeeping from the hooks: a sidebar (and a reader slot) for every tab, restart, close tabs with only a sidebar (and the reader pane or its slot), the menus' Close |
 | `tabrail-reader`, `tabrail-reader-size` | The reader pane, a bar across the bottom: a slot in every tab, swap places with the shown tab's slot, start in it, move away before its tab closes; its height as tabrail-chat asks (`size`); back across the bottom when tmux moved it or a slot |
-| `tabrail-slot` | A tab's slot: marks its pane, then waits in a child named `tabrail-slot` (for resurrect) |
+| `tabrail-slot` | A tab's slot: marks its pane, then waits as a plain `sleep`, no shell, with a child named `tabrail-slot` (for resurrect); restored into a shell, it respawns its pane as itself |
 | `tabrail-reader-test`, `tabrail-slot-test` | The reader bar's tests and its slots' (with ~/Dev/vmConfig's mouse config and a resurrect save and restore), on throwaway tmux servers |
 | `tabrail-chat-test`, `tabrail-chat-session-test` | `tabrail-chat`'s tests on a throwaway tmux server: what it shows and its keys; its claude's options, restarts and the way out |
 | `tabrail-bar-test` | The reader bar sized by `tabrail-chat` in it (its height, buttons, away, tab switch, zoom), against the fake claude on throwaway tmux servers |
 | `tabrail-shown-test` | Only the sidebar shown works: which sidebars write per tab switch, hook burst, detach, attach, width set while hidden, new tab, second session and `switch-client`, on throwaway tmux servers |
 | `tabrail-perf-test [N…]` | Speed at N tabs (default 5 and 50) on throwaway tmux servers, the reader bar on: per N one line with the tab switch median and max (until the new tab's sidebar marks it), the same under Claude hook calls (one every 100 ms unless 4 run) and the rate they reached, the reader's median (until it is in the new tab), idle tmux CPU and ms per hook call. `SETTLE=` seconds to wait before measuring (60 + 2 per tab), `IDLE=` seconds of idle measured (60), `HOOK=` the hook (`~/Dev/vmConfig/tmux-claude-state`; missing: n/a); `5 50` takes ~12 min. On stderr: waits timed out after 10 s (their values near 10000 ms) and idle halves too far apart to be steady; exit 1 when setup times out |
 | `tabrail-chat-test-lib`, `tabrail-chat-fake` | A 120x4 pane for `tabrail-chat` and helpers for rows, keys and the wheel on pane `C` (`main`; only the helpers with `HELPERS_ONLY=1`); the fake claude, canned stream-json per question |
-| `tabrail-test-lib` | What the tests share: the throwaway servers, clicks, checks |
+| `tabrail-test-lib` | What the tests share: the throwaway servers, clicks, checks, slots and their processes |
 | `tabrail-act` | What the menus and group drags do: new tab, duplicate, fold, new group, rename group, move group |
 | `tabrail-move`, `tabrail-pick` | Move a tab to a group in a picker; the picker (Claude Code's option-list style, fzf), or a name field with `-q` |
 | `tabrail-name` | The menus' Rename, Rename group and New group…: a name field in a popup, Esc cancels whatever `status-keys` is |

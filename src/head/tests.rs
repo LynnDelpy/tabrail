@@ -7,7 +7,7 @@ fn group(name: &str) -> (String, String, String) {
 
 /// The row as it shows: escape sequences dropped.
 fn text(name: &str, fold: bool, n: usize, time: Option<&str>, width: usize) -> String {
-    let line = row(&group(name), fold, n, time.map(|t| (t.to_string(), "busy")), width);
+    let line = row(&group(name), fold, n, time.map(|t| (t.to_string(), "busy")), width).0;
     let mut out = String::new();
     let mut chars = line.chars();
     while let Some(c) = chars.next() {
@@ -47,12 +47,20 @@ fn an_empty_group_has_no_count() {
 
 #[test]
 fn tint_and_bold_go_on_past_the_time() {
-    let line = row(&group("A"), false, 1, Some(("▶ 5s".into(), "busy")), 12);
+    let line = row(&group("A"), false, 1, Some(("▶ 5s".into(), "busy")), 12).0;
     let time = line.find("▶").unwrap();
     assert!(line[..time].ends_with("\x1b[38;2;249;226;175m"));
     assert!(line.contains("\x1b[1m▾ ◆ A "));
-    let stopped = row(&group("A"), false, 1, Some(("⏸ 5s".into(), "dim")), 12);
+    let stopped = row(&group("A"), false, 1, Some(("⏸ 5s".into(), "dim")), 12).0;
     assert!(stopped[..stopped.find("⏸").unwrap()].ends_with("\x1b[38;2;108;112;134m"));
     assert!(line.starts_with("\x1b[48;2;40;49;71m") && line.ends_with("\x1b[0m"));
     assert_eq!(line.matches("\x1b[0m").count(), 1);
+}
+
+#[test]
+fn the_time_columns_follow_the_cut_name() {
+    let span = |name: &str, width| row(&group(name), false, 3, Some(("▶ 2h0m".into(), "busy")), width).1;
+    assert_eq!(span("Abcdefghijklmnopqrstuvwxyz0123", 26), Some((21, 26))); // ▾ ◆ Abcdefghijklmno ▶ 2h0m
+    assert_eq!(span("Abcdefghij", 11), Some((5, 10))); // ▾ ◆ ▶ 2h0m: the cut's space dropped
+    assert_eq!(row(&group("A"), false, 1, None, 26).1, None);
 }

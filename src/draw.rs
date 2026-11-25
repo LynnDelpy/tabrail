@@ -10,7 +10,7 @@ use std::collections::HashSet;
 pub enum Row {
     Nothing,
     Tab(String),
-    Group(String),
+    Group(String, Option<(usize, usize)>), // and its time's first and last column (head.rs), if shown
 }
 
 pub(crate) fn fg(key: &str) -> String {
@@ -67,8 +67,9 @@ pub fn screen(tabs: &[Tab], groups: &[(String, String, String)], folded: &HashSe
             continue;
         }
         let fold = folded.contains(name);
-        lines.push(head::row(group, fold, members.len(), timers.label(name, now), width));
-        rows.push(Row::Group(name.clone()));
+        let (line, time) = head::row(group, fold, members.len(), timers.label(name, now), width);
+        lines.push(line);
+        rows.push(Row::Group(name.clone(), time));
         for tab in if fold { vec![] } else { members } {
             // program after the name, status at the edge; a long name is cut to make room for both, and the
             // program left out where fewer than 8 of the name's characters (all of a shorter one) would show

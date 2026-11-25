@@ -4,10 +4,11 @@ use crate::control::Event;
 use std::io::Read;
 use std::sync::mpsc::Sender;
 
-/// A mouse press or release in the sidebar: which button, and the row (1-based).
+/// A mouse press or release in the sidebar: which button, the column and the row (both 1-based).
 pub struct Click {
     pub right: bool,
     pub release: bool,
+    pub col: usize,
     pub row: usize,
 }
 
@@ -22,7 +23,7 @@ pub fn read_clicks(tx: Sender<Event>) {
             let n: Vec<usize> = seq.rsplit("[<").next().unwrap_or("").split(';')
                 .filter_map(|s| s.parse().ok()).collect();
             if n.len() == 3 && (n[0] == 0 || n[0] == 2) {
-                let click = Click { right: n[0] == 2, release: !press, row: n[2] };
+                let click = Click { right: n[0] == 2, release: !press, col: n[1], row: n[2] };
                 if tx.send(Event::Click(click)).is_err() {
                     return;
                 }

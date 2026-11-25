@@ -1,0 +1,37 @@
+# shellcheck shell=bash
+# The reader bar's move to another tab, sourced by tabrail-reader (follow, away): what it decides on
+# comes from one tmux call (state), the move is one more (move); a tab switch costs no other.
+# Needs SMALL and PANE (tabrail-reader-size), D and newslot (tabrail-reader): sourced after them.
+
+# window $1 (a session's current one; none: the current one) as win, its zoom flag (to), CMD (the
+# reader's command), its sidebar (side) and first slot (s; sout out if out of place); the reader
+# anywhere: r in window rwin (zoomed if from is 1), rh rows, isbig its @reader_big
+state() {
+  local k p w z h o b; win='' side='' s='' sout='' r=''
+  { read -r win to CMD
+    while read -r k p w z h o b; do case $k in
+      s) side=${side:-$p} ;; l) [[ -n $s ]] || s=$p sout=$o ;;
+      r) [[ -n $r ]] || r=$p rwin=$w from=$z rh=$h isbig=$b ;; esac; done
+  } < <(tmux display -p ${1:+-t "$1"} '#{window_id} #{window_zoomed_flag} #{@tabrail_reader}' \; \
+      list-panes ${1:+-t "$1"} -f '#{||:#{@sidebar},#{@reader_slot}}' -F "$PANE" \; \
+      list-panes -a -f '#{@reader}' -F "$PANE" 2>/dev/null)
+}
+
+# the reader swaps places with win's slot, made below its sidebar if it has none; both SMALL rows
+# across the bottom first, or the swap hands on another size or place. A failure before the swap ends
+# the call with the bar in place; the keyboard and zoom steps after it fail alone (if-bodies)
+move() {
+  local c=()
+  if [[ -z $s ]]; then
+    s=$(newslot "$side") || return
+    c=(set -p -t "$s" @reader_slot 1 \;)
+  fi
+  c+=(set -pu -t "$s" @reader_big \; resize-pane -t "$s" -y "$SMALL" \;)
+  [[ $sout == out ]] && c+=(join-pane -fv -d -l "$SMALL" -s "$s" -t "$side" \;)
+  [[ -n $isbig || $rh != "$SMALL" ]] && c+=(set -pu -t "$r" @reader_big \; resize-pane -t "$r" -y "$SMALL" \;)
+  # the keyboard leaves the slot for the pane it had before the bar; zoomed tabs zoom again
+  c+=(swap-pane -d -s "$r" -t "$s" \; if -F -t "$rwin" '#{@reader_slot}' "last-pane -t $rwin")
+  [[ $from == 1 ]] && c+=(\; if -F -t "$rwin" '#{!:#{window_zoomed_flag}}' "resize-pane -Z -t $rwin")
+  [[ $to == 1 ]] && c+=(\; if -F -t "$win" '#{!:#{window_zoomed_flag}}' "resize-pane -Z -t $win")
+  tmux "${c[@]}"
+}

@@ -5,6 +5,10 @@
 # its own height while it has the keyboard, or a button's step. @reader_big holds a height above
 # SMALL rows until the tab's own pane takes the keyboard or the bar leaves the tab.
 SMALL=4
+# the reader, a slot or a sidebar in one line (fit, state): r, l or s, pane, window, its zoom flag,
+# rows, in (across the bottom) or out, @reader_big
+PANE='#{?@reader,r,#{?@sidebar,s,l}} #{pane_id} #{window_id} #{window_zoomed_flag} #{pane_height}'
+PANE+=' #{?#{&&:#{pane_at_bottom},#{==:#{pane_width},#{window_width}}},in,out} #{@reader_big}'
 
 tall() { echo $(( $(tmux display -p -t "$1" '#{window_height}') * 2 / 3 )); }   # the most, in window $1
 
@@ -13,8 +17,6 @@ height() {   # reader $1 to $2 rows, kept in @reader_big above SMALL; also a slo
   if (( $2 > SMALL )); then tmux set -p -t "$1" @reader_big "$2"; else tmux set -pu -t "$1" @reader_big; fi
   tmux resize-pane -t "$1" -y "$2"
 }
-
-small() { height "$1" "$SMALL"; }
 
 # reader or slot $1 in window $2 (its height $3 if above SMALL): if tmux moved it out of place (a layout
 # command, a sidebar split in beside it), back across the bottom at full width, that high (SMALL to 2/3)
@@ -31,20 +33,24 @@ place() {
 }
 
 # WINDOW: small while its own pane is active, else the height it has (@reader_big, at most 2/3); the
-# keyboard alone never grows it. Its place and size are applied again either way (after a resize, tmux
-# spreads rows; a layout command spreads the bar too). A tab without the bar: its slot, always small.
+# keyboard alone never grows it. Its place and size are applied again (after a resize, tmux spreads
+# rows; a layout command spreads the bar too) unless its one query finds both right already. A tab
+# without the bar: its slot, always small.
 fit() {
-  local r rwin isbig zoom active most
-  read -r r rwin isbig < <(reader)
-  [[ $rwin == "$1" ]] || { r=$(slot "$1") isbig=; }
-  [[ -n $r ]] || return
-  read -r zoom active < <(tmux display -p -t "$1" \
-    '#{window_zoomed_flag} #{?@reader,reader,#{?@sidebar,sidebar,work}}')
-  [[ $zoom == 1 ]] && return   # resizing would unzoom the tab
+  local zoom wh active on k r h o big isbig='' rows want=''
+  local f='#{window_zoomed_flag} #{window_height} #{?@reader,reader,#{?@sidebar,sidebar,work}}'
+  { read -r zoom wh active on; read -r k r _ _ h o big; } < <(tmux display -p -t "$1" \
+    "$f #{!=:#{@tabrail_reader},}" \; list-panes -t "$1" -f '#{@reader}' -F "$PANE" \; \
+    list-panes -t "$1" -f '#{@reader_slot}' -F "$PANE" 2>/dev/null)
+  [[ $on == 1 && -n $r && $zoom == 0 ]] || return   # zoomed: resizing would unzoom the tab
+  [[ $k == r ]] && isbig=$big   # the bar if it is in WINDOW, else its slot
+  rows=$(( wh * 2 / 3 ))
+  if (( ${isbig:-0} > SMALL )) && [[ $active != work ]]; then (( isbig < rows )) && rows=$isbig
+  else rows=$SMALL; fi
+  (( rows > SMALL )) && want=$rows   # the @reader_big that height leaves
+  [[ $o == in && $h == "$rows" && $big == "$want" ]] && return
   place "$r" "$1" "$isbig"
-  most=$(tall "$1")
-  if (( ${isbig:-0} > SMALL )) && [[ $active != work ]]; then height "$r" $(( isbig < most ? isbig : most ))
-  else small "$r"; fi
+  height "$r" "$rows"
 }
 
 # PANE ROWS|up|down from tabrail-chat in the bar: ROWS its own height (SMALL up to a third of the

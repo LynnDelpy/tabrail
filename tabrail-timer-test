@@ -18,8 +18,9 @@ up() {   # tabs in work (Default), web, infra, long, dirty; main shown in the ou
   o set -g status off; settle 3
 }
 down() { t kill-server; o kill-server; sleep 0.5; }
-bar() { t capture-pane -p -t "$(side "${2:-main:1}")" | grep -m1 -- "$1"; }   # a sidebar's row with TEXT
-shown() { o capture-pane -p -t o:0; }                                       # tab 1 of main, menus too
+nf=$'\uEB2C'   # head.rs START, shown here as ▷
+bar() { t capture-pane -p -t "$(side "${2:-main:1}")" | grep -m1 -- "$1" | sed "s/$nf/▷/g"; }   # a sidebar's row with TEXT
+shown() { o capture-pane -p -t o:0 | sed "s/$nf/▷/g"; }                    # tab 1 of main, menus too
 menu() {   # right-click a group's row, menu open
   local y; y=$(shown | grep -n -m1 -- "$1" | cut -d: -f1)
   o send-keys -t o:0 -l $'\e[<2;5;'"$y"M; o send-keys -t o:0 -l $'\e[<2;5;'"$y"m; settle 0.7

@@ -5,6 +5,10 @@
 use crate::draw::{fg, fit, rgb};
 use crate::menu::clean;
 
+/// The ▷: Nerd Font nf-cod-play, an outlined triangle centred on the text (the terminal's MesloLGS NF
+/// draws its own ▷ on the baseline, too low); one column in tmux.
+pub const START: &str = "\u{eb2c}";
+
 /// The row at `width` for a group of `n` tabs, `fold`ed or not; `time` the timer's label and colour
 /// (timer.rs). The time's colour sets the foreground alone: the tint and bold go on past it. With it
 /// the first and last column of the time (1-based, one per char, its marker included) for a click,
@@ -12,7 +16,7 @@ use crate::menu::clean;
 pub fn row((name, tint, icon): &(String, String, String), fold: bool, n: usize, time: Option<(String, &str)>,
            width: usize) -> (String, Option<(usize, usize)>) {
     let len = |s: &str| s.chars().count();
-    let start = if time.is_none() && clean(name) == *name { "▷" } else { "" };
+    let start = if time.is_none() && clean(name) == *name { START } else { "" };
     let pad = if start.is_empty() { "" } else { " " }; // the ▷ off the pane's border
     let (time, kind) = time.unwrap_or_default();
     let gap = if time.is_empty() { "" } else { " " }; // in the name's colour: the time's starts at its marker

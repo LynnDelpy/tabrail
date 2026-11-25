@@ -1,11 +1,11 @@
 //! head.rs: what a group's header row reads at a width, escapes left out.
-use super::row;
+use super::{row, START};
 
 fn group(name: &str) -> (String, String, String) {
     (name.into(), "#283147".into(), "◆".into())
 }
 
-/// The row as it shows: escape sequences dropped.
+/// The row as it shows: escape sequences dropped, the start button as ▷.
 fn text(name: &str, fold: bool, n: usize, time: Option<&str>, width: usize) -> String {
     let line = row(&group(name), fold, n, time.map(|t| (t.to_string(), "busy")), width).0;
     let mut out = String::new();
@@ -17,7 +17,7 @@ fn text(name: &str, fold: bool, n: usize, time: Option<&str>, width: usize) -> S
             out.push(c);
         }
     }
-    out
+    out.replace(START, "▷")
 }
 
 #[test]
@@ -77,7 +77,7 @@ fn without_a_time_a_start_button_one_in_from_the_edge() {
         assert_eq!(row(&group(name), fold, 3, None, width).1, Some((width - 1, width - 1)), "{name} at {width}");
     }
     let line = row(&group("A"), false, 1, None, 12).0; // dim on the tint, bold on
-    assert!(line.starts_with("\x1b[48;2;40;49;71m") && line.ends_with("\x1b[38;2;108;112;134m▷ \x1b[0m"));
+    assert!(line.starts_with("\x1b[48;2;40;49;71m") && line.ends_with(&format!("\x1b[38;2;108;112;134m{START} \x1b[0m")));
     assert_eq!(line.matches("\x1b[0m").count(), 1);
 }
 

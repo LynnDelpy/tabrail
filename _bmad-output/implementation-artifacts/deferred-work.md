@@ -216,3 +216,6 @@ status: open
 - source_spec: `_bmad-output/specs/spec-performance/stories/2-hidden-sidebars-stay-idle.md`
   summary: Two story 2 paths have no test: the open-menu mark forgotten when a sidebar is hidden (`main.rs:57`), and notifications kept while an `ask` waits (`control.rs:46`).
   evidence: low. No test sends a right-button event; a deterministic note-during-ask test needs a fake `Tmux` built from a channel instead of `ChildStdin`.
+- source_spec: `_bmad-output/specs/spec-performance/stories/4-claude-hook-in-one-tmux-call.md`
+  summary: ~/.claude/settings.json calls tmux-claude-state for six events but not PreToolUse, so the writing/running/reading/searching/delegating states never show.
+  evidence: jq over settings.json hooks lists SessionStart, UserPromptSubmit, PostToolUse, Notification, Stop, SessionEnd; the hook's header, cost-today.md and the perf test's Pre/Post load assume PreToolUse.

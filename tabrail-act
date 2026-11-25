@@ -11,7 +11,6 @@
 D=$(dirname "$(readlink -f "$0")")
 CONF=$(tmux show -gv @tabrail_groups 2>/dev/null)   # the groups: the file tmux.conf names, else ours
 CONF=${CONF:-$D/groups.conf}
-TINTS=('#283147' '#3b2f2a' '#2a3b2f' '#3b2a3a' '#2a383b' '#3b392a' '#2f2a3b')
 ICONS=(◆ ▲ ● ■ ★ ✦ ♦ ✚)
 
 refresh() { tmux set-buffer -b sidebar-refresh x 2>/dev/null; true; }   # see tabrail-tmux
@@ -79,7 +78,7 @@ new_group() {
   [[ -z $name || $name == Default ]] && return
   if ! awk -v g="$name" '!/^#/ && $1 == g { found = 1 } END { exit !found }' "$CONF"; then
     used=$(awk '!/^#/ { print $2, $3 }' "$CONF")
-    for tint in "${TINTS[@]}"; do grep -qF -- "$tint" <<<"$used" || break; done
+    for tint in $(cut -d' ' -f1 "$D/palette"); do grep -qiF -- "$tint" <<<"$used" || break; done
     for icon in "${ICONS[@]}"; do grep -qF -- " $icon" <<<"$used" || break; done
     printf '%-9s %s  %s\n' "$name" "$tint" "$icon" >> "$CONF"
   fi

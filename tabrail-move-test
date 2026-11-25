@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Tests for the reader bar's move in tmux calls (tabrail-reader-move; fit in tabrail-reader-size) on
+# throwaway tmux servers (tabrail-test-lib), with a tmux first in PATH that logs every call
+# tabrail-reader (or a subshell of it) makes: a tab switch, fit in place; the move's own branches (a
+# slot out of place, a zoomed tab without a slot). One line per check, exits 1 if one failed.
+L=move
+source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
+mkdir "$T/bin"; : > "$T/calls"
+cat > "$T/bin/tmux" <<EOF
+#!/usr/bin/env bash
+[[ \$(tr '\0' ' ' < /proc/\$PPID/cmdline 2>/dev/null) == *tabrail-reader* ]] && echo "\$*" >> "$T/calls"
+exec "$(command -v tmux)" "\$@"
+EOF
+chmod +x "$T/bin/tmux"; PATH=$T/bin:$PATH   # the servers' run-shell jobs inherit it
+calls() { wc -l < "$T/calls"; }
+serve; settle
+
+: > "$T/calls"; t select-window -t :2; settle
+check "a tab switch: the bar across tab 2's bottom, at most 4 tmux calls (follow and any fit it fires)" \
+  '[[ $(at) == "2 160x4 0,42" && $(calls) -le 4 ]]'
+: > "$T/calls"; t run-shell "$R/tabrail-reader fit $(win :2)"; t run-shell "$R/tabrail-reader fit $(win :3)"
+check "fit in a tab with the bar and in one with its slot, both in place: one tmux call each" '[[ $(calls) == 2 ]]'
+
+t split-window -fv -d -t "$(slot :3)" -c "$T/work"; settle; b=$(slot :3 '#{pane_at_bottom}')
+t select-window -t :3; settle
+check "a slot out of place (a pane split in below it), switched to: the bar across the bottom at full width" \
+  '[[ $b == 0 && $(at) == "3 160x4 0,42" ]]'
+
+z=$(own :1); t set -pu -t "$(slot :1)" @reader_slot; t resize-pane -Z -t "$z"; settle 0.5
+t select-window -t :1; settle
+check "a zoomed tab without a slot, switched to: the bar there, still zoomed on its pane; one slot or bar per tab" \
+  '[[ $(rd "#{window_index}") == 1 && $(t display -p -t :1 "#{window_zoomed_flag} #{pane_id}") == "1 $z" &&
+     $(marked) == "1 1 1 " ]]'
+check "no failure shown in any pane" '[[ -z $(t list-panes -a -F "#{pane_in_mode}" | grep 1) ]]'
+exit $((fails > 0))

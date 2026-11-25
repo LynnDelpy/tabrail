@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Tests for tabrail-timer and its state file alone, no tmux server (TMUX names a socket that does not
+# exist), state in a temp XDG_STATE_HOME: toggle, start twice, reset then start, rename, no state file,
+# usage, garbage dropped on a write, racing writes. The sidebar's side: tabrail-timer-test. One line
+# per check, exits 1 if one failed.
+R=$(dirname "$(readlink -f "$0")")
+T=$(mktemp -d)
+trap 'rm -rf "$T"' EXIT
+export XDG_STATE_HOME=$T/state TMUX=$T/none,0,0
+unset TMUX_PANE
+F=$T/state/tabrail/timers fails=0
+check() { if eval "$2"; then echo "ok   $1"; else echo "FAIL $1"; fails=$((fails + 1)); fi; }
+tt() { "$R/tabrail-timer" "$@"; }
+line() { grep "^$1 " "$F"; }
+put() { mkdir -p "${F%/*}"; printf '%s\n' "$@" > "$F"; }                 # the file holds these lines
+well() { [[ -s $F ]] && ! grep -qvE '^[^ ]+ [0-9]+ [0-9]+$' "$F"; }    # only well-formed lines
+
+tt stop A && tt reset A && tt rename A B; e=$?
+check "no state file: stop, reset and rename exit 0, nothing made" '(( e == 0 )) && [[ ! -e $T/state ]]'
+u=$(for a in "" start "start ''" "start 'A B'" "start A B" "rename A" "rename A ''" "bogus A"; do
+  eval "tt $a" 2>/dev/null; echo -n "$? "; done)
+check "usage: exit 2 ($u), nothing made" '[[ $u == "2 2 2 2 2 2 2 2 " && ! -e $T/state ]]'
+
+tt toggle A; a=$(line A)
+check "toggle without a timer: starts from 0 ('$a')" '[[ $a =~ ^A\ 0\ [0-9]{10}$ ]]'
+put "A 90 $((EPOCHSECONDS - 30))"; tt toggle A; a=$(line A); tt toggle A; b=$(line A)
+check "toggle twice: stops at 90 + 30 s ('$a'), then runs on from there ('$b')" \
+  '[[ $a =~ ^A\ 12[01]\ 0$ && $b =~ ^A\ ${a:2:3}\ [0-9]{10}$ ]] && (( ${b##* } >= EPOCHSECONDS - 1 ))'
+put "A 90 0" "B 5 1000"; tt start B; tt stop A
+check "start a running one, stop a stopped one: unchanged" '[[ $(cat "$F") == $'"'A 90 0\nB 5 1000'"' ]]'
+put "A 90 $((EPOCHSECONDS + 600))"; tt stop A
+check "stop one started in the future: nothing added" '[[ $(cat "$F") == "A 90 0" ]]'
+
+put "A 90 $((EPOCHSECONDS - 30))" "B 5 0"; tt reset A; r=$(cat "$F"); tt start A
+check "reset a running one: its line gone ('$r'); Start counts from 0" '[[ $r == "B 5 0" && $(line A) =~ ^A\ 0\ [0-9]{10}$ ]]'
+
+put "A 90 0" "X 3 7"; tt rename A C; a=$(cat "$F"); tt rename Q R
+check "rename: A's timer becomes C's, in its place; an untimed name changes nothing" \
+  '[[ $a == $'"'C 90 0\nX 3 7'"' && $(cat "$F") == "$a" ]]'
+put "A 90 0" "B 5 7"; tt rename A B
+check "rename onto a timed name: the old one's timer replaces it" '[[ $(cat "$F") == "B 90 0" ]]'
+put "A 90 0"; tt rename A "" 2>/dev/null; e=$?
+check "rename to an empty name: refused (exit $e), A keeps its timer" '(( e == 2 )) && [[ $(cat "$F") == "A 90 0" ]]'
+put "07 5 0"; tt rename 07 7; a=$(cat "$F"); put "1e2 90 0" "100 5 0"; tt rename 1e2 x
+check "names compared as strings: 07 renamed to 7, 1e2 to x beside 100" \
+  '[[ $a == "7 5 0" && $(cat "$F") == $'"'x 90 0\n100 5 0'"' ]]'
+put "A 90 0" "B 5 0"; chmod 000 "$F"; tt start Z; e=$?; chmod 644 "$F"
+check "an unreadable file: start refused (exit $e), the file unchanged" \
+  '(( e == 1 )) && [[ $(cat "$F") == $'"'A 90 0\nB 5 0'"' ]]'
+
+put 'garbage here' $'\377\001 junk' 'X -1 0' 'A 1 2 3' 'A 10 0' 'B 4 0' 'A 20 0'; tt start Z
+check "a write drops the lines that do not parse and a name's later lines" \
+  'well && [[ $(grep -v ^Z "$F") == $'"'A 10 0\nB 4 0'"' && $(line Z) =~ ^Z\ 0\ [0-9]+$ ]]'
+
+rm -f "$F"
+for i in {1..40}; do tt "$( ((i % 2)) && echo start || echo stop)" A & done; wait
+check "40 starts and stops at once on one group: one well-formed line" 'well && [[ $(wc -l < "$F") == 1 ]]'
+rm -f "$F"
+for i in {1..40}; do tt start "G$i" & done; wait
+check "40 starts at once on 40 groups: 40 lines, no temp file left" \
+  'well && [[ $(wc -l < "$F") == 40 && $(ls "${F%/*}" | xargs) == "timers timers.lock" ]]'
+exit $((fails > 0))

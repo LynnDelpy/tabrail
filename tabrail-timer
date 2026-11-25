@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# The group timers in tabrail's sidebar headers (src/timer.rs shows them, the group menu runs this);
+# the only writer of their state file:
+#   start GROUP       count from where it stopped (from 0 if it has no time); running: nothing
+#   stop GROUP        freeze it; stopped: nothing
+#   toggle GROUP      stop it if it runs, else start it
+#   reset GROUP       drop its timer
+#   rename OLD NEW    OLD's timer becomes NEW's, replacing one NEW had (tabrail-act rename-group)
+# $XDG_STATE_HOME/tabrail/timers, else ~/.local/state/tabrail/timers: one line per timed group,
+# NAME ACCUMULATED SINCE in seconds, SINCE the epoch it was started, 0 while stopped. Wall-clock: no
+# sidebar counts, so a restart neither loses nor double-counts time. Changed under flock, written to a
+# temp file renamed into place; lines that do not parse are dropped. Then every sidebar redraws.
+DIR=${XDG_STATE_HOME:-$HOME/.local/state}/tabrail
+FILE=$DIR/timers
+
+case $1 in
+  start | stop | toggle | reset) (($# == 2)) ;;
+  rename) (($# == 3)) && [[ -n $3 ]] ;;
+  *) false ;;
+esac && [[ -n $2 && $2$3 != *[[:space:]]* ]] || {
+  echo "usage: tabrail-timer start|stop|toggle|reset GROUP | rename OLD NEW" >&2; exit 2; }
+[[ -f $FILE || $1 == start || $1 == toggle ]] || exit 0   # nothing to stop, reset or rename
+[[ ! -e $FILE || -r $FILE ]] || exit 1   # unreadable: a write would drop every other timer
+mkdir -p "$DIR" && exec 9>>"$DIR/timers.lock" && flock 9 || exit 1
+tmp=$(mktemp "$FILE.XXXXXX") || exit 1
+# names through the environment (awk -v would read backslashes in them as escapes), compared as
+# strings ("" appended): 07 is not 7
+if cat "$FILE" 2>/dev/null | OP=$1 G=$2 N=$3 NOW=$EPOCHSECONDS awk '
+    function ok(x) { return x ~ /^[0-9]+$/ && length(x) < 16 }
+    NF == 3 && ok($2) && ok($3) && !($1 in acc) { names[++k] = $1; acc[$1] = $2 + 0; since[$1] = $3 + 0 }
+    END {
+      op = ENVIRON["OP"]; g = ENVIRON["G"] ""; n = ENVIRON["N"] ""; now = ENVIRON["NOW"] + 0
+      on = (g in acc) && since[g] > 0
+      if (op == "toggle") op = on ? "stop" : "start"
+      if (op == "start" && !on) { if (!(g in acc)) { names[++k] = g; acc[g] = 0 }; since[g] = now }
+      if (op == "stop" && on) { acc[g] += now > since[g] ? now - since[g] : 0; since[g] = 0 }
+      if (op == "reset") delete acc[g]
+      if (op == "rename" && (g in acc) && g != n) {
+        acc[n] = acc[g]; since[n] = since[g]; delete acc[g]
+        for (i = 1; i <= k; i++) if (names[i] == n) names[i] = ""; else if (names[i] == g) names[i] = n
+      }
+      for (i = 1; i <= k; i++) if (names[i] != "" && (names[i] in acc)) print names[i], acc[names[i]], since[names[i]]
+    }' > "$tmp" && mv -f "$tmp" "$FILE"
+then tmux set-buffer -b sidebar-refresh x 2>/dev/null   # see tabrail-tmux refresh
+else rm -f "$tmp"; exit 1; fi
+exit 0

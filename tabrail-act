@@ -3,7 +3,7 @@
 #   new GROUP PANE           a new tab in GROUP's first folder (home if none), in PANE's session
 #   dup WINDOW               a new tab right after WINDOW, same group and folder (of its own pane)
 #   fold GROUP               fold or unfold a group in every sidebar
-#   rename-group OLD NEW     in groups.conf, on its tabs and in the fold state
+#   rename-group OLD NEW     in groups.conf, on its tabs, in the fold state and its timer
 #   new-group NAME TARGET    a line in groups.conf with a tint and an icon not used yet; TARGET a
 #                            tab (@id) moves into it, a sidebar pane (pID for %ID) gets a new tab in it
 #   move-group SRC ONTO      SRC's line in groups.conf goes above ONTO's line if that is higher up,
@@ -44,7 +44,7 @@ rename_group() {
   local old=$1 new=${2// /-} win   # one word: groups.conf splits on spaces
   [[ -z $new || $old == Default || $new == Default ]] && return
   awk -v o="$old" -v n="$new" '!/^#/ && $1 == o { $0 = n substr($0, length(o) + 1) } 1' \
-    "$CONF" > "$CONF.new" && mv "$CONF.new" "$CONF"
+    "$CONF" > "$CONF.new" && mv "$CONF.new" "$CONF" && "$D/tabrail-timer" rename "$old" "$new"
   for win in $(tmux list-windows -a -F '#{window_id}'); do
     [[ $(tmux show -wv -t "$win" @group 2>/dev/null) == "$old" ]] && tmux set -w -t "$win" @group "$new"
   done

@@ -6,6 +6,7 @@
 unset TMUX TMUX_PANE
 R=$(dirname "$(readlink -f "$0")")
 T=$(mktemp -d)
+export XDG_STATE_HOME=$T/state   # the sidebars' group timers (tabrail-timer): never the user's
 fails=0 spids=()
 check() { if eval "$2"; then echo "ok   $1"; else echo "FAIL $1"; fails=$((fails + 1)); fi; }
 t() { tmux -L "tabrail-$L" "$@"; }

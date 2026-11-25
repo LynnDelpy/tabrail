@@ -1,8 +1,15 @@
 //! Mouse input from the sidebar's terminal: tmux passes clicks on as SGR sequences
 //! (ESC [ < button ; column ; row M) once main.rs has switched mouse reporting on.
-use crate::control::{Click, Event};
+use crate::control::Event;
 use std::io::Read;
 use std::sync::mpsc::Sender;
+
+/// A mouse press or release in the sidebar: which button, and the row (1-based).
+pub struct Click {
+    pub right: bool,
+    pub release: bool,
+    pub row: usize,
+}
 
 /// Presses and releases of the left (button 0) and right (button 2) button become Event::Click.
 pub fn read_clicks(tx: Sender<Event>) {

@@ -4,8 +4,8 @@
 //! another group's row or one of its tabs moves its line in the groups file (tabrail-act move-group):
 //! above that group moving up, below it moving down; Default stays last. Nothing switches before the
 //! release: the release must reach this same sidebar, which only the current tab shows.
-use crate::control::Click;
 use crate::draw::Row;
+use crate::input::Click;
 use crate::menu::clean;
 use crate::model::Tab;
 use std::collections::HashSet;

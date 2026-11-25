@@ -204,3 +204,15 @@ status: open
 - source_spec: `_bmad-output/specs/spec-performance/stories/1-speed-test-at-5-and-50-tabs.md`
   summary: `tabrail-perf-test` matches the `for t in ./tabrail-*-test` sweep in stories 2-4's verification, adding ~12 min per sweep and a pass that carries no signal (it always exits 0).
   evidence: medium. `2-hidden-sidebars-stay-idle.md:84` runs the glob; SPEC.md:44 asks every `tabrail-*-test` to pass. The name is fixed by story 1's intent; exclude it in those sweeps (e.g. `[[ $t == *perf-test ]] && continue`).
+- source_spec: `_bmad-output/specs/spec-performance/stories/2-hidden-sidebars-stay-idle.md`
+  summary: `tabrail.tmux:44` (`pane-command-finished`) tests `session_attached`, which counts the sidebars' control clients, so a finished command in the current tab gets no ✓ while no terminal is attached.
+  evidence: medium, pre-existing. Story 2 found `session_attached` counts control clients; the condition `#{!:#{&&:#{window_active},#{session_attached}}}` is then false for the current tab even when detached. Fix: count terminals (`#{session_attached}` minus control clients, or a `list-clients` filter).
+- source_spec: `_bmad-output/specs/spec-performance/stories/2-hidden-sidebars-stay-idle.md`
+  summary: AGENTS.md tmux pitfalls lack story 2's findings: `swap-window` onto the current index sends no `%session-window-changed` and no hook; `session_attached` counts control clients; `%client-session-changed`/`%client-detached` fire for control clients (named `client-<pid>`), command clients send none.
+  evidence: low. Verified on tmux 3.8 during story 2; the fix edits an agent-context file.
+- source_spec: `_bmad-output/specs/spec-performance/stories/2-hidden-sidebars-stay-idle.md`
+  summary: Nothing automated checks that the shown sidebar's `list-panes` lists only tabs' own panes, and `tabrail-perf-test` always exits 0, so the story 2 speed-up can regress silently.
+  evidence: medium. Reverting the `-f` filter passes every test (`model::tabs` drops the same rows); a timing threshold would flake on the shared VM. A check could count list-panes rows via a tmux `-v` log or a wrapper.
+- source_spec: `_bmad-output/specs/spec-performance/stories/2-hidden-sidebars-stay-idle.md`
+  summary: Two story 2 paths have no test: the open-menu mark forgotten when a sidebar is hidden (`main.rs:57`), and notifications kept while an `ask` waits (`control.rs:46`).
+  evidence: low. No test sends a right-button event; a deterministic note-during-ask test needs a fake `Tmux` built from a channel instead of `ChildStdin`.

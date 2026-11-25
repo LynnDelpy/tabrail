@@ -16,7 +16,8 @@ WIDTH=$(tmux show -gv @sidebar_width 2>/dev/null)   # one width for every sideba
 [[ $WIDTH =~ ^[0-9]+$ ]] || WIDTH=26
 
 # Every sidebar's control connection reports a changed paste buffer at once (%paste-buffer-changed),
-# so touching a named one is the cheapest way to make them all redraw
+# so touching a named one is the cheapest way to make the shown sidebar redraw (hidden ones draw when
+# their tab is shown)
 refresh() { tmux set-buffer -b sidebar-refresh x 2>/dev/null; true; }
 reader() { [[ -n $(tmux show -gv @tabrail_reader 2>/dev/null) ]] && "$D/tabrail-reader" "$@"; true; }
 

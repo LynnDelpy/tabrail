@@ -7,12 +7,39 @@
 use crate::draw::Row;
 use crate::model::Tab;
 use std::collections::HashSet;
+use std::path::PathBuf;
+use std::{env, fs};
 
 pub struct Place<'a> {
     pub pane: &'a str,   // the sidebar's pane, for the session of a new tab
     pub helper: &'a str, // tabrail-act
     pub mover: &'a str,  // tabrail-move
     pub namer: &'a str,  // tabrail-name
+}
+
+/// One sidebar's menu files and what each holds.
+pub struct Files {
+    prefix: PathBuf, // the tmux server's pid in the name, as pane ids repeat across servers
+    written: Vec<String>,
+}
+
+impl Files {
+    pub fn new(server: &str, pane: &str) -> Files {
+        let dir = PathBuf::from(env::var("XDG_RUNTIME_DIR").unwrap_or("/tmp".into())).join("tabrail");
+        let _ = fs::create_dir_all(&dir);
+        Files { prefix: dir.join(format!("{server}-{pane}")), written: Vec::new() }
+    }
+
+    /// Write the files whose menu changed, one per terminal row (`mouse_y`; `rows` counts from 1).
+    pub fn write(&mut self, height: usize, rows: &[Row], tabs: &[Tab], folded: &HashSet<String>, p: &Place) {
+        self.written.resize(height, String::new());
+        for (y, file) in self.written.iter_mut().enumerate() {
+            let text = for_row(rows.get(y + 1), tabs, folded, p);
+            if *file != text && fs::write(format!("{}-{y}.conf", self.prefix.display()), &text).is_ok() {
+                *file = text;
+            }
+        }
+    }
 }
 
 /// Names go into quoted tmux strings: drop what could end the quote or the command.

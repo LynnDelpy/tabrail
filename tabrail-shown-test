@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Tests that only the sidebar shown works (src/shown.rs) on throwaway tmux servers (tabrail-test-lib):
+# which sidebars write (/proc wchar: their terminal, the tmux pipe, menu files) per case of
+# spec-performance story 2's matrix; `?` where a sidebar's pid or counter is missing.
+# One line per check, exits 1 if one fails.
+L=hx
+source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
+bytes() { local w p; for w in $(t list-windows -a -F '#{window_id}'); do   # window:bytes written so far
+  p=$(t list-panes -t "$w" -f '#{@sidebar}' -F '#{pane_pid}')
+  printf '%s:%s ' "$w" "$([[ -n $p ]] && awk '/^wchar/ {print $2}' "/proc/$p/io" 2>/dev/null)"; done; echo; }
+delta() { local a b; a=$(bytes); sleep "${1:-3}"; b=$(bytes); paste -d' ' <(tr ' ' '\n' <<< "$a") <(tr ' ' '\n' <<< "$b") |
+  awk -F'[: ]' 'NF == 4 { printf "%s%s ", $1, ($2 == "" || $4 == "" ? "?" : $4 > $2 ? "+" : "=") } END { print "" }'; }
+screen() { o capture-pane -p -t o | grep -m1 '❯'; }
+serve; t rename-window -t :1 first; settle 3
+echo "windows: $(t list-windows -F '#{window_index}=#{window_id}#{?window_active,*,}' | tr '\n' ' ')"
+check "idle: only the shown sidebar writes" '[[ $(delta 3) == "@0+ @1= @2= " ]]'
+t rename-window -t :2 renamed2; settle 0.3
+t select-window -t :2; sleep 0.15
+check "switch: tab 2 current at once" '[[ $(screen) == *"❯ renamed2"* ]]'
+check "switch: now only tab 2 writes" '[[ $(delta 3) == "@0= @1+ @2= " ]]'
+( for i in $(seq 50); do t set-buffer -b sidebar-refresh x; sleep 0.1; done ) &
+check "hook burst: hidden ones quiet" '[[ $(delta 2.5) == "@0= @1+ @2= " ]]'
+t rename-window -t :2 burst2; sleep 0.3
+check "hook burst: the shown one redraws within 0.3 s" '[[ $(screen) == *"❯ burst2"* ]]'; wait
+t detach-client -t "$(t list-clients -f '#{!:#{client_control_mode}}' -F '#{client_name}')"; settle 1
+check "detach: sidebars still run" '[[ $(t list-panes -a -f "#{@sidebar}" -F "#{pane_current_command}" | sort -u) == tabrail ]]'
+check "detach: all quiet" '[[ $(delta 3) == "@0= @1= @2= " ]]'
+t rename-window -t :2 again2
+o respawn-pane -k -t o "TMUX= tmux -L tabrail-$L attach -t main; sleep 60"; sleep 0.3
+check "attach: tab 2 draws at once" '[[ $(screen) == *"❯ again2"* ]]'
+t set -g @sidebar_width 30; settle 1
+check "width changed while hidden: tab 3 not resized yet, quiet" '[[ $(side :3 "#{pane_width}") == 26 && $(delta 2) == "@0= @1+ @2= " ]]'
+t rename-window -t :3 renamed3; settle 0.3; t select-window -t :3; sleep 0.15
+check "shown again: tab 3 draws at once" '[[ $(screen) == *"❯ renamed3"* ]]'
+check "shown again: tab 3 at 30" '[[ $(side :3 "#{pane_width}") == 30 ]]'
+check "shown again: only tab 3 writes" '[[ $(delta 3) == "@0= @1= @2+ " ]]'
+t new-window -d -c "$T/work"; settle 3
+check "new tab: starts hidden" '[[ $(delta 3) == "@0= @1= @2+ @3= " ]]'
+t new -d -s two -x 160 -y 46 -c "$T/work"; settle 3
+o new-window -d -t o: "TMUX= tmux -L tabrail-$L attach -t two; sleep 60"; settle 1
+check "two clients: both current tabs write" '[[ $(delta 3) == "@0= @1= @2+ @3= @4+ " ]]'
+c2=$(t list-clients -t two -f '#{!:#{client_control_mode}}' -F '#{client_name}')
+t switch-client -c "$c2" -t main; settle 1
+check "switch-client away: session two quiet" '[[ $(delta 3) == "@0= @1= @2+ @3= @4= " ]]'
+t switch-client -c "$c2" -t two; settle 0.5
+check "switch-client back: session two writes" '[[ $(delta 3) == "@0= @1= @2+ @3= @4+ " ]]'
+# swap-window onto the current index sends no notification: the sidebar seen thinks it is hidden,
+# and a click on it still works (tab 1's row: go there)
+t swap-window -s main:2 -t main:3; settle
+y=$(o capture-pane -p -t o | grep -n -m1 ' first ' | cut -d: -f1)
+[[ -n $y ]] && click 5 "$y"
+check "click on a sidebar that thinks it is hidden: goes to tab 1" '[[ $(t display -p -t main: "#{window_index}") == 1 ]]'
+exit $((fails > 0))

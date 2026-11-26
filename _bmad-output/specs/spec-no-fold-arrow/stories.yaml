@@ -1,0 +1,11 @@
+- id: "1"
+  title: Group rows without the fold arrow
+  description: >-
+    A group's row drops the ▾/▸ before its icon, so the icon sits in column 1
+    and the name gets 2 more columns; folding and the time clicks work as
+    before (SPEC.md CAP-1).
+  invoke_dev_with: >-
+    head.rs builds the row; drag.rs needs no change since clicks use the
+    row's span. Tests that read the fold state from ▾/▸ read @sidebar_fold
+    instead. If spec-nested-groups story 1 is already merged, drop the arrow
+    from its indented headers too. Test on a tmux -L server only.

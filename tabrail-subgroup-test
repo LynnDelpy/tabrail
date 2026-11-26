@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# Tests for creating a subgroup (head.rs's +, drag.rs, menu.rs's New subgroup…, tabrail-name sub,
+# tabrail-groups new-group with PARENT) on throwaway tmux servers (tabrail-test-lib) with real SGR
+# clicks, the groups file a symlink to a temp file: the + on every header but Default's, the menu's
+# item and field, its line after the parent's subtree with an unused tint and icon (link and mode
+# kept), a new tab in it under the parent, a second session's sidebar showing it, the + opening the
+# field in the terminal clicked, one level deeper, Esc and a blank name, a name that exists, no item
+# on Default, a tab or empty space, a click on the name, off the + and a drag from it; the writer
+# alone: a missing or Default parent, files indented by hand. One line per check, exits 1 if one failed.
+L=sub
+source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
+mkdir "$T/real" "$T/work/egov"; F=$T/real/groups.conf
+printf '%s\n' "egov      #283147  ★  $T/work/egov" "  St.Gallen  #2a3b2f  ✚" "    Archiv  #3b2a3a  ◆" \
+  "  Köniz  #3b2f2a  ▲" "# other customers" "4tw       #2a383b  ●" > "$F"
+chmod 640 "$F"; ln -s "$F" "$T/groups.conf"
+sed -i '/@tabrail_reader/d' "$T/conf"   # no reader bar: not what this tests
+echo "set -g @tabrail_groups '$T/groups.conf'" >> "$T/conf"
+inner; t rename-window -t main:1 home
+for n in core sg arch kz tw; do t new-window -d -n "$n" -c "$T/work"; done
+t new -d -s two -n home -c "$T/work"; t new-window -d -t two -n bern -c "$T/work"
+o -f /dev/null new -d -s o -x 160 -y 46 "TMUX= tmux -L tabrail-$L attach -t main; sleep 600"
+o set -g status off; o new-window -d "TMUX= tmux -L tabrail-$L attach -t two; sleep 600"; settle 3
+for g in core:egov sg:St.Gallen arch:Archiv kz:Köniz tw:4tw; do t set -w -t "main:${g%%:*}" @group "${g#*:}"; done
+t set -w -t two:bern @group Bern; t set-buffer -b sidebar-refresh x; settle
+nf=$'\uEB2C'   # head.rs START, shown here as ▷
+raw() { t capture-pane -p -t "$(side "${1:-main:1}")" | sed "s/$nf/▷/g"; }   # a sidebar's rows
+bar() { raw "$1" | head -n -1 | sed 's/ *▷\( +\)\{0,1\}$//' | tr '\n' '|' | sed 's/|*$//'; }   # no ▷ or + after it
+shown() { o capture-pane -p -t o:0 | sed "s/$nf/▷/g"; }                    # main's tab shown, menus and popups too
+y() { shown | grep -n -m1 -- "$1" | cut -d: -f1; }                        # the screen row with TEXT
+x() { local l; l=$(shown | grep -m1 -- "$1"); l=${l%%"$2"*}; echo $((${#l} + 1)); }   # column of $2 in it
+sgr() { o send-keys -t o:0 -l $'\e[<'"$1;$2;$3$4"; }                      # BUTTON COL ROW M|m
+clk() { sgr 0 "$1" "$2" M; sgr 0 "${3:-$1}" "${4:-$2}" m; settle; }       # press COL ROW, release COL2 ROW2
+plus() { clk "$(x "$1" +)" "$(y "$1")"; settle 0.5; }                     # a click on the + of the row with TEXT
+menu() { local r; r=$(y "$1"); sgr 2 5 "$r" M; sgr 2 5 "$r" m; settle 0.7; }
+keys() { o send-keys -t o:0 -l "$1"; settle "${2:-1}"; }
+key() { o send-keys -t o:0 "$1"; settle "${2:-1.5}"; }
+in_() { t list-windows -a -F '#{@group}' | grep -cxF -- "$1"; }            # tabs in GROUP, both sessions
+added() { diff "$T/before" "$F" | grep '^[<>]' | tr '\n' '|'; }            # the lines changed since before
+back() { t select-window -t main:1; settle; }                             # a new tab took the screen
+safe() { [[ -L $T/groups.conf && $(stat -c %a "$F") == 640 && -z $(ls "$T/real" | grep new) ]]; }
+
+w=$(t display -p -t "$(side main:1)" '#{pane_width}'); d=$(raw | grep -- "• Default")
+check "the + one in from the edge of every header but Default's ($(x "★ egov" +) of $w), the ▷ two left of it" \
+  '[[ $(x "★ egov" +) == $((w - 1)) && $(x "★ egov" ▷) == $((w - 3)) && $(raw | grep -c "▷ +$") == 5 && $d == *"▷" ]]'
+check "session two: its tab in Bern, no such line yet, not shown ($(bar two))" '[[ $(bar two) != *Bern* ]]'
+
+cp "$F" "$T/before"; n=$(tabs); menu "★ egov"; m=$(shown); keys s 1.5; p=$(shown); keys Bern; key Enter 2; back
+check "egov's menu: New subgroup… right after New group…, its field titled New subgroup of egov" \
+  '[[ $m == *"New group…"*"New subgroup…"*"Rename group"* && $p == *"New subgroup of egov"* ]]'
+check "one line, '  Bern' with an unused tint and icon, after egov's subtree, above the comment ($(added))" \
+  '[[ $(added) == ">   Bern    #3b392a  ■|" && $(sed -n 5p "$F") == "  Bern  "* ]] && safe'
+check "a new tab in Bern ($n -> $(tabs) in main), shown under egov after Köniz's ($(bar))" \
+  '[[ $(tabs) == $((n + 1)) && $(in_ Bern) == 2 && $(bar) == *"| ▾ ▲ Köniz|    kz| ▾ ■ Bern|    "*"||▾ ● 4tw|"* ]]'
+check "session two's sidebar shows Bern under egov, no restart ($(bar two))" \
+  '[[ $(bar two) == "|▾ ★ egov| ▾ ■ Bern|    bern||▾ • Default| ❯ home" ]]'
+
+cp "$F" "$T/before"; n=$(tabs); plus "★ egov"; p=$(shown); keys Zug; key Enter 2; back
+check "a click on egov's +: the same field in the terminal clicked, '  Zug' after Bern, a tab in it ($(added))" \
+  '[[ $p == *"New subgroup of egov"* && $(added) == ">   Zug     #2f2a3b  ✦|" && $(sed -n 6p "$F") == "  Zug  "* &&
+     $(tabs) == $((n + 1)) && $(in_ Zug) == 1 ]] && safe'
+cp "$F" "$T/before"; plus "✚ St.Gallen"; p=$(shown); keys Alt; key Enter 2; back
+check "St.Gallen's + (depth 1): '    Alt' after Archiv, 4 spaces in ($(added))" \
+  '[[ $p == *"New subgroup of St.Gallen"* && $(added) == ">     Alt   #403d4a  ♦|" && $(sed -n 4p "$F") == "    Alt "* ]]'
+check "Alt shown under St.Gallen, 2 in ($(bar))" '[[ $(bar) == *"| ▾ ✚ St.Gallen|    sg|  ▾ ◆ Archiv|     arch|  ▾ ♦ Alt|     "* ]]'
+
+cp "$F" "$T/before"; n=$(tabs); plus "★ egov"; keys Nope; a=$(shown); key Escape 2
+menu "★ egov"; keys s 1.5; keys '   '; b=$(shown); key Enter 2
+check "Esc in the +'s field, a blank name in the menu's: file identical (cmp), no new tab" \
+  '[[ $a == *"New subgroup of egov"*Nope* && $b == *"New subgroup of egov"* && $(tabs) == "$n" ]] && cmp -s "$T/before" "$F"'
+k=$(in_ Köniz); plus "✚ St.Gallen"; keys Köniz; key Enter 2; back
+check "Köniz, a group already (egov's): no line, a new tab in Köniz ($k -> $(in_ Köniz))" \
+  '[[ $(tabs) == $((n + 1)) && $(in_ Köniz) == $((k + 1)) ]] && cmp -s "$T/before" "$F"'
+
+menu "• Default"; m=$(shown); keys q 0.5; menu "   core"; tm=$(shown); keys q 0.5
+r=$(sgr 2 5 40 M; sgr 2 5 40 m; settle 0.7; shown); keys q 0.5
+check "no New subgroup… for Default, a tab or empty space; no + on Default's row" \
+  '[[ $m == *Fold* && $tm == *"Move to group…"* && $r == *"New group…"* && "$m$tm$r" != *subgroup* && $d != *+* ]]'
+e=$(y "★ egov"); clk 5 "$e"; f=$(t show -gv @sidebar_fold)
+check "a click on egov's name folds it as before ($(bar))" '[[ $f == egov && $(bar) == "|▸ ★ egov  "*" tabs||▾ ● 4tw"* ]]'
+clk 5 "$e"; clk "$(x "★ egov" +)" "$e" 5 "$e"; f=$(t show -gv @sidebar_fold)
+check "press on egov's +, release on its name: folds, no field" '[[ $f == egov && $(shown) != *"New subgroup of"* ]]'
+clk 5 "$e"; r=$(y "● 4tw"); c=$(x "● 4tw" +)
+sgr 0 "$c" "$r" M; sgr 32 20 "$(y "   core")" M; sgr 0 20 "$(y "   core")" m; settle
+check "press on 4tw's +, release on egov's tab row: a group drag, 4tw's line above egov's" '[[ $(head -1 "$F") == 4tw* ]]'
+tg() { TMUX="$(t display -p '#{socket_path}'),0,0" "$R/tabrail-groups" "$@"; }   # as tabrail-name calls it
+cp "$F" "$T/before"; n=$(tabs); s=$(side main:1); tg new-group X "p${s#%}" Nope; tg new-group Y "p${s#%}" Default; settle
+check "a missing or a Default PARENT: file identical (cmp), no new tab" '[[ $(tabs) == "$n" ]] && cmp -s "$T/before" "$F" && safe'
+printf '%s\n' "egov #1 ★" " Köniz #4 ✚" "  Y #5 ◆" > "$F"; tg new-group New '' Köniz   # by hand: Köniz 1 in, Y 2
+check "indented by hand: New 2 in as Köniz's child Y, not 4 (under Y) ($(tg tree | tr '\t\n' ' |'))" \
+  '[[ $(tail -1 "$F") == "  New "* && $(tg tree | tr "\t\n" " |") == "0 egov ★|1 Köniz ✚|2 Y ◆|2 New "* ]]'
+printf '%s\n' "egov #1 ★" "    Köniz #4 ✚" "4tw #5 ●" > "$F"; tg new-group Bern '' Köniz   # 4 spaces per level
+check "indented 4 per level: Bern 5 in, deeper than Köniz, its subgroup ($(tg tree | tr '\t\n' ' |'))" \
+  '[[ $(sed -n 3p "$F") == "     Bern "* && $(tg tree | tr "\t\n" " |") == "0 egov ★|1 Köniz ✚|2 Bern "*"|0 4tw ●|" ]]'
+exit $((fails > 0))

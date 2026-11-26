@@ -65,7 +65,7 @@ check "Stop again adds the $((s - st)) s or more since to $acc s: $(f $W 2) s" '
 v=$(line Infra | cut -d' ' -f2-); t run-shell "$R/tabrail-groups rename-group Infra Ops"; settle
 check "Rename group Infra to Ops: the timer follows" '[[ $(line Ops) == "Ops $v" && -z $(line Infra) && $(bar "▲ Ops") == *"▶ "* ]]'
 t run-shell "$R/tabrail-act fold Ops"; settle
-check "folded: the time, then the count ($(bar "▲ Ops"))" '[[ $(bar "▲ Ops") =~ ^"▸ ▲ Ops ▶ "[0-9]+s"  1 tab"$ ]]'
+check "folded: the time, then the count ($(bar "▲ Ops"))" '[[ $(bar "▲ Ops") =~ ^"▸ ▲ Ops ▶ "[0-9]+s"  1 tab"\ +"+"$ ]]'
 
 a=$(bar "◆ $W"); b=$(bar "▲ Ops"); down; sleep 4; up
 check "kill-server, new server: the stopped time is back" '[[ $(bar "◆ $W") == "$a" ]]'
@@ -74,13 +74,13 @@ check "the running one counted the 4 s down ($(num "$b") s -> $(num "$c") s)" '(
 
 menu "◆ $W"; pick 0; menu "◆ $W"; m=$(shown); pick q
 check "Reset timer: line gone, no time, the ▷ back, no Reset timer in the menu" \
-  '[[ -z $(line $W) && $(bar "◆ $W") != *[▶⏸]* && $(bar "◆ $W") == *" ▷" && $m == *"Start timer"* && $m != *"Reset timer"* ]]'
+  '[[ -z $(line $W) && $(bar "◆ $W") != *[▶⏸]* && $(bar "◆ $W") == *" ▷ +" && $m == *"Start timer"* && $m != *"Reset timer"* ]]'
 
 echo "Abcdefghijklmnopqrstuvwxyz0123 0 $((EPOCHSECONDS - 7200))" >> "$F"
 t resize-pane -t "$(side main:1)" -x 26; settle 2; a=$(bar "● ")
 t run-shell "$R/tabrail-act fold Abcdefghijklmnopqrstuvwxyz0123"; settle
-check "width 26, a 30-character name running 2h: name cut, time whole; folded, no count" \
-  '[[ $a == "▾ ● Abcdefghijklmno ▶ 2h0m" && $(bar "● ") == "▸ ● Abcdefghijklmno ▶ 2h0m" ]]'
+check "width 26, a 30-character name running 2h: name cut, time and + whole; folded, no count" \
+  '[[ $a == "▾ ● Abcdefghijkl ▶ 2h0m +" && $(bar "● ") == "▸ ● Abcdefghijkl ▶ 2h0m +" ]]'
 
 printf 'garbage here\n\377\001 junk\nX -1 0\nOps 1 2 3\n' >> "$F"; settle
 check "a garbled file, a non-UTF-8 byte: the sidebar draws, the good lines show" \

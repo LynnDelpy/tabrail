@@ -1,0 +1,50 @@
+# shellcheck shell=bash
+# tabrail-groups new-group NAME TARGET [PARENT], sourced by tabrail-groups (CONF, D, ICONS, refresh):
+# a line for NAME (spaces become -, never Default) with the first palette tint and an icon no group
+# uses yet. Without PARENT appended to the file (top-level); with PARENT right after PARENT's subtree,
+# one level deeper (sub_line). A NAME that exists anywhere adds no line. Then TARGET: a tab (@id)
+# moves into the group, a sidebar pane (pID for %ID) gets a new tab in it (tabrail-act new). A
+# Default PARENT does nothing at all; a missing one adds no line and opens no tab unless NAME exists.
+
+new_group() {
+  local name=${1// /-} parent=$3 used tint icon
+  [[ -z $name || $name == Default || $parent == Default ]] && return
+  if ! awk -v g="$name" '!/^[ \t]*#/ && $1 == g "" { found = 1 } END { exit !found }' "$CONF"; then
+    used=$(awk '!/^[ \t]*#/ { print $2, $3 }' "$CONF")
+    for tint in $(cut -d' ' -f1 "$D/palette"); do grep -qiF -- "$tint" <<<"$used" || break; done
+    for icon in "${ICONS[@]}"; do grep -qF -- " $icon" <<<"$used" || break; done
+    if [[ -z $parent ]]; then printf '%-9s %s  %s\n' "$name" "$tint" "$icon" >> "$CONF"
+    else sub_line "$name" "$tint" "$icon" "$parent" || return 0; fi
+  fi
+  case $2 in
+    @*) tmux set -w -t "$2" @group "$name"; refresh ;;
+    p*) "$D/tabrail-act" new "$name" "%${2#p}" ;;
+  esac
+}
+
+# NAME TINT ICON PARENT: the line after the last group line of PARENT's subtree, its name padded so
+# the tint lines up with a top-level line's. Its indent: 2 spaces per level (PARENT's depth + 1), kept
+# deeper than PARENT's own and no deeper than PARENT's last child's, so that the parent rule gives it
+# PARENT in a file indented by hand too. Written through a symlink, mode kept, renamed into place if
+# exactly one line was added; false if PARENT has no line or the write failed.
+sub_line() {
+  local file new added
+  file=$(readlink -f "$CONF") && new="$file.new.$$" || return 1
+  if NAME=$1 awk -v t="$2" -v i="$3" -v p="$4" '
+      { line[NR] = $0 }
+      !/^[ \t]*#/ && NF >= 3 { match($0, /^[ \t]*/); while (n && indent[n] >= RLENGTH) n--
+        indent[++n] = RLENGTH
+        if (inside && n <= d) inside = 0
+        if (inside) { end = NR; if (n == d + 1) kid = RLENGTH }
+        if (!d && $1 == p "") { d = n; at = RLENGTH; end = NR; inside = 1 } }
+      END { if (!d) exit 1
+            x = 2 * d; if (kid && x > kid) x = kid; if (x <= at) x = at + 1
+            w = x < 9 ? 9 - x : 1
+            for (k = 1; k <= NR; k++) {
+              print line[k]
+              if (k == end) printf "%" x "s%-" w "s %s  %s\n", "", ENVIRON["NAME"], t, i } }' "$file" > "$new" &&
+     added=$(diff <(sort "$file") <(sort "$new") | grep '^[<>]') && [[ $added == ">"* && $added != *$'\n'* ]] &&
+     chmod --reference="$file" "$new" && mv "$new" "$file"
+  then refresh
+  else rm -f "$new"; return 1; fi
+}

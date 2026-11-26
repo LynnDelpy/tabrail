@@ -8,8 +8,10 @@
 #                            folders, else nothing (tabrail-act new opens its tab there); ~ not expanded
 #   rename-group OLD NEW     in the groups file (the line's indent and spacing kept), on its tabs, in the
 #                            fold state and its timer
-#   new-group NAME TARGET    a line with a tint and an icon not used yet; TARGET a tab (@id) moves into
-#                            it, a sidebar pane (pID for %ID) gets a new tab in it (tabrail-act new)
+#   new-group NAME TARGET [PARENT]
+#                            a line with a tint and an icon not used yet; with PARENT right after
+#                            PARENT's subtree, one level deeper; TARGET a tab (@id) moves into the group, a
+#                            sidebar pane (pID for %ID) gets a new tab in it (tabrail-groups-new)
 #   move-group SRC ONTO      SRC's line goes above ONTO's line if that is higher up, else below it;
 #                            ONTO Default: below the last group line
 # Group lines as src/groups.rs reads them: not a comment (first non-blank character #), 3 fields or
@@ -18,6 +20,7 @@ D=$(dirname "$(readlink -f "$0")")
 CONF=$(tmux show -gv @tabrail_groups 2>/dev/null)   # the groups: the file tmux.conf names, else ours
 CONF=${CONF:-$D/groups.conf}
 ICONS=(◆ ▲ ● ■ ★ ✦ ♦ ✚)
+source "$D/tabrail-groups-new"   # new_group, sub_line
 
 refresh() { tmux set-buffer -b sidebar-refresh x 2>/dev/null; true; }   # see tabrail-tmux
 
@@ -71,28 +74,13 @@ move_group() {
   return 0   # run-shell -b shows a failure in the pane
 }
 
-new_group() {
-  local name=${1// /-} used tint icon
-  [[ -z $name || $name == Default ]] && return
-  if ! awk -v g="$name" '!/^[ \t]*#/ && $1 == g { found = 1 } END { exit !found }' "$CONF"; then
-    used=$(awk '!/^[ \t]*#/ { print $2, $3 }' "$CONF")
-    for tint in $(cut -d' ' -f1 "$D/palette"); do grep -qiF -- "$tint" <<<"$used" || break; done
-    for icon in "${ICONS[@]}"; do grep -qF -- " $icon" <<<"$used" || break; done
-    printf '%-9s %s  %s\n' "$name" "$tint" "$icon" >> "$CONF"
-  fi
-  case $2 in
-    @*) tmux set -w -t "$2" @group "$name"; refresh ;;
-    p*) "$D/tabrail-act" new "$name" "%${2#p}" ;;
-  esac
-}
-
 case $1 in
   tree) tree ;;
   folder) folder "$2" ;;
   rename-group) shift; rename_group "$@" ;;
   new-group) shift; new_group "$@" ;;
   move-group) shift; move_group "$@" ;;
-  *) echo "usage: tabrail-groups tree | folder GROUP | rename-group OLD NEW | new-group NAME TARGET |" \
+  *) echo "usage: tabrail-groups tree | folder GROUP | rename-group OLD NEW | new-group NAME TARGET [PARENT] |" \
           "move-group SRC ONTO" >&2
      exit 2 ;;
 esac

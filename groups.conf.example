@@ -2,7 +2,8 @@
 # @tabrail_groups at a file of your own. A new tab joins the group with the longest folder it was
 # opened in or below, at any level (equal ones: the first line); prefix M, a drag or the right-click
 # menu moves it. Tabs in none: Default. The sidebar shows the groups in line order; the menu's "New
-# group…" adds lines here, dragging a group's row in the sidebar reorders them. Columns: name (one
+# group…" adds lines here, "New subgroup…" (or a click on a header's +) one indented under the
+# group's subtree, dragging a group's row in the sidebar reorders them. Columns: name (one
 # word), tint behind the group's row (#rrggbb; a group menu's "Colour…" sets it to one of the palette
 # file's), icon, folders (optional; a new tab of the group opens in the first, without any in the
 # first of its nearest ancestor that has folders, else home).

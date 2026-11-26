@@ -8,10 +8,12 @@ use crate::timer::Timers;
 use crate::{head, row};
 use std::collections::HashSet;
 
+#[derive(Clone)]
 pub enum Row {
     Nothing,
     Tab(String),
-    Group(String, Option<(usize, usize)>), // and the time's or ▷'s first and last column (head.rs), if shown
+    // and the time's or ▷'s first and last column, and the +'s (head.rs), if shown
+    Group(String, Option<(usize, usize)>, Option<usize>),
 }
 
 pub(crate) fn fg(key: &str) -> String {
@@ -74,9 +76,9 @@ pub fn screen(tabs: &[Tab], groups: &[Group], folded: &HashSet<String>, timers: 
             rows.push(Row::Nothing);
         }
         let fold = folded.contains(&group.name);
-        let (line, time) = head::row(group, fold, n[i..end].iter().sum(), timers.label(&group.name, now), width);
+        let (line, time, plus) = head::row(group, fold, n[i..end].iter().sum(), timers.label(&group.name, now), width);
         lines.push(line);
-        rows.push(Row::Group(group.name.clone(), time));
+        rows.push(Row::Group(group.name.clone(), time, plus));
         for tab in tabs.iter().filter(|t| !fold && t.group == group.name) {
             lines.push(row::tab(tab, group.depth, width, now));
             rows.push(Row::Tab(tab.id.clone()));

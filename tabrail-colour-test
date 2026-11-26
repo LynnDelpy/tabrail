@@ -36,7 +36,7 @@ check "Website's menu: Colour… right after Rename group" '[[ $m == *"Rename gr
 menu "• Default"; m=$(shown); keys q 0.5
 check "Default's menu: no Colour…" '[[ $m == *Fold* && $m != *Colour* ]]'
 menu "■ Q'a"; m=$(shown); keys q 0.5
-check "a name clean() changes (Q'a): no Colour…" '[[ $m == *Fold* && $m != *Colour* ]]'
+check "a name clean() changes (Q'a): no Colour…, no New subgroup…" '[[ $m == *Fold* && $m != *Colour* && $m != *subgroup* ]]'
 
 menu "▾ ◆ Website"; keys g; keys Ops; key Enter 2
 check "New group…: the first palette colour unused, #3B2F2A taken as Brown ($(grep ^Ops "$F"))" \

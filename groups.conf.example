@@ -1,13 +1,16 @@
 # Project groups for tabrail. Copy to groups.conf next to tabrail.tmux, or point the tmux option
-# @tabrail_groups at a file of your own. A new tab joins the first group one of whose folders it was
-# opened in or below; prefix M, a drag or the right-click menu moves it. Tabs in none: Default. The
-# menu's "New group…" adds lines here; dragging a group's row in the sidebar reorders them. Columns:
-# name (one word), tint behind the group's row (#rrggbb; a group menu's "Colour…" sets it to one of
-# the palette file's), icon, folders (optional; a new tab of the group opens in the first).
+# @tabrail_groups at a file of your own. A new tab joins the group with the longest folder it was
+# opened in or below, at any level (equal ones: the first line); prefix M, a drag or the right-click
+# menu moves it. Tabs in none: Default. The sidebar shows the groups in line order; the menu's "New
+# group…" adds lines here, dragging a group's row in the sidebar reorders them. Columns: name (one
+# word), tint behind the group's row (#rrggbb; a group menu's "Colour…" sets it to one of the palette
+# file's), icon, folders (optional; a new tab of the group opens in the first, without any in the
+# first of its nearest ancestor that has folders, else home).
 # A line indented under another makes a subgroup, any depth deep: its parent is the nearest group line
 # above it with less leading whitespace (a space or a tab counts one). The sidebar shows the tree, each
-# level one column further right; folding a group hides its subgroups too.
+# level one column further right; folding a group hides its subgroups too. Below, a tab opened in
+# ~/src/website/shop joins Shop, one anywhere else in ~/src/website joins Website.
 Website   #283147  ◆  ~/src/website ~/src/website-staging
-  Shop    #3a344e  ✦  ~/src/shop
+  Shop    #3a344e  ✦  ~/src/website/shop
 Infra     #3b2f2a  ▲  ~/src/infra
 Notes     #2a3b2f  ●

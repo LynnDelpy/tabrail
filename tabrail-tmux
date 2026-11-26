@@ -6,7 +6,7 @@
 #   restart          restart every sidebar (after cargo build)
 #   reap             close tabs where only the sidebar (and the reader pane or its slot) is left
 #   close WINDOW     close a tab; the reader pane moves on first (the menus' Close)
-#   group DIR        print the group of a folder
+#   group DIR        print the group of a folder: the one whose folder is the longest holding it
 # The reader pane and its slots (tabrail-reader) only when the global option @tabrail_reader names
 # its command.
 D=$(dirname "$(readlink -f "$0")")
@@ -21,16 +21,18 @@ WIDTH=$(tmux show -gv @sidebar_width 2>/dev/null)   # one width for every sideba
 refresh() { tmux set-buffer -b sidebar-refresh x 2>/dev/null; true; }
 reader() { [[ -n $(tmux show -gv @tabrail_reader 2>/dev/null) ]] && "$D/tabrail-reader" "$@"; true; }
 
+# The group whose folder is the longest one holding DIR, at any level (read drops a line's indent);
+# on a tie the first line's; ~ expanded, symlinks not resolved
 group() {
-  local name tint icon dir
+  local name tint icon dirs dir best=Default len=0
   while read -r name tint icon dirs; do
-    [[ -z $name || $name == \#* ]] && continue
+    [[ -z $name || $name == \#* || $name == Default ]] && continue
     for dir in $dirs; do
       dir=${dir/#\~/$HOME}
-      [[ $1 == "$dir" || $1 == "$dir"/* ]] && { echo "$name"; return; }
+      [[ ($1 == "$dir" || $1 == "$dir"/*) && ${#dir} -gt $len ]] && best=$name len=${#dir}
     done
   done < "$CONF"
-  echo Default
+  echo "$best"
 }
 
 ensure() {

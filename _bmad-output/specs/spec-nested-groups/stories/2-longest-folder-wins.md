@@ -2,7 +2,8 @@
 title: 'Longest folder wins'
 type: 'feature'
 created: '2026-11-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: 'e51331c4024e102ab98a2806b2e7f8ef4f31144a'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -47,14 +48,33 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `tabrail-tmux` -- `group()` keeps the longest matching folder, strict `>` so ties stay with the first line -- CAP-3
-- [ ] `tabrail-groups` -- `folder GROUP`: first folder of GROUP, else of its nearest ancestor, else nothing -- one tree reader on the bash side
-- [ ] `tabrail-act` -- `new()` uses `tabrail-groups folder`, `~` when empty -- folderless subgroups open where their parent works
-- [ ] `tabrail-tree-test` -- the matrix rows, calling `tabrail-tmux group` with `TMUX` set to the test server -- regression
-- [ ] `README.md`, `groups.conf.example` -- longest folder wins; line order is display order only -- README is the behaviour reference
+- [x] `tabrail-tmux` -- `group()` keeps the longest matching folder, strict `>` so ties stay with the first line -- CAP-3
+- [x] `tabrail-groups` -- `folder GROUP`: first folder of GROUP, else of its nearest ancestor, else nothing -- one tree reader on the bash side
+- [x] `tabrail-act` -- `new()` uses `tabrail-groups folder`, `~` when empty -- folderless subgroups open where their parent works
+- [x] `tabrail-tree-test` -- the matrix rows, calling `tabrail-tmux group` with `TMUX` set to the test server -- regression
+- [x] `README.md`, `groups.conf.example` -- longest folder wins; line order is display order only -- README is the behaviour reference
 
 **Acceptance Criteria:**
 - Given egov and St.Gallen as above on a test server, when `new-window -c ~/x/egov/stgallen/src` runs, then that tab's `@group` is St.Gallen.
+
+## Review Triage Log
+
+| # | Layer | Location | Claim | Verdict | Route | Evidence |
+|---|-------|----------|-------|---------|-------|----------|
+| 1 | verification-gap | `tabrail-groups:29-33` | New tab in a group with its own folder is unchecked | medium | patch | Pre-verified: a mutant skipping the group's own line passes `nw Archiv`/`nw Notes` |
+| 2 | verification-gap, blind | `tabrail-groups:32` | The ancestor walk is checked one level up only | medium | patch | Pre-verified: `while`→`if` passes; a folderless parent under a foldered grandparent would open in home |
+| 3 | verification-gap, blind, edge-case | `tabrail-tmux:29` | The Default-line skip in group() is not pinned | low | patch | Pre-verified mutant; Never: match Default by folder. Dropping the skip (edge-case's fix) would break that rule; `folder Default` serves New tab, not matching, so it keeps it |
+| 4 | blind | `tabrail-tree-test` | `nw` checks the cwd, not the new tab's `@group` | low | patch | `new()` exists to set the group; one assertion |
+| 5 | blind, edge-case | `tabrail-act:14-17`, `tabrail-tmux ensure` | ensure can overwrite the `@group` new() sets, filing the tab under the parent | low | defer | Race predates this story (then Default); ensure runs after pgrep and flock, so new()'s `set -w` nearly always wins |
+| 6 | blind | README nested bullet | "nearest ancestor's first folder" ambiguous when that ancestor has none | low | patch | Code skips folderless ancestors; direct text fix |
+| 7 | blind | README, `groups.conf.example` | Should say folders must be real paths: pane_current_path is resolved | low | reject | Same as before this story; the spec keeps symlinks unresolved |
+| 8 | blind, edge-case | `tabrail-tmux:30-32` | A trailing-slash folder never matches | low | defer | Same test before this story |
+| 9 | edge-case | `tabrail-tmux:28` | A last line without a newline is skipped by `read` | low | defer | Same loop before this story; new-group writes `\n` |
+| 10 | blind | `tabrail-tree-test` | Tie checked in one order; a subgroup sharing its parent's folder never gets tabs | false | reject | Frozen Approach: ties go to the first line; one order catches `>=` |
+| 11 | blind | `tabrail-tree-test` | At 99 lines; folder checks belong in their own test file | low | patch | Rows 1-4 do not fit under 100, and story 4 adds drag checks there |
+| 12 | blind | groups docs | Names must be unique across the tree; duplicates draw twice | low | reject | Hand-written duplicates behaved so before; story 1 row 2 |
+| 13 | blind | `tabrail-tree-test` `nw` | `main:$` picks the wrong tab if a window index gap appears | low | reject | No window is killed before it; a future edit's concern |
+| 14 | blind | `tabrail-act` header, `groups.conf.example` | Three comments read badly | low | patch | Direct text corrections |
 
 ## Verification
 

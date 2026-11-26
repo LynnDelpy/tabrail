@@ -20,8 +20,9 @@ grouped by project, with what each one is doing.
   typing part of a colour's name narrows the list, Enter writes the pick into column 2 of the group's
   line in the groups file (nothing else in it changes) and every sidebar shows it, Esc changes
   nothing. New group… takes the first palette colour no group uses. The order is the groups file's
-  line order, which is also the order a new tab's folder is matched in (the first group whose folder
-  holds it); Default is always last.
+  line order; Default is always last. A new tab joins the group whose folder is the longest one
+  holding the tab's folder, at any level and whatever the line order (equal ones go to the first line;
+  `~` expanded, symlinks not resolved), else Default; only a tab without a group gets one.
 - Groups in groups: a line indented under a group's line makes it a subgroup, any depth deep (its
   parent is the nearest group line above it with less leading whitespace, a space or a tab one each;
   an indented line with none above is top-level). Every sidebar shows the tree: each level's header
@@ -30,7 +31,8 @@ grouped by project, with what each one is doing.
   timer (a parent without tabs of its own shows its header, then its subgroups). Folding a parent
   hides its whole tree, its `N tabs` counting every tab in it; a subgroup keeps its own fold. Move to
   group… lists the tree in order, indented one column per level; Rename group changes only the name,
-  the line's indent and spacing stay.
+  the line's indent and spacing stay. New tab in a group without folders opens in the first folder
+  of its nearest ancestor that has folders, else home.
 - A timer per group, Default too, started and stopped by hand from the group's right-click menu or a
   click on its time or `▷`: the time right after the group's name (before a folded group's `N tabs`),
   `▶ 12m` while it runs, `⏸ 12m` dimmed while stopped, in every sidebar of every session. Start timer
@@ -172,7 +174,7 @@ Optional inputs, shown when present:
 | `src/*.rs` | The sidebar: `main.rs` loop, `control.rs` tmux connection, `model.rs` tabs and status, `groups.rs` the group tree from the groups file (`groups/tests.rs` its tests), `name.rs` tab names, `ssh.rs` ssh tab names, `program.rs` the program after a name, `draw.rs` screen, `head.rs` a group's header row (`head/tests.rs` its tests), `row.rs` a tab's row (`row/tests.rs` its tests), `input.rs` mouse, `drag.rs` left button (`drag/tests.rs` its tests), `menu.rs` right-click menus, `timer.rs` group timers (`timer/tests.rs` its tests), `width.rs` one width for all, `shown.rs` whether its tab is shown (`shown/tests.rs` its tests) |
 | `src/chat/` | `tabrail-chat`: `main.rs` loop and drawing, `chat.rs` keys and claude's events, `session.rs` claude across restarts (`--resume`), `claude.rs` the claude process, `stream.rs` its stream-json lines, `json.rs` JSON, `view.rs` the conversation, `input.rs` the input, `keys.rs` keys, `mouse.rs` wheel and clicks, `term.rs` the terminal, `bar.rs` the reader bar's height and buttons, `tmux.rs` its pane and `tabrail-reader size` |
 | `tabrail.tmux` | What tmux.conf loads: mouse bindings, hooks, prefix M and & |
-| `tabrail-tmux` | Housekeeping from the hooks: a sidebar (and a reader slot) for every tab, restart, close tabs with only a sidebar (and the reader pane or its slot), the menus' Close |
+| `tabrail-tmux` | Housekeeping from the hooks: a sidebar (and a reader slot) for every tab, a new tab's group (the longest folder holding it), restart, close tabs with only a sidebar (and the reader pane or its slot), the menus' Close |
 | `tabrail-reader`, `tabrail-reader-size`, `tabrail-reader-move` | The reader pane, a bar across the bottom: a slot in every tab, swap places with the shown tab's slot, start in it, move away before its tab closes; its height as tabrail-chat asks (`size`); back across the bottom when tmux moved it or a slot; `-move`: what a tab switch decides on in one tmux call, the move in one more |
 | `tabrail-slot` | A tab's slot: marks its pane, then waits as a plain `sleep`, no shell, with a child named `tabrail-slot` (for resurrect); restored into a shell, it respawns its pane as itself |
 | `tabrail-reader-test`, `tabrail-slot-test` | The reader bar's tests and its slots' (with ~/Dev/vmConfig's mouse config and a resurrect save and restore), on throwaway tmux servers |
@@ -183,13 +185,14 @@ Optional inputs, shown when present:
 | `tabrail-colour-test` | A group's colour on throwaway tmux servers, the groups file a symlink to a temp copy: Colour… in the menus (none for Default or a name `clean()` changes), New group…'s palette tint (the first unused, in any case), the picker's swatches, current mark and search on colour names only, the pick in column 2 alone (link and mode kept), every sidebar, Esc, a hand-written tint, the group renamed meanwhile, the same tint again, a 50x20 client |
 | `tabrail-timer-click-test` | A click on a group's time on throwaway tmux servers, real SGR presses: stop and resume (both sessions, fold state kept, folded too); beside it, the name, off the time, no time, a drag from it and a tab row as before |
 | `tabrail-tree-test` | Nested groups on throwaway tmux servers, the groups file a symlink to a temp file: a flat file drawn as before (a drag still moves its line), the tree one column in per level, a click on a nested tab row, a folded parent counting its tree, a subgroup's fold kept, an empty leaf, an indented first line, `tabrail-groups tree`, Move to group…'s tree and a tab moved into a subgroup in every sidebar, a parent without tabs, rename keeping the indent (link and mode kept) |
+| `tabrail-folder-test` | The folder a new tab joins a group by and opens in, on a throwaway tmux server, the groups file a temp file: the longest folder winning at any level whatever the line order, a name prefix, a tie after `~` expansion, a hand-written Default line never matched, a `new-window` in a subgroup's folder joining it, New tab in a group's own folder, in the first of its nearest ancestor with folders (one and two levels up) and at home, each in the group asked for |
 | `tabrail-timer-state-test` | `tabrail-timer` and its state file alone, no tmux server: toggle, start twice, reset, rename, no file, usage, garbage dropped, racing writes |
 | `tabrail-shown-test` | Only the sidebar shown works: which sidebars write per tab switch, hook burst, detach, attach, width set while hidden, new tab, second session and `switch-client`, on throwaway tmux servers |
 | `tabrail-perf-test [N…]` | Speed at N tabs (default 5 and 50) on throwaway tmux servers, the reader bar on: per N one line with the tab switch median and max (until the new tab's sidebar marks it), the same under Claude hook calls (one every 100 ms unless 4 run) and the rate they reached, the reader's median (until it is in the new tab), idle tmux CPU and ms per hook call. `SETTLE=` seconds to wait before measuring (60 + 2 per tab), `IDLE=` seconds of idle measured (60), `HOOK=` the hook (`~/Dev/vmConfig/tmux-claude-state`; missing: n/a); `5 50` takes ~12 min. On stderr: waits timed out after 10 s (their values near 10000 ms) and idle halves too far apart to be steady; exit 1 when setup times out |
 | `tabrail-chat-test-lib`, `tabrail-chat-fake` | A 120x4 pane for `tabrail-chat` and helpers for rows, keys and the wheel on pane `C` (`main`; only the helpers with `HELPERS_ONLY=1`); the fake claude, canned stream-json per question |
 | `tabrail-test-lib` | What the tests share: the throwaway servers, clicks, checks, slots and their processes |
 | `tabrail-act` | What the menus do outside the groups file: new tab, duplicate, fold (the groups file: tabrail-groups) |
-| `tabrail-groups` | The groups file: its tree (`tree`: depth, name and icon per group, for the pickers) and its writers, for the menus and group drags: rename group (only the name: indent and spacing kept), new group, move group; rename and move write through a symlink, keep the mode and rename into place |
+| `tabrail-groups` | The groups file: its tree (`tree`: depth, name and icon per group, for the pickers; `folder`: where a group's new tab opens, its first folder, else the first of its nearest ancestor that has folders) and its writers, for the menus and group drags: rename group (only the name: indent and spacing kept), new group, move group; rename and move write through a symlink, keep the mode and rename into place |
 | `tabrail-timer` | The group timers' state file, its only writer: start, stop, toggle, reset, rename (under flock, renamed into place) |
 | `tabrail-move`, `tabrail-pick` | Move a tab to a group in a picker (the tree, indented); the picker (Claude Code's option-list style, fzf), or a name field with `-q` |
 | `tabrail-colour` | The group menu's Colour…: `palette` as swatches in a picker, the pick written into column 2 of the group's line (through a symlink, mode kept, renamed into place) |

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The groups file (the file @tabrail_groups names, else groups.conf): its tree and its writers, for
-# tabrail's menus and group drags (tabrail-name, tabrail-move, src/drag.rs); also usable by hand:
+# tabrail's menus and group drags (tabrail-name, tabrail-move, tabrail-nest, src/drag.rs); also
+# usable by hand:
 #   tree                     per group line in file order: its depth (0 top-level), name and icon,
 #                            tab-separated; a group's parent is the nearest group line above it with
 #                            less leading whitespace (a space or a tab counts one), as src/groups.rs reads it
@@ -14,7 +15,8 @@
 #                            sidebar pane (pID for %ID) gets a new tab in it (tabrail-groups-new)
 #   move-group SRC ONTO      SRC's tree goes above ONTO's line if that is higher up, else below ONTO's
 #                            tree; ONTO Default: below the last group line; siblings only
-#   nest SRC PARENT          SRC's tree goes below PARENT's tree, one level deeper (both: tabrail-groups-move)
+#   nest SRC PARENT|''       SRC's tree goes below PARENT's tree, one level deeper; '': top-level,
+#                            below the last group line (both: tabrail-groups-move)
 # Group lines as src/groups.rs reads them: not a comment (first non-blank character #), 3 fields or
 # more, the first of a name.
 D=$(dirname "$(readlink -f "$0")")
@@ -56,6 +58,7 @@ rename_group() {
   refresh
 }
 
+[[ $1 == nest && $# -lt 3 ]] && set --   # nest without its PARENT (or ''): usage
 case $1 in
   tree) tree ;;
   folder) folder "$2" ;;
@@ -63,6 +66,6 @@ case $1 in
   new-group) shift; new_group "$@" ;;
   move-group|nest) move_group "$@" ;;
   *) echo "usage: tabrail-groups tree | folder GROUP | rename-group OLD NEW | new-group NAME TARGET [PARENT] |" \
-          "move-group SRC ONTO | nest SRC PARENT" >&2
+          "move-group SRC ONTO | nest SRC PARENT|''" >&2
      exit 2 ;;
 esac

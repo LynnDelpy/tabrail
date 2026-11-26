@@ -8,7 +8,7 @@ use crate::menu::Place;
 use std::collections::HashSet;
 
 const P: Place<'static> = Place { pane: "%1", helper: "/t/tabrail-act", mover: "", namer: "/t/tabrail-name", timer: "/t/tabrail-timer",
-                                  colourer: "", grouper: "/t/tabrail-groups" };
+                                  colourer: "", nester: "", grouper: "/t/tabrail-groups" };
 const TOGGLE: &str = "run-shell -b \"/t/tabrail-timer toggle 'Website'\"";
 
 /// `name`'s header row at width 26 with three tabs, `fold`ed or not, as draw makes it.

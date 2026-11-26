@@ -6,7 +6,9 @@
 #               ONTO's line if that is higher up, else after the last line of ONTO's tree; ONTO
 #               Default: after the last group line. Never Default itself.
 #   nest        after the last line of PARENT's tree, one level deeper: its last subgroup, also when
-#               PARENT is SRC's parent already. Never Default, into Default, SRC or its subgroups.
+#               PARENT is SRC's parent already; PARENT empty: top-level, after the last group line but
+#               its own (a top-level SRC whose tree holds it stays). Never Default, into Default, SRC or
+#               its subgroups.
 # The moved group lines get 2 spaces per level, the rest of each line kept; the top one no deeper
 # than the sibling above its new place and no shallower than the one below it, deeper than its parent
 # (so that the parent rule reads the tree so in a file indented by hand too), its subgroups 2 more per
@@ -29,8 +31,10 @@ move_group() {   # move-group|nest SRC ONTO
         if ($1 == o "" && !b) b = NR }
       END { if (!a || s == "Default") exit 1
             z = last_of(a)   # SRC tree: lines a to z; it goes after line at, at depth d, its parent p
-            if (m == "nest") { if (!b || o == "Default" || (b >= a && b <= z)) exit 1
-                               p = b; at = last_of(b); d = dep[b] + 1 }
+            if (m == "nest" && o == "") { if (!par[a] && last <= z) exit 1
+                                          p = 0; d = 0; for (y = 1; y <= NR; y++) if (g[y] && (y < a || y > z)) at = y }
+            else if (m == "nest") { if (!b || o == "Default" || (b >= a && b <= z)) exit 1
+                                    p = b; at = last_of(b); d = dep[b] + 1 }
             else if (o == "Default") { if (par[a] || last <= z) exit 1
                                        p = 0; at = last; d = 0 }
             else { if (!b || b == a || par[b] != par[a]) exit 1

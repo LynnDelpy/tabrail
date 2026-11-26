@@ -1,18 +1,18 @@
 //! drag.rs: a left press and release on a group's row, on its time or ▷ (head.rs's columns) or beside it.
 use super::left;
 use crate::draw::Row;
-use crate::head;
+use crate::{groups::Group, head};
 use crate::input::Click;
 use crate::menu::Place;
 use std::collections::HashSet;
 
 const P: Place<'static> = Place { pane: "%1", helper: "/t/tabrail-act", mover: "", namer: "", timer: "/t/tabrail-timer",
-                                  colourer: "" };
+                                  colourer: "", grouper: "/t/tabrail-groups" };
 const TOGGLE: &str = "run-shell -b \"/t/tabrail-timer toggle 'Website'\"";
 
 /// `name`'s header row at width 26 with three tabs, `fold`ed or not, as draw makes it.
 fn group(name: &str, fold: bool, time: Option<&str>) -> Row {
-    let g = (name.to_string(), "#283147".to_string(), "◆".to_string());
+    let g = Group { name: name.into(), tint: "#283147".into(), icon: "◆".into(), depth: 0 };
     Row::Group(name.into(), head::row(&g, fold, 3, time.map(|t| (t.to_string(), "busy")), 26).1)
 }
 
@@ -87,7 +87,7 @@ fn a_drag_from_the_time_moves_the_group() {
     let (mut drag, none) = (None, HashSet::new());
     assert!(send(&mut drag, (14, 4), &group("Website", false, Some("▶ 12m")), false, &none).is_empty());
     let cmds = send(&mut drag, (14, 9), &group("Infra", false, Some("▶ 3m")), true, &none);
-    assert_eq!(cmds, ["run-shell -b '/t/tabrail-act move-group \"Website\" \"Infra\"'"]);
+    assert_eq!(cmds, ["run-shell -b '/t/tabrail-groups move-group \"Website\" \"Infra\"'"]);
 }
 
 #[test]

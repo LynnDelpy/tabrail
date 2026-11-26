@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Housekeeping for tabrail, the tmux sidebar (target/release/tabrail, built from src/ with cargo),
-# called from tabrail.tmux hooks and by hand; what its menus do is in tabrail-act:
+# called from tabrail.tmux hooks and by hand; what its menus do is in tabrail-act and tabrail-groups:
 #   ensure [WINDOW]  give every tab (or WINDOW) a sidebar pane on the left, and a group by its folder
 #   refresh          make every sidebar redraw now
 #   restart          restart every sidebar (after cargo build)

@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# The groups file (the file @tabrail_groups names, else groups.conf): its tree and its writers, for
+# tabrail's menus and group drags (tabrail-name, tabrail-move, src/drag.rs); also usable by hand:
+#   tree                     per group line in file order: its depth (0 top-level), name and icon,
+#                            tab-separated; a group's parent is the nearest group line above it with
+#                            less leading whitespace (a space or a tab counts one), as src/groups.rs reads it
+#   rename-group OLD NEW     in the groups file (the line's indent and spacing kept), on its tabs, in the
+#                            fold state and its timer
+#   new-group NAME TARGET    a line with a tint and an icon not used yet; TARGET a tab (@id) moves into
+#                            it, a sidebar pane (pID for %ID) gets a new tab in it (tabrail-act new)
+#   move-group SRC ONTO      SRC's line goes above ONTO's line if that is higher up, else below it;
+#                            ONTO Default: below the last group line
+# Group lines as src/groups.rs reads them: not a comment (first non-blank character #), 3 fields or
+# more, the first of a name.
+D=$(dirname "$(readlink -f "$0")")
+CONF=$(tmux show -gv @tabrail_groups 2>/dev/null)   # the groups: the file tmux.conf names, else ours
+CONF=${CONF:-$D/groups.conf}
+ICONS=(◆ ▲ ● ■ ★ ✦ ♦ ✚)
+
+refresh() { tmux set-buffer -b sidebar-refresh x 2>/dev/null; true; }   # see tabrail-tmux
+
+tree() {   # indent[] the leading whitespace of the last group line and its ancestors
+  awk '!/^[ \t]*#/ && NF >= 3 { match($0, /^[ \t]*/); while (n && indent[n] >= RLENGTH) n--
+                          indent[++n] = RLENGTH; print n - 1 "\t" $1 "\t" $3 }' "$CONF"
+}
+
+# Only the name changes: the indent before it and the spacing after it stay; written through a
+# symlink, mode kept, renamed into place
+rename_group() {
+  local old=$1 new=${2// /-} file tmp win   # one word: the groups file splits on spaces
+  [[ -z $new || $old == Default || $new == Default ]] && return
+  file=$(readlink -f "$CONF") && tmp="$file.new.$$" || return 0
+  if awk -v o="$old" -v n="$new" '!/^[ \t]*#/ && $1 == o "" { match($0, /^[ \t]*/)
+           $0 = substr($0, 1, RLENGTH) n substr($0, RLENGTH + length(o) + 1) } 1' "$file" > "$tmp" &&
+     chmod --reference="$file" "$tmp" && mv "$tmp" "$file"
+  then "$D/tabrail-timer" rename "$old" "$new"
+  else rm -f "$tmp"; fi
+  for win in $(tmux list-windows -a -F '#{window_id}'); do
+    [[ $(tmux show -wv -t "$win" @group 2>/dev/null) == "$old" ]] && tmux set -w -t "$win" @group "$new"
+  done
+  tmux set -g @sidebar_fold "$(tmux show -gv @sidebar_fold 2>/dev/null | tr '|' '\n' |
+    awk -v o="$old" -v n="$new" '$0 == o { $0 = n } 1' | paste -sd'|')"
+  refresh
+}
+
+# Written through a symlink, mode kept, renamed into place if no line was lost or added
+move_group() {
+  local file new
+  file=$(readlink -f "$CONF") && new="$file.new.$$" || return 0
+  if awk -v s="$1" -v o="$2" '
+      NR == FNR { if (!/^[ \t]*#/ && NF >= 3) { last = FNR; if ($1 == o "" && !onto) onto = FNR
+                                          if ($1 == s "" && !src) { src = FNR; line = $0 } }
+                  next }
+      FNR == 1 && o == "Default" { onto = last }
+      FNR == src { next }
+      FNR == onto && onto < src { print line }
+      { print }
+      FNR == onto && onto > src { print line }
+      END { if (!src || !onto || src == onto) exit 1 }' "$file" "$file" 2>/dev/null > "$new" &&
+     cmp -s <(sort "$file") <(sort "$new") && chmod --reference="$file" "$new" && mv "$new" "$file"
+  then refresh
+  else rm -f "$new"; fi
+  return 0   # run-shell -b shows a failure in the pane
+}
+
+new_group() {
+  local name=${1// /-} used tint icon
+  [[ -z $name || $name == Default ]] && return
+  if ! awk -v g="$name" '!/^[ \t]*#/ && $1 == g { found = 1 } END { exit !found }' "$CONF"; then
+    used=$(awk '!/^[ \t]*#/ { print $2, $3 }' "$CONF")
+    for tint in $(cut -d' ' -f1 "$D/palette"); do grep -qiF -- "$tint" <<<"$used" || break; done
+    for icon in "${ICONS[@]}"; do grep -qF -- " $icon" <<<"$used" || break; done
+    printf '%-9s %s  %s\n' "$name" "$tint" "$icon" >> "$CONF"
+  fi
+  case $2 in
+    @*) tmux set -w -t "$2" @group "$name"; refresh ;;
+    p*) "$D/tabrail-act" new "$name" "%${2#p}" ;;
+  esac
+}
+
+case $1 in
+  tree) tree ;;
+  rename-group) shift; rename_group "$@" ;;
+  new-group) shift; new_group "$@" ;;
+  move-group) shift; move_group "$@" ;;
+  *) echo "usage: tabrail-groups tree | rename-group OLD NEW | new-group NAME TARGET | move-group SRC ONTO" >&2
+     exit 2 ;;
+esac

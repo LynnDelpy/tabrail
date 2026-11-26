@@ -6,30 +6,29 @@
 mod control;
 mod drag;
 mod draw;
+mod groups;
 mod head;
 mod input;
 mod menu;
 mod model;
 mod name;
 mod program;
+mod row;
 mod shown;
 mod ssh;
 mod timer;
 mod width;
 
 use control::Tmux;
-use std::collections::HashSet;
-use std::io::Write;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use std::{env, fs, thread};
+use std::{collections::HashSet, env, fs, io::Write, path::PathBuf, process::{Command, Stdio}, thread};
 
 fn main() {
     let pane = env::var("TMUX_PANE").expect("runs inside a tmux pane");
     let dir = env::current_exe().ok().and_then(|p| Some(p.parent()?.parent()?.parent()?.to_path_buf()))
         .expect("binary lives in tabrail/target/release");
-    let [helper, mover, namer, timer, colourer] = ["act", "move", "name", "timer", "colour"].map(|f| format!("{}/tabrail-{f}", dir.display()));
+    let [helper, mover, namer, timer, colourer, grouper] =
+        ["act", "move", "name", "timer", "colour", "groups"].map(|f| format!("{}/tabrail-{f}", dir.display()));
     let ids = Command::new("tmux").args(["display", "-p", "-t", &pane, "#{session_id} #{pid} #{window_id}"])
         .output().map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string()).unwrap_or_default();
     let ids: Vec<&str> = ids.split(' ').chain(["0", ""]).collect();
@@ -39,7 +38,7 @@ fn main() {
     let tx = t.tx.clone();
     thread::spawn(move || input::read_clicks(tx));
     t.ask(&format!("set -p -t {pane} @sidebar 1"));
-    let place = menu::Place { pane: &pane, helper: &helper, mover: &mover, namer: &namer, timer: &timer, colourer: &colourer };
+    let place = menu::Place { pane: &pane, helper: &helper, mover: &mover, namer: &namer, timer: &timer, colourer: &colourer, grouper: &grouper };
     // the tabs' own panes only: tmux reads /proc (current command and path) for these alone
     let list = format!("list-panes -s -t {session} -f '#{{!:#{{@sidebar}}#{{@reader}}#{{@reader_slot}}}}' -F '{}'",
                        model::FIELDS.map(|f| format!("#{{{f}}}")).join("\t"));
@@ -67,7 +66,7 @@ fn main() {
         }
         let tabs = model::tabs(&t.ask(&list));
         let conf = h.get(4).filter(|p| !p.is_empty()).map(PathBuf::from).unwrap_or(dir.join("groups.conf"));
-        let groups = model::groups(&fs::read_to_string(conf).unwrap_or_default());
+        let groups = groups::read(&fs::read_to_string(conf).unwrap_or_default());
         let timers = timer::Timers::read(); // every redraw: tabrail-timer changes it from any sidebar
         let now = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
         let screen = draw::screen(&tabs, &groups, &folded, &timers, h.first().unwrap_or(&""), size, now);

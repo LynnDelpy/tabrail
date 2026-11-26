@@ -11,12 +11,12 @@ if [[ $1 == --pick ]]; then
   group=$2
   tint=$("$D/tabrail-pick" "Colour for $group?" < "$3"); rm -f "$3"
   [[ -n $tint ]] || exit 0
-  # The group's line as model.rs reads it (not a comment, 3 fields or more, the first of its name), its
-  # field 2 replaced in place; written like tabrail-act move_group: through a symlink, mode kept,
-  # renamed into place, and only if exactly one line changed
+  # The group's line as src/groups.rs reads it (not a comment, even indented; 3 fields or more, the
+  # first of its name), its field 2 replaced in place; written like tabrail-groups move_group: through
+  # a symlink, mode kept, renamed into place, and only if exactly one line changed
   file=$(readlink -f "$CONF") && new="$file.new.$$" || exit 0
   if awk -v g="$group" -v t="$tint" '
-      !done && !/^#/ && NF >= 3 && $1 == g "" {
+      !done && !/^[ \t]*#/ && NF >= 3 && $1 == g "" {
         match($0, /^[ \t]*[^ \t]+[ \t]+/)
         $0 = substr($0, 1, RLENGTH) t substr($0, RLENGTH + length($2) + 1); done = 1 }
       { print }
@@ -29,7 +29,7 @@ if [[ $1 == --pick ]]; then
 fi
 
 group=$1 client=$2
-read -r tint icon < <(awk -v g="$group" '!/^#/ && NF >= 3 && $1 == g "" { print $2, $3; exit }' "$CONF")
+read -r tint icon < <(awk -v g="$group" '!/^[ \t]*#/ && NF >= 3 && $1 == g "" { print $2, $3; exit }' "$CONF")
 
 # One line per colour: its hex, the swatch (the header's bold text on it), then the part searched: its
 # name and whether the group has it now

@@ -4,6 +4,10 @@
 # menu's "New group…" adds lines here; dragging a group's row in the sidebar reorders them. Columns:
 # name (one word), tint behind the group's row (#rrggbb; a group menu's "Colour…" sets it to one of
 # the palette file's), icon, folders (optional; a new tab of the group opens in the first).
+# A line indented under another makes a subgroup, any depth deep: its parent is the nearest group line
+# above it with less leading whitespace (a space or a tab counts one). The sidebar shows the tree, each
+# level one column further right; folding a group hides its subgroups too.
 Website   #283147  ◆  ~/src/website ~/src/website-staging
+  Shop    #3a344e  ✦  ~/src/shop
 Infra     #3b2f2a  ▲  ~/src/infra
 Notes     #2a3b2f  ●

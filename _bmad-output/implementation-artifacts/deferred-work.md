@@ -228,3 +228,6 @@ status: open
 - source_spec: `_bmad-output/specs/spec-group-timer/stories/1-group-timer-from-the-menu.md`
   summary: rename-group with an unwritable groups.conf is untested: the timer must stay under OLD (the `&&` after the `mv`).
   evidence: low. Putting the call back before the awk or `;` instead of `&&` passes every test; a check needs `chmod a-w` on the groups folder around the call.
+- source_spec: `_bmad-output/specs/spec-nested-groups/stories/1-show-nested-groups.md`
+  summary: `tabrail-groups rename-group` sets the tabs' `@group` and `@sidebar_fold` to NEW even when the groups-file write failed, so those tabs vanish from every sidebar (draw.rs draws only groups in the file).
+  evidence: medium. The loops run after `fi`, outside the success branch, as they did after `> $CONF.new && mv` before; a read-only folder of the real groups file triggers it. Fix: move them and `refresh` into the `then` branch.

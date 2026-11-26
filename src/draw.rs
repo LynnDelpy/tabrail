@@ -1,10 +1,11 @@
-//! One screen of the sidebar: groups on the terminal's own background with a faint tint behind each
-//! group's row and its timer after its name (head.rs), ❯ and lavender for the current tab, the program
-//! dimmed after its name and the status at the right edge, the clock at the bottom.
+//! One screen of the sidebar: the group tree (groups.rs) on the terminal's own background, each level
+//! one column further right, a faint tint behind each group's row and its timer after its name
+//! (head.rs), a parent's own tabs (row.rs) above its subgroups, the clock at the bottom.
 //! Colours: Catppuccin Mocha.
-use crate::head;
-use crate::model::{self, Tab};
+use crate::groups::{self, Group};
+use crate::model::Tab;
 use crate::timer::Timers;
+use crate::{head, row};
 use std::collections::HashSet;
 
 pub enum Row {
@@ -54,39 +55,35 @@ pub fn changes(shown: &mut Vec<String>, lines: Vec<String>) -> String {
     text
 }
 
-pub fn screen(tabs: &[Tab], groups: &[(String, String, String)], folded: &HashSet<String>, timers: &Timers,
+pub fn screen(tabs: &[Tab], groups: &[Group], folded: &HashSet<String>, timers: &Timers,
               clock: &str, (width, height): (usize, usize), now: i64) -> Screen {
     let mut lines = vec![String::new()];
     let mut rows = vec![Row::Nothing, Row::Nothing];
-    let len = |s: &str| s.chars().count();
-    for group in groups {
-        let name = &group.0;
-        let members: Vec<&Tab> = tabs.iter().filter(|t| &t.group == name).collect();
-        // a group without tabs shows only while it has a timer: its time and menu stay in reach
-        if members.is_empty() && timers.running(name).is_none() {
+    let n: Vec<usize> = groups.iter().map(|g| tabs.iter().filter(|t| t.group == g.name).count()).collect();
+    let mut i = 0;
+    while i < groups.len() {
+        let (group, end) = (&groups[i], groups::subtree(groups, i).end);
+        // a group shows while it or one below it holds a tab or has a timer: its time and menu stay in
+        // reach; a folded one hides the groups below it and counts their tabs with its own
+        if (i..end).all(|j| n[j] == 0 && timers.running(&groups[j].name).is_none()) {
+            i = end;
             continue;
         }
-        let fold = folded.contains(name);
-        let (line, time) = head::row(group, fold, members.len(), timers.label(name, now), width);
+        if group.depth == 0 && lines.len() > 1 { // one blank line after each top-level tree
+            lines.push(String::new());
+            rows.push(Row::Nothing);
+        }
+        let fold = folded.contains(&group.name);
+        let (line, time) = head::row(group, fold, n[i..end].iter().sum(), timers.label(&group.name, now), width);
         lines.push(line);
-        rows.push(Row::Group(name.clone(), time));
-        for tab in if fold { vec![] } else { members } {
-            // program after the name, status at the edge; a long name is cut to make room for both, and the
-            // program left out where fewer than 8 of the name's characters (all of a shorter one) would show
-            let (state, kind) = model::status(tab, now);
-            let state = if state.is_empty() { state } else { format!(" {state}") };
-            let least = 3 + len(&tab.name).min(8) + 1 + len(&tab.program) + len(&state);
-            let prog = if tab.program.is_empty() || least > width { String::new() } else { format!(" {}", tab.program) };
-            let full = format!(" {} {}", if tab.current { '❯' } else { ' ' }, tab.name);
-            let right = len(&prog) + len(&state);
-            let room = width.saturating_sub(right);
-            // a cut ending in a space loses it: no double space before the program
-            let label = if len(&full) > room { full.chars().take(room).collect::<String>().trim_end().into() } else { full };
-            let rest = " ".repeat(width.saturating_sub(len(&label) + right));
-            let style = if tab.current { fg("current") + "\x1b[1m" } else { fg("tab") };
-            lines.push(format!("{style}{label}\x1b[0m{}{prog}{rest}{}{state}\x1b[0m", fg("dim"), fg(kind)));
+        rows.push(Row::Group(group.name.clone(), time));
+        for tab in tabs.iter().filter(|t| !fold && t.group == group.name) {
+            lines.push(row::tab(tab, group.depth, width, now));
             rows.push(Row::Tab(tab.id.clone()));
         }
+        i = if fold { end } else { i + 1 };
+    }
+    if lines.len() > 1 {
         lines.push(String::new());
         rows.push(Row::Nothing);
     }

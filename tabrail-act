@@ -1,23 +1,18 @@
 #!/usr/bin/env bash
-# What tabrail's right-click menus and group drags do (src/menu.rs, drag.rs); also usable by hand:
+# What tabrail's right-click menus do outside the groups file (src/menu.rs): new tab, duplicate, fold;
+# what they and group drags write into the groups file is tabrail-groups. Also usable by hand:
 #   new GROUP PANE           a new tab in GROUP's first folder (home if none), in PANE's session
 #   dup WINDOW               a new tab right after WINDOW, same group and folder (of its own pane)
 #   fold GROUP               fold or unfold a group in every sidebar
-#   rename-group OLD NEW     in groups.conf, on its tabs, in the fold state and its timer
-#   new-group NAME TARGET    a line in groups.conf with a tint and an icon not used yet; TARGET a
-#                            tab (@id) moves into it, a sidebar pane (pID for %ID) gets a new tab in it
-#   move-group SRC ONTO      SRC's line in groups.conf goes above ONTO's line if that is higher up,
-#                            else below it; ONTO Default: below the last group line
 D=$(dirname "$(readlink -f "$0")")
 CONF=$(tmux show -gv @tabrail_groups 2>/dev/null)   # the groups: the file tmux.conf names, else ours
 CONF=${CONF:-$D/groups.conf}
-ICONS=(◆ ▲ ● ■ ★ ✦ ♦ ✚)
 
 refresh() { tmux set-buffer -b sidebar-refresh x 2>/dev/null; true; }   # see tabrail-tmux
 
 new() {
   local dir id
-  dir=$(awk -v g="$1" '!/^#/ && $1 == g { print $4; exit }' "$CONF")
+  dir=$(awk -v g="$1" '!/^[ \t]*#/ && $1 == g { print $4; exit }' "$CONF")
   dir=${dir:-\~}
   id=$(tmux new-window -t "$(tmux display -p -t "$2" '#{session_id}'):" -P -F '#{window_id}' -c "${dir/#\~/$HOME}")
   tmux set -w -t "$id" @group "$1"
@@ -39,60 +34,7 @@ fold() {
   refresh
 }
 
-rename_group() {
-  local old=$1 new=${2// /-} win   # one word: groups.conf splits on spaces
-  [[ -z $new || $old == Default || $new == Default ]] && return
-  awk -v o="$old" -v n="$new" '!/^#/ && $1 == o { $0 = n substr($0, length(o) + 1) } 1' \
-    "$CONF" > "$CONF.new" && mv "$CONF.new" "$CONF" && "$D/tabrail-timer" rename "$old" "$new"
-  for win in $(tmux list-windows -a -F '#{window_id}'); do
-    [[ $(tmux show -wv -t "$win" @group 2>/dev/null) == "$old" ]] && tmux set -w -t "$win" @group "$new"
-  done
-  tmux set -g @sidebar_fold "$(tmux show -gv @sidebar_fold 2>/dev/null | tr '|' '\n' |
-    awk -v o="$old" -v n="$new" '$0 == o { $0 = n } 1' | paste -sd'|')"
-  refresh
-}
-
-# Group lines as model.rs reads them (not a comment, 3 fields or more, the first of a name, compared
-# as strings); written through a symlink, mode kept, renamed into place if no line was lost or added
-move_group() {
-  local file new
-  file=$(readlink -f "$CONF") && new="$file.new.$$" || return 0
-  if awk -v s="$1" -v o="$2" '
-      NR == FNR { if (!/^#/ && NF >= 3) { last = FNR; if ($1 == o "" && !onto) onto = FNR
-                                          if ($1 == s "" && !src) { src = FNR; line = $0 } }
-                  next }
-      FNR == 1 && o == "Default" { onto = last }
-      FNR == src { next }
-      FNR == onto && onto < src { print line }
-      { print }
-      FNR == onto && onto > src { print line }
-      END { if (!src || !onto || src == onto) exit 1 }' "$file" "$file" 2>/dev/null > "$new" &&
-     cmp -s <(sort "$file") <(sort "$new") && chmod --reference="$file" "$new" && mv "$new" "$file"
-  then refresh
-  else rm -f "$new"; fi
-  return 0   # run-shell -b shows a failure in the pane
-}
-
-new_group() {
-  local name=${1// /-} used tint icon
-  [[ -z $name || $name == Default ]] && return
-  if ! awk -v g="$name" '!/^#/ && $1 == g { found = 1 } END { exit !found }' "$CONF"; then
-    used=$(awk '!/^#/ { print $2, $3 }' "$CONF")
-    for tint in $(cut -d' ' -f1 "$D/palette"); do grep -qiF -- "$tint" <<<"$used" || break; done
-    for icon in "${ICONS[@]}"; do grep -qF -- " $icon" <<<"$used" || break; done
-    printf '%-9s %s  %s\n' "$name" "$tint" "$icon" >> "$CONF"
-  fi
-  case $2 in
-    @*) tmux set -w -t "$2" @group "$name"; refresh ;;
-    p*) new "$name" "%${2#p}" ;;
-  esac
-}
-
 case $1 in
   new | dup | fold) "$@" ;;
-  rename-group) shift; rename_group "$@" ;;
-  new-group) shift; new_group "$@" ;;
-  move-group) shift; move_group "$@" ;;
-  *) echo "usage: tabrail-act new GROUP PANE | dup WINDOW | fold GROUP | rename-group OLD NEW" \
-          "| new-group NAME TARGET | move-group SRC ONTO" >&2; exit 2 ;;
+  *) echo "usage: tabrail-act new GROUP PANE | dup WINDOW | fold GROUP" >&2; exit 2 ;;
 esac

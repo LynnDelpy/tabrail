@@ -5,7 +5,7 @@
 #   stop GROUP        freeze it; stopped: nothing
 #   toggle GROUP      stop it if it runs, else start it
 #   reset GROUP       drop its timer
-#   rename OLD NEW    OLD's timer becomes NEW's, replacing one NEW had (tabrail-act rename-group)
+#   rename OLD NEW    OLD's timer becomes NEW's, replacing one NEW had (tabrail-groups rename-group)
 # $XDG_STATE_HOME/tabrail/timers, else ~/.local/state/tabrail/timers: one line per timed group,
 # NAME ACCUMULATED SINCE in seconds, SINCE the epoch it was started, 0 while stopped. Wall-clock: no
 # sidebar counts, so a restart neither loses nor double-counts time. Changed under flock, written to a

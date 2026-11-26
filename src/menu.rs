@@ -4,9 +4,7 @@
 //! takes clicks when tmux opens it from a mouse key binding, so the sidebar keeps them as files
 //! ($XDG_RUNTIME_DIR/tabrail/SERVERPID-PANE-ROW.conf) and tmux.conf's right-button binding runs the
 //! one under the mouse. Item commands are tmux { } blocks; menus are rounded as set in tmux.conf.
-use crate::draw::Row;
-use crate::model::Tab;
-use crate::timer::Timers;
+use crate::{draw::Row, model::Tab, timer::Timers};
 use std::{collections::HashSet, env, fs, path::PathBuf};
 
 pub struct Place<'a> {
@@ -16,6 +14,7 @@ pub struct Place<'a> {
     pub namer: &'a str,  // tabrail-name
     pub timer: &'a str,  // tabrail-timer
     pub colourer: &'a str, // tabrail-colour
+    pub grouper: &'a str, // tabrail-groups
 }
 
 /// One sidebar's menu files and what each holds.
@@ -57,7 +56,7 @@ pub fn for_row(row: Option<&Row>, tabs: &[Tab], folded: &HashSet<String>, timers
     let namer = |kind: &str, target: &str, text: &str| format!("{{ run-shell -b \"{} {kind} '{target}' \
                                                                 '#{{client_name}}' '{text}'\" }}", p.namer);
     // a new group: a tab (@id) moves into it, from elsewhere a new tab opens in it (the sidebar's pane,
-    // %12 written p12 as tabrail-act new-group takes it)
+    // %12 written p12 as tabrail-groups new-group takes it)
     let new_group = |target: &str| format!("'New group…' g {}", namer("new", &target.replace('%', "p"), ""));
     let (title, items) = match row {
         Some(Row::Tab(id)) => {

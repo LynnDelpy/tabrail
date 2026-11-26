@@ -2,8 +2,8 @@
 # Name something from tabrail's right-click menus (src/menu.rs) in a tabrail-pick name field in a
 # popup, where one Esc cancels whatever tmux's status-keys are (command-prompt under vi keys does not).
 #   tabrail-name tab WINDOW CLIENT NAME     rename the tab
-#   tabrail-name group GROUP CLIENT NAME    rename the group (tabrail-act rename-group)
-#   tabrail-name new TARGET CLIENT          a new group (tabrail-act new-group; TARGET @id or pID)
+#   tabrail-name group GROUP CLIENT NAME    rename the group (tabrail-groups rename-group)
+#   tabrail-name new TARGET CLIENT          a new group (tabrail-groups new-group; TARGET @id or pID)
 # The popup runs  tabrail-name --ask KIND TARGET NAME,  each an argument of its own, so the typed name
 # never goes through a tmux or shell command string.
 D=$(dirname "$(readlink -f "$0")")
@@ -19,8 +19,8 @@ if [[ $1 == --ask ]]; then
   [[ -n ${name//[[:space:]]/} ]] || exit 0   # Esc, or an empty or blank field: nothing changes
   case $kind in
     tab) tmux rename-window -t "$target" -- "$name" ;;
-    group) "$D/tabrail-act" rename-group "$target" "$name" ;;
-    new) "$D/tabrail-act" new-group "$name" "$target" ;;
+    group) "$D/tabrail-groups" rename-group "$target" "$name" ;;
+    new) "$D/tabrail-groups" new-group "$name" "$target" ;;
   esac
   exit 0
 fi

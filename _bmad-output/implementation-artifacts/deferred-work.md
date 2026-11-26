@@ -228,3 +228,15 @@ status: open
 - source_spec: `_bmad-output/specs/spec-group-timer/stories/1-group-timer-from-the-menu.md`
   summary: rename-group with an unwritable groups.conf is untested: the timer must stay under OLD (the `&&` after the `mv`).
   evidence: low. Putting the call back before the awk or `;` instead of `&&` passes every test; a check needs `chmod a-w` on the groups folder around the call.
+- source_spec: `_bmad-output/specs/spec-nested-groups/stories/1-show-nested-groups.md`
+  summary: `tabrail-groups rename-group` sets the tabs' `@group` and `@sidebar_fold` to NEW even when the groups-file write failed, so those tabs vanish from every sidebar (draw.rs draws only groups in the file).
+  evidence: medium. The loops run after `fi`, outside the success branch, as they did after `> $CONF.new && mv` before; a read-only folder of the real groups file triggers it. Fix: move them and `refresh` into the `then` branch.
+- source_spec: `_bmad-output/specs/spec-nested-groups/stories/2-longest-folder-wins.md`
+  summary: `tabrail-tmux ensure` (after-new-window, `run-shell -b`) can overwrite the `@group` that `tabrail-act new` sets right after `new-window`, if it reads the empty option first; a folderless subgroup's tab then lands in its parent (before nesting: Default).
+  evidence: low. Needs ensure's read to precede tabrail-act's `set -w`, which pgrep and flock make rare; `tmux set -wo` in ensure (2>/dev/null) would let an @group already set win.
+- source_spec: `_bmad-output/specs/spec-nested-groups/stories/2-longest-folder-wins.md`
+  summary: A groups-file folder written with a trailing slash (`~/src/web/`) never matches in `tabrail-tmux group()`; `/` matches only itself.
+  evidence: low. `[[ /a/b/c == "/a/b/"/* ]]` is false and pane_current_path has no trailing slash; same before longest-match. Fix: `dir=${dir%/}`, keeping `/`.
+- source_spec: `_bmad-output/specs/spec-nested-groups/stories/2-longest-folder-wins.md`
+  summary: `tabrail-tmux group()` ignores the groups file's last line when it has no trailing newline (`while read` drops it).
+  evidence: low. src/groups.rs reads it, so the group shows but takes no tabs by folder; same before. Fix: `|| [[ -n $name ]]` on the loop.

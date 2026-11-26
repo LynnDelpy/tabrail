@@ -1,8 +1,9 @@
 //! head.rs: what a group's header row reads at a width, escapes left out.
 use super::{row, START};
+use crate::groups::Group;
 
-fn group(name: &str) -> (String, String, String) {
-    (name.into(), "#283147".into(), "◆".into())
+fn group(name: &str) -> Group {
+    Group { name: name.into(), tint: "#283147".into(), icon: "◆".into(), depth: 0 }
 }
 
 /// The row as it shows: escape sequences dropped, the start button as ▷.
@@ -88,4 +89,10 @@ fn no_start_button_with_a_time_or_for_a_name_clean_changes() {
     }
     assert_eq!(text("Q'a", false, 1, None, 12), "▾ ◆ Q'a     ");
     assert_eq!(row(&group("Q'a"), false, 1, None, 12).1, None);
+}
+
+#[test]
+fn a_subgroup_one_column_in_per_level() { // "  ▸ ◆ Archiv " is 13 columns: the time at 14-17
+    let (line, span) = row(&Group { depth: 2, ..group("Archiv") }, true, 3, Some(("▶ 5s".into(), "busy")), 26);
+    assert!(line.contains("\x1b[1m  ▸ ◆ Archiv \x1b[") && span == Some((14, 17)), "{line:?} {span:?}");
 }

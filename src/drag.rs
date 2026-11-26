@@ -3,7 +3,7 @@
 //! columns draw reports) stops or starts its timer (tabrail-timer toggle). Letting go over another tab
 //! puts the pressed tab right there, in that tab's group; over a group's row it joins that group at
 //! its end. A group's row let go over another group's row or one of its tabs moves its line in the
-//! groups file (tabrail-act move-group): above that group moving up, below it moving down; Default
+//! groups file (tabrail-groups move-group): above that group moving up, below it moving down; Default
 //! stays last. Nothing switches before the release: the release must reach this same sidebar, which
 //! only the current tab shows.
 use crate::draw::Row;
@@ -35,7 +35,7 @@ pub fn left(click: &Click, row: Option<&Row>, tabs: &[Tab], folded: &HashSet<Str
         Some((from, col, Row::Group(src, time))) if from == click.row && on(col, time) && on(click.col, time)
             && clean(&src) == src => vec![format!("run-shell -b \"{} toggle '{src}'\"", p.timer)],
         Some((from, _, Row::Group(src, _))) if from == click.row => fold(&src, folded),
-        Some((_, _, Row::Group(src, _))) => reorder(&src, row, tabs, p.helper),
+        Some((_, _, Row::Group(src, _))) => reorder(&src, row, tabs, p.grouper),
         _ => vec![],
     }
 }
@@ -50,7 +50,7 @@ fn fold(name: &str, folded: &HashSet<String>) -> Vec<String> {
 }
 
 /// Group `src` let go over `row`: onto the group of that row, unless it is its own or Default is moved.
-fn reorder(src: &str, row: Option<&Row>, tabs: &[Tab], helper: &str) -> Vec<String> {
+fn reorder(src: &str, row: Option<&Row>, tabs: &[Tab], grouper: &str) -> Vec<String> {
     let onto = match row {
         Some(Row::Group(g, _)) => g.as_str(),
         Some(Row::Tab(id)) => match tabs.iter().find(|t| &t.id == id) {
@@ -63,7 +63,7 @@ fn reorder(src: &str, row: Option<&Row>, tabs: &[Tab], helper: &str) -> Vec<Stri
     if onto == src || src == "Default" || [src, onto].iter().any(|n| clean(n) != *n || n.contains('`')) {
         return vec![];
     }
-    vec![format!("run-shell -b '{helper} move-group \"{src}\" \"{onto}\"'")]
+    vec![format!("run-shell -b '{grouper} move-group \"{src}\" \"{onto}\"'")]
 }
 
 fn drop_on(src: &str, row: Option<&Row>, tabs: &[Tab]) -> Vec<String> {

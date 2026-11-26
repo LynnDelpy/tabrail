@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Tests for the folder a new tab joins a group by and opens in (tabrail-tmux group, tabrail-groups
+# folder, tabrail-act new) on a throwaway tmux server (tabrail-test-lib), the groups file a temp file
+# that @tabrail_groups names, ~ the temp dir for the helpers: the longest folder winning at any level
+# whatever the line order, a name prefix, a tie after ~ expansion, a hand-written Default line never
+# matched, a new-window in a subgroup's folder joining it, New tab in a group's own folder, in the
+# first of its nearest ancestor with folders (one and two levels up) and at home, each in the group
+# asked for. One line per check, exits 1 if one failed.
+L=folder
+source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
+F=$T/groups.conf; H=$(readlink -f "$T"); mkdir -p "$H/x/egov/stgallen/src"; : > "$F"
+sed -i '/@tabrail_reader/d' "$T/conf"   # no reader bar: not what this tests
+echo "set -g @tabrail_groups '$F'" >> "$T/conf"
+inner; S=$(t display -p '#{socket_path}'),0,0; settle
+of() { local d; for d; do TMUX=$S HOME=$H "$R/tabrail-tmux" group "$H/x/$d"; done | paste -sd' '; }   # ~ is $H
+nw() {   # New tab in GROUP (tabrail-act new): its folder and its group
+  TMUX=$S HOME=$H "$R/tabrail-act" new "$1" main:1; settle
+  t list-panes -t 'main:$' -f '#{!:#{@sidebar}}' -F '#{pane_current_path} #{@group}'
+}
+
+printf '%s\n' "egov #1 ★ ~/x/egov" "  St.Gallen #2 ✚ ~/x/egov/stgallen" > "$F"; a=$(of egov/stgallen/src egov/core egov2)
+printf '%s\n' "St.Gallen #2 ✚ ~/x/egov/stgallen" "egov #1 ★ ~/x/egov" > "$F"; b=$(of egov/stgallen/src egov/core egov2)
+check "longest folder wins, whichever line comes first; egov2 not in ~/x/egov ($a, $b)" \
+  '[[ $a == "St.Gallen egov Default" && $b == "$a" ]]'
+printf '%s\n' "A #1 ★ ~/x" "B #2 ✚ $H/x" > "$F"; a=$(of y)
+check "a tie after ~ expansion goes to the first line ($a)" '[[ $a == A ]]'
+printf '%s\n' "egov #1 ★ ~/x" "Default #9 • ~/x/y" > "$F"; a=$(of y/z)
+check "a hand-written Default line is never matched by folder: y/z in egov ($a)" '[[ $a == egov ]]'
+
+printf '%s\n' "egov #1 ★ $H/x/egov" "  St.Gallen #2 ✚ $H/x/egov/stgallen" "    Archiv #3 ◆" "Notes #4 ●" > "$F"
+w=$(t new-window -d -P -F '#{window_id}' -c "$H/x/egov/stgallen/src"); settle 2; g=$(t show -wv -t "$w" @group)
+check "new-window in egov/stgallen/src: the tab joins St.Gallen (tabrail-tmux ensure) ($g)" '[[ $g == St.Gallen ]]'
+a=$(nw St.Gallen); b=$(nw Archiv); c=$(nw Notes)
+check "New tab in St.Gallen: its folder; in folderless Archiv: St.Gallen's; in top-level Notes: home ($a, $b, $c)" \
+  '[[ $a == "$H/x/egov/stgallen St.Gallen" && $b == "$H/x/egov/stgallen Archiv" && $c == "$H Notes" ]]'
+printf '%s\n' "egov #1 ★ ~/x/egov" "  St.Gallen #2 ✚" "    Archiv #3 ◆" > "$F"; a=$(nw Archiv)
+check "New tab in Archiv under folderless St.Gallen: egov's folder, two levels up ($a)" '[[ $a == "$H/x/egov Archiv" ]]'
+exit $((fails > 0))

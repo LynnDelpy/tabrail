@@ -62,7 +62,7 @@ menu "▲ Infra"; pick t; s=$EPOCHSECONDS; menu "◆ $W"; pick t
 check "two groups: Infra runs on, Website stopped" \
   '[[ $(line Infra) =~ \ [0-9]{10}$ && $(line $W) =~ \ 0$ && $(bar "▲ Infra") == *"▶ "* && $(bar "◆ $W") == *"⏸ "* ]]'
 check "Stop again adds the $((s - st)) s or more since to $acc s: $(f $W 2) s" '(( $(f $W 2) >= acc + s - st ))'
-v=$(line Infra | cut -d' ' -f2-); t run-shell "$R/tabrail-act rename-group Infra Ops"; settle
+v=$(line Infra | cut -d' ' -f2-); t run-shell "$R/tabrail-groups rename-group Infra Ops"; settle
 check "Rename group Infra to Ops: the timer follows" '[[ $(line Ops) == "Ops $v" && -z $(line Infra) && $(bar "▲ Ops") == *"▶ "* ]]'
 t run-shell "$R/tabrail-act fold Ops"; settle
 check "folded: the time, then the count ($(bar "▲ Ops"))" '[[ $(bar "▲ Ops") =~ ^"▸ ▲ Ops ▶ "[0-9]+s"  1 tab"$ ]]'

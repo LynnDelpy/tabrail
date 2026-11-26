@@ -1,5 +1,5 @@
-//! What the sidebar shows: the session's tabs (one `list-panes` reply), the project groups from
-//! groups.conf, and what each tab is doing.
+//! What the sidebar shows: the session's tabs (one `list-panes` reply) and what each tab is doing; the
+//! project groups are groups.rs.
 use crate::{name, program};
 use std::collections::BTreeMap;
 
@@ -44,19 +44,6 @@ pub fn tabs(lines: &[String]) -> Vec<Tab> {
         by_window.insert(index, tab);
     }
     by_window.into_values().collect()
-}
-
-/// (name, tint, icon) per line of groups.conf, then Default.
-pub fn groups(conf: &str) -> Vec<(String, String, String)> {
-    let mut out: Vec<(String, String, String)> = conf
-        .lines()
-        .filter(|l| !l.starts_with('#'))
-        .map(|l| l.split_whitespace().map(str::to_string).collect::<Vec<_>>())
-        .filter(|c| c.len() >= 3)
-        .map(|c| (c[0].clone(), c[1].clone(), c[2].clone()))
-        .collect();
-    out.push(("Default".into(), String::new(), "•".into()));
-    out
 }
 
 pub fn ago(seconds: i64) -> String {

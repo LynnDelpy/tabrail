@@ -1,0 +1,11 @@
+- id: "1"
+  title: Groups without their icon
+  description: >-
+    Group rows, Default's included, the Colour… swatches and the Move to group
+    list show group names without the groups.conf icon; the name gets its 2
+    columns (SPEC.md CAP-1, CAP-2).
+  invoke_dev_with: >-
+    groups.conf keeps its icon column and New group… keeps writing one. Tests
+    that grep a group row by its icon grep '^[▾▸] NAME' instead. If
+    spec-nested-groups story 1 is already merged, drop the icon from its
+    indented headers too. Test on a tmux -L server only.

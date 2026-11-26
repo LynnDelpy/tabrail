@@ -26,60 +26,60 @@ line() { grep "^$1 " "$F"; }
 fold() { t show -gqv @sidebar_fold; }
 
 t run-shell "$R/tabrail-timer start $W"; settle   # as the menu's Start timer
-r=$(y "◆ $W"); c=$(x "◆ $W" "▶"); f0=$(fold)
-check "the header found (row $r), its time from column 13 ($c)" '[[ -n $r && $c == 13 ]]'
+r=$(y "[▾▸] $W"); c=$(x "[▾▸] $W" "▶"); f0=$(fold)
+check "the header found (row $r), its time from column 11 ($c)" '[[ -n $r && $c == 11 ]]'
 t new -d -s two -c "$T/web"; t new-window -d -t two -c "$T/infra"; o new-window -d "TMUX= tmux -L tabrail-$L attach -t two; sleep 600"; settle 2
-clk "$c" "$r"; a=$(bar "◆ $W"); sleep 3; b=$(bar "◆ $W")
+clk "$c" "$r"; a=$(bar "[▾▸] $W"); sleep 3; b=$(bar "[▾▸] $W")
 check "Stop: press+release on ▶ (col $c): '$a' frozen over 3 s" '[[ $a == *"⏸ "* && $a == "$b" && $(line $W) =~ \ 0$ ]]'
-check "the other session's sidebar shows it stopped" '[[ $(bar "◆ $W" two:1) == "$a" ]]'
+check "the other session's sidebar shows it stopped" '[[ $(bar "[▾▸] $W" two:1) == "$a" ]]'
 check "@sidebar_fold unchanged ('$f0')" '[[ $(fold) == "$f0" ]]'
 lbl=$(grep -oE '[▶⏸] [0-9hms]+' <<<"$a"); last=$((c + ${#lbl} - 1))   # the time's last column
 v=$(line $W | cut -d' ' -f2)
 clk "$last" "$r"
 check "Resume: press+release on its last column ($last): ▶, counting from $v s" \
-  '[[ $(bar "◆ $W") == *"▶ "* && $(line $W) =~ ^$W\ $v\ [0-9]{10}$ && $(fold) == "$f0" ]]'
-lbl=$(grep -oE '[▶⏸] [0-9hms]+' <<<"$(bar "◆ $W")"); last=$((c + ${#lbl} - 1))   # the running label's
+  '[[ $(bar "[▾▸] $W") == *"▶ "* && $(line $W) =~ ^$W\ $v\ [0-9]{10}$ && $(fold) == "$f0" ]]'
+lbl=$(grep -oE '[▶⏸] [0-9hms]+' <<<"$(bar "[▾▸] $W")"); last=$((c + ${#lbl} - 1))   # the running label's
 clk $((last + 1)) "$r"
-check "Space after (col $((last + 1))): folds, timer unchanged" '[[ $(bar "◆ $W") == "▸ "* && $(line $W) =~ \ [0-9]{10}$ ]]'
+check "Space after (col $((last + 1))): folds, timer unchanged" '[[ $(bar "[▾▸] $W") == "▸ "* && $(line $W) =~ \ [0-9]{10}$ ]]'
 clk 5 "$r"
-check "Fold: on the name (col 5): unfolds, timer unchanged" '[[ $(bar "◆ $W") == "▾ "* && $(line $W) =~ \ [0-9]{10}$ ]]'
+check "Fold: on the name (col 5): unfolds, timer unchanged" '[[ $(bar "[▾▸] $W") == "▾ "* && $(line $W) =~ \ [0-9]{10}$ ]]'
 drg "$c" "$r" 5 "$r"
 check "Off the time: press on it, release on the name: folds, still running" \
-  '[[ $(bar "◆ $W") == "▸ "* && $(line $W) =~ \ [0-9]{10}$ ]]'
+  '[[ $(bar "[▾▸] $W") == "▸ "* && $(line $W) =~ \ [0-9]{10}$ ]]'
 f1=$(fold); clk "$c" "$r"
-check "Folded row: a click on the time stops it, stays folded ($(bar "◆ $W"))" \
-  '[[ $(bar "◆ $W") == "▸ ◆ $W ⏸ "* && $(line $W) =~ \ 0$ && $(fold) == "$f1" ]]'
+check "Folded row: a click on the time stops it, stays folded ($(bar "[▾▸] $W"))" \
+  '[[ $(bar "[▾▸] $W") == "▸ $W ⏸ "* && $(line $W) =~ \ 0$ && $(fold) == "$f1" ]]'
 clk "$c" "$r"
-clk 5 "$r"; ri=$(y "▲ Infra")
+clk 5 "$r"; ri=$(y "[▾▸] Infra")
 clk "$c" "$ri"
-check "No time: Infra's row at column $c folds" '[[ $(bar "▲ Infra") == "▸ "* && -z $(line Infra) ]]'
-clk 5 "$ri"; ri=$(y "▲ Infra"); s=$(line $W)
+check "No time: Infra's row at column $c folds" '[[ $(bar "[▾▸] Infra") == "▸ "* && -z $(line Infra) ]]'
+clk 5 "$ri"; ri=$(y "[▾▸] Infra"); s=$(line $W)
 drg "$c" "$r" 2 "$ri"   # left of Infra's name: on it or right of it nests (tabrail-tree-drag-test)
 check "Drag: press on the time, release on Infra's row left of its name: Website's line moves below, timer unchanged" \
   '[[ $(head -1 "$T/groups.conf") == Infra* && $(line $W) == "$s" ]]'
-ri=$(y "▲ Infra"); e=$(x "▲ Infra" "▷"); wd=$(t display -p -t "$(side main:1)" '#{pane_width}')
+ri=$(y "[▾▸] Infra"); e=$(x "[▾▸] Infra" "▷"); wd=$(t display -p -t "$(side main:1)" '#{pane_width}')
 check "▷: Infra, no time, ends in it and the +, three in from the edge ($e of $wd); none on Website's timed row" \
-  '[[ $e == $((wd - 3)) && $(bar "▲ Infra") == *" ▷ +" && $(bar "▲ Infra" two:1) == *" ▷ +" && $(bar "◆ $W") != *▷* ]]'
+  '[[ $e == $((wd - 3)) && $(bar "[▾▸] Infra") == *" ▷ +" && $(bar "[▾▸] Infra" two:1) == *" ▷ +" && $(bar "[▾▸] $W") != *▷* ]]'
 clk $((e - 1)) "$ri"
-check "Beside the ▷ (col $((e - 1))): folds, no timer" '[[ $(bar "▲ Infra") == "▸ "*" ▷ +" && -z $(line Infra) ]]'
+check "Beside the ▷ (col $((e - 1))): folds, no timer" '[[ $(bar "[▾▸] Infra") == "▸ "*" ▷ +" && -z $(line Infra) ]]'
 drg "$e" "$ri" 5 "$ri"
 check "Off the ▷: press on it, release on the name: unfolds, no timer" \
-  '[[ $(bar "▲ Infra") == "▾ "*" ▷ +" && -z $(line Infra) ]]'
-drg "$e" "$ri" 2 "$(y "◆ $W")"
+  '[[ $(bar "[▾▸] Infra") == "▾ "*" ▷ +" && -z $(line Infra) ]]'
+drg "$e" "$ri" 2 "$(y "[▾▸] $W")"
 check "Drag: press on the ▷, release on Website's row left of its name: Infra's line moves below, no timer" \
   '[[ $(head -1 "$T/groups.conf") == "$W "* && -z $(line Infra) ]]'
-going='^▾ ▲ Infra ▶ [0-9]+s +\+$'   # running, no ▷, the + stays
-ri=$(y "▲ Infra"); f0=$(fold); clk "$e" "$ri"; a=$(bar "▲ Infra"); b=$(bar "▲ Infra" two:1)
+going='^▾ Infra ▶ [0-9]+s +\+$'   # running, no ▷, the + stays
+ri=$(y "[▾▸] Infra"); f0=$(fold); clk "$e" "$ri"; a=$(bar "[▾▸] Infra"); b=$(bar "[▾▸] Infra" two:1)
 check "Start: press+release on the ▷: '$a', the other session '$b'; @sidebar_fold unchanged" \
   '[[ $a =~ $going && $b =~ $going && $(line Infra) =~ ^Infra\ 0\ [0-9]{10}$ && $(fold) == "$f0" ]]'
 t run-shell "$R/tabrail-timer reset Infra"; settle   # as the menu's Reset timer
-check "Reset timer: the time gone, the ▷ back ($(bar "▲ Infra"))" \
-  '[[ $(bar "▲ Infra") == "▾ ▲ Infra "*" ▷ +" && $(bar "▲ Infra") != *[▶⏸]* && -z $(line Infra) ]]'
+check "Reset timer: the time gone, the ▷ back ($(bar "[▾▸] Infra"))" \
+  '[[ $(bar "[▾▸] Infra") == "▾ Infra "*" ▷ +" && $(bar "[▾▸] Infra") != *[▶⏸]* && -z $(line Infra) ]]'
 clk 5 "$ri"; f1=$(fold); clk "$e" "$ri"
-check "Folded row: a click on the ▷ starts it, stays folded ($(bar "▲ Infra"))" \
-  '[[ $(bar "▲ Infra") =~ ^"▸ ▲ Infra ▶ "[0-9]+s"  1 tab"\ +"+"$ && $(line Infra) =~ \ [0-9]{10}$ && $(fold) == "$f1" ]]'
+check "Folded row: a click on the ▷ starts it, stays folded ($(bar "[▾▸] Infra"))" \
+  '[[ $(bar "[▾▸] Infra") =~ ^"▸ Infra ▶ "[0-9]+s"  1 tab"\ +"+"$ && $(line Infra) =~ \ [0-9]{10}$ && $(fold) == "$f1" ]]'
 w0=$(t display -p -t main '#{window_index}')
-tr=$(( $(y "◆ $W") + 1 )); clk 20 "$tr"
+tr=$(( $(y "[▾▸] $W") + 1 )); clk 20 "$tr"
 check "Tab row: a click goes to Website's tab (window $w0 -> $(t display -p -t main '#{window_index}'), its $wi)" \
   '[[ -n $wi && $wi != "$w0" && $(t display -p -t main "#{window_index}") == "$wi" ]]'
 exit $((fails > 0))

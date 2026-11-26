@@ -21,7 +21,7 @@ group=$1 client=$2
 # One line per row: its value (a name, / for Top level) and its label; nothing without GROUP's line
 listing() {
   "$D/tabrail-groups" tree | awk -F'\t' -v g="$group" '
-    { dep[NR] = $1; name[NR] = $2; icon[NR] = $3; up[$1] = $2   # up[d] the last name at depth d
+    { dep[NR] = $1; name[NR] = $2; up[$1] = $2   # up[d] the last name at depth d
       if ($2 == g "" && !at) { at = NR; par = $1 ? up[$1 - 1] : "/" } }
     function row(value, label) {
       printf "%s\t%s%s\n", value, label, value == par ? "  \033[2m· current\033[0m" : "" }
@@ -29,7 +29,7 @@ listing() {
           row("/", "Top level")
           for (k = 1; k <= NR; k++) {
             if (k == at) { while (k < NR && dep[k + 1] > dep[at]) k++; continue }   # GROUP and its tree
-            if (name[k] != "Default") row(name[k], sprintf("%" dep[k] "s%s %s", "", icon[k], name[k])) } }'
+            if (name[k] != "Default") row(name[k], sprintf("%" dep[k] "s%s", "", name[k])) } }'
 }
 
 list=$(mktemp /tmp/tabrail-nest.XXXXXX)

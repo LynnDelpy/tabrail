@@ -4,26 +4,27 @@ A vertical tab rail for tmux: a sidebar on the left of every tab that lists all 
 grouped by project, with what each one is doing.
 
 ```
-▾ ◆ Website           ▷ +          the group has no timer: a click on ▷ starts one; + adds a subgroup
+▾ Website             ▷ +          the group has no timer: a click on ▷ starts one; + adds a subgroup
  ❯ Fix login redire ✳ ⚙ 2m         Claude's topic, cut; Claude running a command for 2 min
    website·release-2 ✳   ◇         folder and git branch; Claude idle
    deploy · vim                    named by hand; vim runs in it
-▾ ▲ Infra             ▷ +
+▾ Infra               ▷ +
    lde@app01 in · ssh ⏱ 4m         ssh: remote user, host, folder, cut; 4 min
    infra               ✗ 2         the last command failed
     14:41  Wed 18.11.
 ```
 
-- Groups by folder (groups.conf), each with a faint tint and an icon; fold them with a click, reorder
-  or nest them by dragging, nest them or take them back to the top level with their menu's Move into
-  group…. A group's menu (not Default's) has Colour…: a picker of the 25 named colours in
-  `palette`, each a swatch with the group's icon and name on it, the group's own marked `· current`;
-  typing part of a colour's name narrows the list, Enter writes the pick into column 2 of the group's
-  line in the groups file (nothing else in it changes) and every sidebar shows it, Esc changes
-  nothing. New group… takes the first palette colour no group uses. The order is the groups file's
-  line order; Default is always last. A new tab joins the group whose folder is the longest one
-  holding the tab's folder, at any level and whatever the line order (equal ones go to the first line;
-  `~` expanded, symlinks not resolved), else Default; only a tab without a group gets one.
+- Groups by folder (groups.conf), each with a faint tint; the groups file's icon column is required
+  but not shown. Fold them with a click, reorder or nest them by dragging, nest them or take them
+  back to the top level with their menu's Move into group…. A group's menu (not Default's) has
+  Colour…: a picker of the 25 named colours in `palette`, each a swatch with the group's name on it,
+  the group's own marked `· current`; typing part of a colour's name narrows the list, Enter writes
+  the pick into column 2 of the group's line in the groups file (nothing else in it changes) and
+  every sidebar shows it, Esc changes nothing. New group… takes the first palette colour no group
+  uses. The order is the groups file's line order; Default is always last. A new tab joins the group
+  whose folder is the longest one holding the tab's folder, at any level and whatever the line order
+  (equal ones go to the first line; `~` expanded, symlinks not resolved), else Default; only a tab
+  without a group gets one.
 - Groups in groups: a line indented under a group's line makes it a subgroup, any depth deep (its
   parent is the nearest group line above it with less leading whitespace, a space or a tab one each;
   an indented line with none above is top-level). Every sidebar shows the tree: each level's header
@@ -38,11 +39,12 @@ grouped by project, with what each one is doing.
   dim `+` one column in from its right edge whose left click (press and release both on it) does the
   same. Both open a name field titled `New subgroup of GROUP` (one word: spaces become `-`; never
   Default). Enter adds the name's line right after the last line of the group's subtree, one level
-  deeper, 2 spaces per level (in a file indented by hand, no deeper than the group's last
-  subgroup, so the line still lands under the group), with a palette tint and an icon no group uses
-  yet, written through a symlink, mode kept, renamed into place; it opens a new tab in the subgroup,
-  and every sidebar of every session shows it on its next redraw. A name that exists anywhere adds no
-  line and opens the new tab in that group; Esc, or an empty or blank name, changes nothing.
+  deeper, 2 spaces per level (in a file indented by hand, no deeper than the group's last subgroup,
+  so the line still lands under the group), with a palette tint and an icon no group uses yet
+  (not shown), written through a symlink, mode kept, renamed into place; it opens a new tab in the
+  subgroup, and every sidebar of every session shows it on its next redraw. A name that exists
+  anywhere adds no line and opens the new tab in that group; Esc, or an empty or blank name, changes
+  nothing.
 - Moving a group in or out: a group's menu has Move into group… (not Default's), a picker that lists
   Top level, then every group but this one and its subgroups in tree order, indented one column per
   level, its parent (or Top level) marked `· current`; no taller than the terminal, the rest scrolls.
@@ -219,7 +221,7 @@ Optional inputs, shown when present:
 | `tabrail-chat-test-lib`, `tabrail-chat-fake` | A 120x4 pane for `tabrail-chat` and helpers for rows, keys and the wheel on pane `C` (`main`; only the helpers with `HELPERS_ONLY=1`); the fake claude, canned stream-json per question |
 | `tabrail-test-lib` | What the tests share: the throwaway servers, clicks, checks, slots and their processes |
 | `tabrail-act` | What the menus do outside the groups file: new tab, duplicate, fold (the groups file: tabrail-groups) |
-| `tabrail-groups`, `tabrail-groups-new`, `tabrail-groups-move` | The groups file: its tree (`tree`: depth, name and icon per group, for the pickers; `folder`: where a group's new tab opens, its first folder, else the first of its nearest ancestor that has folders) and its writers, for the menus and group drags: rename group (only the name: indent and spacing kept), new group, move group, nest; rename and move write through a symlink, keep the mode and rename into place; `-new` (sourced): new group, at the end or with a parent as its subgroup after the parent's subtree (written as rename and move are, if exactly that line was added); `-move` (sourced): `move-group` (a group's tree next to a sibling's: above it or below its tree) and `nest` (a group's tree after another's, one level deeper; no parent: top-level after the last group line), only the moved group lines re-indented, 2 spaces per level, written if the lines but for leading whitespace stayed the same |
+| `tabrail-groups`, `tabrail-groups-new`, `tabrail-groups-move` | The groups file: its tree (`tree`: depth, name and icon per group, the pickers showing depth and name; `folder`: where a group's new tab opens, its first folder, else the first of its nearest ancestor that has folders) and its writers, for the menus and group drags: rename group (only the name: indent and spacing kept), new group, move group, nest; rename and move write through a symlink, keep the mode and rename into place; `-new` (sourced): new group, at the end or with a parent as its subgroup after the parent's subtree (written as rename and move are, if exactly that line was added); `-move` (sourced): `move-group` (a group's tree next to a sibling's: above it or below its tree) and `nest` (a group's tree after another's, one level deeper; no parent: top-level after the last group line), only the moved group lines re-indented, 2 spaces per level, written if the lines but for leading whitespace stayed the same |
 | `tabrail-timer` | The group timers' state file, its only writer: start, stop, toggle, reset, rename (under flock, renamed into place) |
 | `tabrail-move`, `tabrail-pick` | Move a tab to a group in a picker (the tree, indented); the picker (Claude Code's option-list style, fzf), or a name field with `-q` |
 | `tabrail-nest` | The group menu's Move into group…: Top level and the tree but the group's own in a picker, the pick through `tabrail-groups nest` |

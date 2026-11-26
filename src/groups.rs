@@ -1,15 +1,14 @@
 //! The project groups as a tree, from the groups file (groups.conf, or the file in tmux option
 //! @tabrail_groups): a group per line that is no comment (its first non-blank character #) and has 3
-//! columns or more (name, tint, icon, folders). A group's parent is the nearest group line above it
-//! with less leading whitespace (a space or a tab counts one each), so an indented line with none above
-//! is top-level. The one reader of the tree on this side: draw.rs walks it, drag.rs finds by it where a
-//! dragged group goes.
+//! columns or more (name, tint, icon, folders; the icon is not read). A group's parent is the nearest
+//! group line above it with less leading whitespace (a space or a tab counts one each), so an indented
+//! line with none above is top-level. The one reader of the tree on this side: draw.rs walks it,
+//! drag.rs finds by it where a dragged group goes.
 use std::ops::Range;
 
 pub struct Group {
     pub name: String,
     pub tint: String,
-    pub icon: String,
     pub depth: usize, // 0 top-level, 1 a subgroup of one, …
 }
 
@@ -26,10 +25,10 @@ pub fn read(conf: &str) -> Vec<Group> {
         while indents.last().is_some_and(|&i| i >= indent) {
             indents.pop();
         }
-        out.push(Group { name: c[0].into(), tint: c[1].into(), icon: c[2].into(), depth: indents.len() });
+        out.push(Group { name: c[0].into(), tint: c[1].into(), depth: indents.len() });
         indents.push(indent);
     }
-    out.push(Group { name: "Default".into(), tint: String::new(), icon: "•".into(), depth: 0 });
+    out.push(Group { name: "Default".into(), tint: String::new(), depth: 0 });
     out
 }
 

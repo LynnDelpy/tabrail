@@ -15,8 +15,7 @@ fn a_flat_file_is_all_top_level_then_default() {
     let conf = "# a comment  with  words\nWebsite #283147 ◆ ~/src/web\n\nInfra #3b2f2a ▲\nNotes #2a3b2f\n";
     assert_eq!(tree(conf), names(&[("Website", 0), ("Infra", 0), ("Default", 0)]));
     let g = read(conf);
-    assert_eq!((g[0].tint.as_str(), g[0].icon.as_str()), ("#283147", "◆"));
-    assert_eq!((g[2].tint.as_str(), g[2].icon.as_str()), ("", "•"));
+    assert_eq!((g[0].tint.as_str(), g[2].tint.as_str()), ("#283147", "")); // tints from column 2, Default none
 }
 
 #[test]

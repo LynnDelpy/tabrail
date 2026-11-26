@@ -13,7 +13,7 @@ const TOGGLE: &str = "run-shell -b \"/t/tabrail-timer toggle 'Website'\"";
 
 /// `name`'s header row at width 26 with three tabs, `fold`ed or not, as draw makes it.
 fn group(name: &str, fold: bool, time: Option<&str>) -> Row {
-    let g = Group { name: name.into(), tint: "#283147".into(), icon: "◆".into(), depth: 0 };
+    let g = Group { name: name.into(), tint: "#283147".into(), depth: 0 };
     let (_, time, plus) = head::row(&g, fold, 3, time.map(|t| (t.to_string(), "busy")), 26);
     Row::Group(name.into(), time, plus)
 }
@@ -40,10 +40,10 @@ fn folds(fold: bool) -> [String; 2] {
 }
 
 #[test]
-fn the_time_is_columns_13_to_17() {
-    // ▾ ◆ Website ▶ 12m: ▾=1, ◆=3, Website=5-11, space 12, ▶ 12m=13-17; folded the count comes after
-    assert!(matches!(group("Website", false, Some("▶ 12m")), Row::Group(_, Some((13, 17)), _)));
-    assert!(matches!(group("Website", true, Some("▶ 12m")), Row::Group(_, Some((13, 17)), _)));
+fn the_time_is_columns_11_to_15() {
+    // ▾ Website ▶ 12m: ▾=1, Website=3-9, space 10, ▶ 12m=11-15; folded the count comes after
+    assert!(matches!(group("Website", false, Some("▶ 12m")), Row::Group(_, Some((11, 15)), _)));
+    assert!(matches!(group("Website", true, Some("▶ 12m")), Row::Group(_, Some((11, 15)), _)));
     assert!(matches!(group("Website", false, None), Row::Group(_, Some((23, 23)), _))); // ▷ two left of the +
 }
 
@@ -51,10 +51,10 @@ fn the_time_is_columns_13_to_17() {
 fn press_and_release_on_the_time_toggle_it_folded_or_not() {
     for fold in [false, true] {
         let row = group("Website", fold, Some("▶ 12m"));
-        for (down, up) in [(13, 13), (17, 17), (13, 17), (17, 13), (15, 15)] {
+        for (down, up) in [(11, 11), (15, 15), (11, 15), (15, 11), (13, 13)] {
             assert_eq!(click(&row, down, up, fold), [TOGGLE], "{down}-{up}, folded {fold}");
         }
-        assert_eq!(click(&group("Website", fold, Some("⏸ 12m")), 14, 14, fold), [TOGGLE]); // resume
+        assert_eq!(click(&group("Website", fold, Some("⏸ 12m")), 12, 12, fold), [TOGGLE]); // resume
         assert_eq!(click(&group("Website", fold, None), 23, 23, fold), [TOGGLE]); // never timed: the ▷ starts
     }
 }
@@ -64,10 +64,10 @@ fn beside_the_time_folds_as_before() {
     for fold in [false, true] {
         let row = group("Website", fold, Some("▶ 12m"));
         // one beside each end, the name, the space after, off the time on either end
-        for (down, up) in [(12, 12), (18, 18), (5, 5), (22, 22), (13, 5), (5, 13), (17, 18), (12, 13)] {
+        for (down, up) in [(10, 10), (16, 16), (5, 5), (20, 20), (11, 5), (5, 11), (15, 16), (10, 11)] {
             assert_eq!(click(&row, down, up, fold), folds(fold), "{down}-{up}, folded {fold}");
         }
-        for (down, up) in [(13, 13), (22, 22), (24, 24), (23, 5), (5, 23)] { // no time: where one goes, beside and off the ▷
+        for (down, up) in [(11, 11), (22, 22), (24, 24), (23, 5), (5, 23)] { // no time: where one goes, beside and off the ▷
             assert_eq!(click(&group("Website", fold, None), down, up, fold), folds(fold), "{down}-{up}, no time");
         }
     }
@@ -76,21 +76,21 @@ fn beside_the_time_folds_as_before() {
 #[test]
 fn the_columns_count_as_at_the_press() {
     let none = HashSet::new();
-    // ▶ 59s (13-17) at the press, ▶ 1m (13-16) by the release: column 17 still toggles
+    // ▶ 59s (11-15) at the press, ▶ 1m (11-14) by the release: column 15 still toggles
     let mut drag = None;
-    assert!(send(&mut drag, (17, 4), &group("Website", false, Some("▶ 59s")), false, &none).is_empty());
-    assert_eq!(send(&mut drag, (17, 4), &group("Website", false, Some("▶ 1m")), true, &none), [TOGGLE]);
+    assert!(send(&mut drag, (15, 4), &group("Website", false, Some("▶ 59s")), false, &none).is_empty());
+    assert_eq!(send(&mut drag, (15, 4), &group("Website", false, Some("▶ 1m")), true, &none), [TOGGLE]);
     // no time at the press, another group's time on the row by the release: folds, starts nothing
     let mut drag = None;
-    assert!(send(&mut drag, (13, 4), &group("Website", false, None), false, &none).is_empty());
-    assert_eq!(send(&mut drag, (13, 4), &group("Infra", false, Some("▶ 12m")), true, &none), folds(false));
+    assert!(send(&mut drag, (11, 4), &group("Website", false, None), false, &none).is_empty());
+    assert_eq!(send(&mut drag, (11, 4), &group("Infra", false, Some("▶ 12m")), true, &none), folds(false));
 }
 
 #[test]
 fn a_drag_from_the_time_moves_the_group() {
     let (mut drag, none) = (None, HashSet::new());
-    assert!(send(&mut drag, (14, 4), &group("Website", false, Some("▶ 12m")), false, &none).is_empty());
-    let cmds = send(&mut drag, (4, 9), &group("Infra", false, Some("▶ 3m")), true, &none); // left of its name
+    assert!(send(&mut drag, (12, 4), &group("Website", false, Some("▶ 12m")), false, &none).is_empty());
+    let cmds = send(&mut drag, (2, 9), &group("Infra", false, Some("▶ 3m")), true, &none); // left of its name
     assert_eq!(cmds, ["run-shell -b '/t/tabrail-groups move-group \"Website\" \"Infra\"'"]);
 }
 

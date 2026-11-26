@@ -33,65 +33,65 @@ run() { TMUX=$(sock),0,0 "$R/tabrail-timer" "$@"; }   # as a menu item would
 bad='[[;](0|22|49)m'                                                       # reset, bold off, tint off
 up
 
-menu "◆ $W"; m=$(shown)
+menu "[▾▸] $W"; m=$(shown)
 check "a group with no time: Start timer, no Reset timer" '[[ $m == *"Start timer"* && $m != *"Reset timer"* ]]'
-pick t; a=$(bar "◆ $W"); l=$(line $W); st=${l##* }
+pick t; a=$(bar "[▾▸] $W"); l=$(line $W); st=${l##* }
 check "Start timer: line '$l', ▶ and the time after the name" \
-  '[[ $l =~ ^$W\ 0\ [0-9]{10}$ && $a =~ ^"▾ ◆ $W ▶ "[0-9]+s ]]'
-e=$(t capture-pane -ep -t "$(side main:1)" | grep -m1 -- "◆ $W"); e=${e#*"◆ $W"}; e=${e%%▶*}
+  '[[ $l =~ ^$W\ 0\ [0-9]{10}$ && $a =~ ^"▾ $W ▶ "[0-9]+s ]]'
+e=$(t capture-pane -ep -t "$(side main:1)" | grep -m1 -- "[▾▸] $W"); e=${e#*" $W"}; e=${e%%▶*}
 check "busy colour right before ▶; tint and bold go on past the name" '[[ $e == *"249;226;175m" && ! $e =~ $bad ]]'
-sleep 2; b=$(bar "◆ $W")
+sleep 2; b=$(bar "[▾▸] $W")
 check "the running time grows ($(num "$a") s -> $(num "$b") s)" '(( $(num "$b") >= $(num "$a") + 2 ))'
-menu "• Default"; m=$(shown); pick t
-check "Default: Start timer in its menu, and it runs" '[[ $m == *"Start timer"* && $(bar "• Default") == *"▶ "* ]]'
-menu "■ Q'a"; m=$(shown); pick q
-check "a name clean() changes: a menu without timer items, no ▷" '[[ $m == *Fold* && $m != *timer* && $(bar "■ Q") != *▷* ]]'
+menu "[▾▸] Default"; m=$(shown); pick t
+check "Default: Start timer in its menu, and it runs" '[[ $m == *"Start timer"* && $(bar "[▾▸] Default") == *"▶ "* ]]'
+menu "[▾▸] Q'a"; m=$(shown); pick q
+check "a name clean() changes: a menu without timer items, no ▷" '[[ $m == *Fold* && $m != *timer* && $(bar "[▾▸] Q") != *▷* ]]'
 
 t new -d -s two -c "$T/web"; o new-window -d "TMUX= tmux -L tabrail-$L attach -t two; sleep 600"; settle 2
-menu "◆ $W"; m=$(shown)
+menu "[▾▸] $W"; m=$(shown)
 check "running: Stop timer and Reset timer" '[[ $m == *"Stop timer"* && $m == *"Reset timer"* ]]'
-s=$EPOCHSECONDS; pick t; a=$(bar "◆ $W"); sleep 3; b=$(bar "◆ $W"); l=$(line $W); acc=$(f $W 2)
+s=$EPOCHSECONDS; pick t; a=$(bar "[▾▸] $W"); sleep 3; b=$(bar "[▾▸] $W"); l=$(line $W); acc=$(f $W 2)
 check "Stop timer: '$l', the $((s - st)) s or more it ran; header frozen at ⏸ over 3 s" \
   '[[ $l =~ ^$W\ [0-9]+\ 0$ && $a == "$b" && $a == *"⏸ "* ]] && (( acc >= s - st && acc <= EPOCHSECONDS - st ))'
-check "a second session's sidebar shows the same time" '[[ $(bar "◆ $W" two:1) == "$a" ]]'
-menu "◆ $W"; pick t; st=$(f $W 3)
-check "Start timer again: resumes from $acc s" '[[ $(line $W) =~ ^$W\ $acc\ [0-9]{10}$ && $(bar "◆ $W") == *"▶ "* ]]'
+check "a second session's sidebar shows the same time" '[[ $(bar "[▾▸] $W" two:1) == "$a" ]]'
+menu "[▾▸] $W"; pick t; st=$(f $W 3)
+check "Start timer again: resumes from $acc s" '[[ $(line $W) =~ ^$W\ $acc\ [0-9]{10}$ && $(bar "[▾▸] $W") == *"▶ "* ]]'
 t kill-session -t two; o kill-window -t o:1
 
-menu "▲ Infra"; pick t; s=$EPOCHSECONDS; menu "◆ $W"; pick t
+menu "[▾▸] Infra"; pick t; s=$EPOCHSECONDS; menu "[▾▸] $W"; pick t
 check "two groups: Infra runs on, Website stopped" \
-  '[[ $(line Infra) =~ \ [0-9]{10}$ && $(line $W) =~ \ 0$ && $(bar "▲ Infra") == *"▶ "* && $(bar "◆ $W") == *"⏸ "* ]]'
+  '[[ $(line Infra) =~ \ [0-9]{10}$ && $(line $W) =~ \ 0$ && $(bar "[▾▸] Infra") == *"▶ "* && $(bar "[▾▸] $W") == *"⏸ "* ]]'
 check "Stop again adds the $((s - st)) s or more since to $acc s: $(f $W 2) s" '(( $(f $W 2) >= acc + s - st ))'
 v=$(line Infra | cut -d' ' -f2-); t run-shell "$R/tabrail-groups rename-group Infra Ops"; settle
-check "Rename group Infra to Ops: the timer follows" '[[ $(line Ops) == "Ops $v" && -z $(line Infra) && $(bar "▲ Ops") == *"▶ "* ]]'
+check "Rename group Infra to Ops: the timer follows" '[[ $(line Ops) == "Ops $v" && -z $(line Infra) && $(bar "[▾▸] Ops") == *"▶ "* ]]'
 t run-shell "$R/tabrail-act fold Ops"; settle
-check "folded: the time, then the count ($(bar "▲ Ops"))" '[[ $(bar "▲ Ops") =~ ^"▸ ▲ Ops ▶ "[0-9]+s"  1 tab"\ +"+"$ ]]'
+check "folded: the time, then the count ($(bar "[▾▸] Ops"))" '[[ $(bar "[▾▸] Ops") =~ ^"▸ Ops ▶ "[0-9]+s"  1 tab"\ +"+"$ ]]'
 
-a=$(bar "◆ $W"); b=$(bar "▲ Ops"); down; sleep 4; up
-check "kill-server, new server: the stopped time is back" '[[ $(bar "◆ $W") == "$a" ]]'
-c=$(bar "▲ Ops")
+a=$(bar "[▾▸] $W"); b=$(bar "[▾▸] Ops"); down; sleep 4; up
+check "kill-server, new server: the stopped time is back" '[[ $(bar "[▾▸] $W") == "$a" ]]'
+c=$(bar "[▾▸] Ops")
 check "the running one counted the 4 s down ($(num "$b") s -> $(num "$c") s)" '(( $(num "$c") >= $(num "$b") + 4 ))'
 
-menu "◆ $W"; pick 0; menu "◆ $W"; m=$(shown); pick q
+menu "[▾▸] $W"; pick 0; menu "[▾▸] $W"; m=$(shown); pick q
 check "Reset timer: line gone, no time, the ▷ back, no Reset timer in the menu" \
-  '[[ -z $(line $W) && $(bar "◆ $W") != *[▶⏸]* && $(bar "◆ $W") == *" ▷ +" && $m == *"Start timer"* && $m != *"Reset timer"* ]]'
+  '[[ -z $(line $W) && $(bar "[▾▸] $W") != *[▶⏸]* && $(bar "[▾▸] $W") == *" ▷ +" && $m == *"Start timer"* && $m != *"Reset timer"* ]]'
 
 echo "Abcdefghijklmnopqrstuvwxyz0123 0 $((EPOCHSECONDS - 7200))" >> "$F"
-t resize-pane -t "$(side main:1)" -x 26; settle 2; a=$(bar "● ")
+t resize-pane -t "$(side main:1)" -x 26; settle 2; a=$(bar "[▾▸] Abc")
 t run-shell "$R/tabrail-act fold Abcdefghijklmnopqrstuvwxyz0123"; settle
 check "width 26, a 30-character name running 2h: name cut, time and + whole; folded, no count" \
-  '[[ $a == "▾ ● Abcdefghijkl ▶ 2h0m +" && $(bar "● ") == "▸ ● Abcdefghijkl ▶ 2h0m +" ]]'
+  '[[ $a == "▾ Abcdefghijklmn ▶ 2h0m +" && $(bar "[▾▸] Abc") == "▸ Abcdefghijklmn ▶ 2h0m +" ]]'
 
 printf 'garbage here\n\377\001 junk\nX -1 0\nOps 1 2 3\n' >> "$F"; settle
 check "a garbled file, a non-UTF-8 byte: the sidebar draws, the good lines show" \
-  '[[ $(bar "▲ Ops") == *"▶ "* && -n $(bar "◆ $W") && -n $(bar "● ") ]]'
+  '[[ $(bar "[▾▸] Ops") == *"▶ "* && -n $(bar "[▾▸] $W") && -n $(bar "[▾▸] Abc") ]]'
 
-run start $W; t kill-window -t main:2; settle; a=$(bar "◆ $W"); sleep 2; b=$(bar "◆ $W")
-r=$(t capture-pane -p -t "$(side main:1)" | grep -A1 -m1 -- "◆ $W" | tail -1)
+run start $W; t kill-window -t main:2; settle; a=$(bar "[▾▸] $W"); sleep 2; b=$(bar "[▾▸] $W")
+r=$(t capture-pane -p -t "$(side main:1)" | grep -A1 -m1 -- "[▾▸] $W" | tail -1)
 check "last tab closed: the header stays, no tab rows, counting ($(num "$a") s -> $(num "$b") s)" \
-  '[[ $a == "▾ ◆ $W ▶ "* && -z $r ]] && (( $(num "$b") >= $(num "$a") + 2 ))'
-menu "◆ $W"; m=$(shown); pick t
-check "its menu's Stop timer stops it" '[[ $m == *"Stop timer"* && $(line $W) =~ \ 0$ && $(bar "◆ $W") == *"⏸ "* ]]'
-menu "◆ $W"; pick 0
-check "Reset timer, no tabs: the header is gone" '[[ -z $(bar "◆ $W") ]]'
+  '[[ $a == "▾ $W ▶ "* && -z $r ]] && (( $(num "$b") >= $(num "$a") + 2 ))'
+menu "[▾▸] $W"; m=$(shown); pick t
+check "its menu's Stop timer stops it" '[[ $m == *"Stop timer"* && $(line $W) =~ \ 0$ && $(bar "[▾▸] $W") == *"⏸ "* ]]'
+menu "[▾▸] $W"; pick 0
+check "Reset timer, no tabs: the header is gone" '[[ -z $(bar "[▾▸] $W") ]]'
 exit $((fails > 0))

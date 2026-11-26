@@ -1,4 +1,4 @@
-//! A group's header row: one column in per level (groups.rs), fold arrow, icon and name, the group's
+//! A group's header row: one column in per level (groups.rs), fold arrow and name (no icon), its
 //! timer right after the name, then a folded group's tab count, bold on the group's tint to the row's
 //! end. At the end a dim + one column in from the edge adds a subgroup (none for Default), and without
 //! a timer a dim ▷ two left of it starts one; neither for a name clean() changes (it cannot travel
@@ -16,7 +16,7 @@ pub const START: &str = "\u{eb2c}";
 /// timer's label and colour (timer.rs). The time's colour sets the foreground alone: the tint and bold
 /// go on past it. With it the first and last column of the time (1-based, one per char, its marker
 /// included) for a click, without one the ▷'s column as both; then the +'s column.
-pub fn row(Group { name, tint, icon, depth }: &Group, fold: bool, n: usize, time: Option<(String, &str)>,
+pub fn row(Group { name, tint, depth }: &Group, fold: bool, n: usize, time: Option<(String, &str)>,
            width: usize) -> (String, Option<(usize, usize)>, Option<usize>) {
     let len = |s: &str| s.chars().count();
     let clean = clean(name) == *name;
@@ -27,7 +27,7 @@ pub fn row(Group { name, tint, icon, depth }: &Group, fold: bool, n: usize, time
     let (time, kind) = time.unwrap_or_default();
     let gap = if time.is_empty() { "" } else { " " }; // in the name's colour: the time's starts at its marker
     let right = len(&time) + len(&end);
-    let full = format!("{}{} {icon} {name}", " ".repeat(*depth), if fold { "▸" } else { "▾" });
+    let full = format!("{}{} {name}", " ".repeat(*depth), if fold { "▸" } else { "▾" });
     let room = width.saturating_sub(len(gap) + right);
     // a cut ending in a space loses it: no double space before the time
     let head = if len(&full) > room { full.chars().take(room).collect::<String>().trim_end().into() } else { full };

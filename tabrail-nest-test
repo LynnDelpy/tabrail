@@ -42,54 +42,54 @@ got() { grep -v '^#' "$F" | awk '{ print $1 }' | tr '\n' ' '; }           # the 
 tg() { t has-session 2>/dev/null || return 1; TMUX="$(sock),0,0" "$R/tabrail-groups" "$@"; }   # as tabrail-nest calls it
 tn() { t has-session 2>/dev/null || return 1; TMUX="$(sock),0,0" timeout 5 "$R/tabrail-nest" "$@"; }   # a popup waits
 
-reset; pick "★ egov"
+reset; pick "[▾▸] egov"
 check "egov's menu: Move into group… right after Rename group" '[[ $m == *"Rename group"*"Move into group…"*"Colour…"* ]]'
 check "List: Top level (current), 4tw, Sub, Notes; not egov, its tree or Default ($p)" \
-  '[[ $p == "1. Top level  · current|2. ● 4tw|3.  ♦ Sub|4. ◆ Notes|" ]]'
+  '[[ $p == "1. Top level  · current|2. 4tw|3.  Sub|4. Notes|" ]]'
 key Escape
 check "Cancel: Esc, file identical (cmp)" 'is 0 1 2 3 4 5 6 7 8 9 && [[ -z $(rows) ]]'
-pick "▲ Köniz"; key 3 2
+pick "[▾▸] Köniz"; key 3 2
 check "Nest: Köniz picks St.Gallen: its tree St.Gallen's last subgroup, the rest unchanged ($(got))" \
   'is 0 1 2 "    Köniz  #3b2f2a  ▲" "      Bern  #3b392a  ■" 5 6 7 8 9 && safe'
 check "Nest: main's sidebar shows Köniz under St.Gallen, 2 in ($(bar))" \
-  '[[ $(bar) == "|▾ ★ egov|   core| ▾ ✚ St.Gallen|    sg|  ▾ ◆ Archiv|     arch|  ▾ ▲ Köniz|     kz||▾ ● 4tw|"* ]]'
-reset; pick "◆ Archiv"; key Escape
+  '[[ $(bar) == "|▾ egov|   core| ▾ St.Gallen|    sg|  ▾ Archiv|     arch|  ▾ Köniz|     kz||▾ 4tw|"* ]]'
+reset; pick "[▾▸] Archiv"; key Escape
 check "Current at depth 2: Archiv's picker marks St.Gallen, not egov ($p)" \
-  '[[ $p == "1. Top level|2. ★ egov|3.  ✚ St.Gallen  · current|4.  ▲ Köniz|5.   ■ Bern|6.  ✦ FMH|7. ● 4tw|8.  ♦ Sub|9. ◆ Notes|" ]]'
-pick "✚ St.Gallen"
+  '[[ $p == "1. Top level|2. egov|3.  St.Gallen  · current|4.  Köniz|5.   Bern|6.  FMH|7. 4tw|8.  Sub|9. Notes|" ]]'
+pick "[▾▸] St.Gallen"
 check "Current: St.Gallen's picker marks egov, lists Köniz's tree, not Archiv ($p)" \
-  '[[ $p == "1. Top level|2. ★ egov  · current|3.  ▲ Köniz|4.   ■ Bern|5.  ✦ FMH|6. ● 4tw|7.  ♦ Sub|8. ◆ Notes|" ]]'
+  '[[ $p == "1. Top level|2. egov  · current|3.  Köniz|4.   Bern|5.  FMH|6. 4tw|7.  Sub|8. Notes|" ]]'
 key 1 2
 check "Out: St.Gallen picks Top level: its tree at depth 0 after the last top-level tree ($(got))" \
   'is 0 3 4 5 6 7 8 9 "St.Gallen  #2a3b2f  ✚" "  Archiv  #3b2a3a  ◆" && safe'
 for w in home core sg arch; do
   t select-window -t "main:$w"; settle 1.2; got=$(bar "main:$w" | sed 's/❯/ /')
   check "Out: $w's sidebar: St.Gallen's header at column 1 after Notes' tree, egov's tree without it" \
-    '[[ $got == "|▾ ★ egov|   core| ▾ ▲ Köniz|    kz||▾ ● 4tw|   tw||▾ ◆ Notes|   notes||▾ ✚ St.Gallen|   sg| ▾ ◆ Archiv|    arch||"* ]]'
+    '[[ $got == "|▾ egov|   core| ▾ Köniz|    kz||▾ 4tw|   tw||▾ Notes|   notes||▾ St.Gallen|   sg| ▾ Archiv|    arch||"* ]]'
 done
 t select-window -t main:1; settle
-check "Out: session two's sidebar too ($(bar two))" '[[ $(bar two) == "|▾ ✚ St.Gallen| ▾ ◆ Archiv|    y||▾ • Default| ❯ x" ]]'
-reset; pick "✚ St.Gallen"; key 2 2
+check "Out: session two's sidebar too ($(bar two))" '[[ $(bar two) == "|▾ St.Gallen| ▾ Archiv|    y||▾ Default| ❯ x" ]]'
+reset; pick "[▾▸] St.Gallen"; key 2 2
 check "Current parent: St.Gallen picks egov: egov's last subgroup ($(got))" 'is 0 3 4 5 1 2 6 7 8 9 && safe'
-reset; tg nest egov 2>/dev/null; u=$?; tg nest Notes ''; is 0 1 2 3 4 5 6 7 8 9; n=$?; pick "★ egov"; key 1 2
+reset; tg nest egov 2>/dev/null; u=$?; tg nest Notes ''; is 0 1 2 3 4 5 6 7 8 9; n=$?; pick "[▾▸] egov"; key 1 2
 check "nest without PARENT: usage, exit 2 ($u); Top level: Notes, last already, stays; egov to the end ($(got))" \
   '(( u == 2 && n == 0 )) && is 6 7 8 9 0 1 2 3 4 5'
-reset; pick "▲ Köniz"; tg rename-group Köniz Kz; key 3 2
+reset; pick "[▾▸] Köniz"; tg rename-group Köniz Kz; key 3 2
 check "Gone: Köniz renamed while its picker is open, then St.Gallen picked: only the rename ($(got))" \
   'is 0 1 2 "  Kz  #3b2f2a  ▲" 4 5 6 7 8 9 && [[ -z $(t list-panes -a -F "#{pane_in_mode}" | grep 1) ]]'
 tg rename-group Kz Köniz   # back: the rename retagged kz's tab, the fold and the timer too
 printf '%s\n' "${b[@]:0:9}" > "$F"; t set-buffer -b sidebar-refresh x; settle   # no Notes: 4tw, Sub last
-pick "✚ St.Gallen"; key 1 2; a=$(got); is 0 3 4 5 6 7 8 "St.Gallen  #2a3b2f  ✚" "  Archiv  #3b2a3a  ◆"; s1=$?
+pick "[▾▸] St.Gallen"; key 1 2; a=$(got); is 0 3 4 5 6 7 8 "St.Gallen  #2a3b2f  ✚" "  Archiv  #3b2a3a  ◆"; s1=$?
 printf '%s\n' "${b[@]:0:9}" > "$F"; tg nest Sub ''
 check "last top-level tree 4tw, Sub: St.Gallen out after Sub ($a); Sub, nested and last, out after 4tw ($(got))" \
   '(( s1 == 0 )) && is 0 1 2 3 4 5 6 7 "Sub  #403d4a  ♦"'
 printf '%s\n' "${b[@]:0:9}" "Default #9 •" "${b[9]}" > "$F"; t set-buffer -b sidebar-refresh x; settle
-pick "★ egov"; key Escape
-check "a hand-written Default line: no Default row ($p)" '[[ $p == "1. Top level  · current|2. ● 4tw|3.  ♦ Sub|4. ◆ Notes|" ]]'
+pick "[▾▸] egov"; key Escape
+check "a hand-written Default line: no Default row ($p)" '[[ $p == "1. Top level  · current|2. 4tw|3.  Sub|4. Notes|" ]]'
 c=$(t list-clients -t main -f '#{!:#{client_control_mode}}' -F '#{client_name}')
 tn Nope "$c"; e=$?; settle
 check "a group without a line: no popup, exit 0 ($e)" '(( e == 0 )) && [[ -z $(rows) ]]'
-reset; menu "• Default"; d=$(shown); key q 0.5
+reset; menu "[▾▸] Default"; d=$(shown); key q 0.5
 check "Default's menu: no Move into group…" '[[ $d == *Fold* && $d != *"Move into group"* ]]'
 o resize-window -t o:0 -x 50 -y 10; settle 2   # a group menu is taller: the opener as the menu calls it
 t run-shell -b "$R/tabrail-nest St.Gallen '$c'"; settle; p=$(rows) s=$(shown)

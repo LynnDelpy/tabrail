@@ -18,14 +18,14 @@ current=$(tmux display -p -t "$win" '#{?@group,#{@group},Default}')
 counts=$(tmux list-windows -a -F '#{?@group,#{@group},Default}' | sort | uniq -c)
 
 # One line per group: the groups file's tree in order (tabrail-groups tree), indented one column per
-# level, with its icon, then Default
+# level (no icon), then Default
 groups() {
-  { "$D/tabrail-groups" tree; printf '0\tDefault\t•\n'; } |
-  while IFS=$'\t' read -r depth name icon; do
+  { "$D/tabrail-groups" tree; printf '0\tDefault\n'; } |
+  while IFS=$'\t' read -r depth name _; do
     n=$(awk -v g="$name" '$2 == g { print $1 }' <<<"$counts")
     note="${n:-0} tab"; [[ ${n:-0} == 1 ]] || note+=s
     [[ $name == "$current" ]] && note+=" · current"
-    printf '%s\t%*s%s %s  \e[2m%s\e[0m\n' "$name" "$depth" '' "$icon" "$name" "$note"
+    printf '%s\t%*s%s  \e[2m%s\e[0m\n' "$name" "$depth" '' "$name" "$note"
   done
 }
 

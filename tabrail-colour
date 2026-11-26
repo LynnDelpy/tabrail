@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# A group's colour (the group menu's Colour…, src/menu.rs): palette's swatches, each the group's icon
-# and name on that tint, in tabrail-pick's search list in a popup; the pick goes into column 2 of the
-# group's line in the groups file. Called as  tabrail-colour GROUP CLIENT;  the popup runs
+# A group's colour (the group menu's Colour…, src/menu.rs): palette's swatches, each the group's name
+# on that tint, in tabrail-pick's search list in a popup; the pick goes into column 2 of the group's
+# line in the groups file. Called as  tabrail-colour GROUP CLIENT;  the popup runs
 # tabrail-colour --pick GROUP LISTFILE.
 D=$(dirname "$(readlink -f "$0")")
 CONF=$(tmux show -gv @tabrail_groups 2>/dev/null)
@@ -29,15 +29,15 @@ if [[ $1 == --pick ]]; then
 fi
 
 group=$1 client=$2
-read -r tint icon < <(awk -v g="$group" '!/^[ \t]*#/ && NF >= 3 && $1 == g "" { print $2, $3; exit }' "$CONF")
+read -r tint < <(awk -v g="$group" '!/^[ \t]*#/ && NF >= 3 && $1 == g "" { print $2; exit }' "$CONF")
 
 # One line per colour: its hex, the swatch (the header's bold text on it), then the part searched: its
 # name and whether the group has it now
 list=$(mktemp /tmp/tabrail-colour.XXXXXX)
 while read -r hex name; do
   mark=; [[ ${hex,,} == "${tint,,}" ]] && mark=$' \e[2m· current\e[0m'
-  printf '%s\t\e[48;2;%d;%d;%dm\e[1;38;2;205;214;244m %s %s \e[0m\t %s%s\n' "$hex" \
-    "0x${hex:1:2}" "0x${hex:3:2}" "0x${hex:5:2}" "$icon" "$group" "$name" "$mark"
+  printf '%s\t\e[48;2;%d;%d;%dm\e[1;38;2;205;214;244m %s \e[0m\t %s%s\n' "$hex" \
+    "0x${hex:1:2}" "0x${hex:3:2}" "0x${hex:5:2}" "$group" "$name" "$mark"
 done < "$D/palette" > "$list"
 rows=$(wc -l < "$list")
 read -r height width < <(tmux display -p -c "$client" '#{client_height} #{client_width}')

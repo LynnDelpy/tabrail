@@ -1,0 +1,10 @@
+- id: "1"
+  title: Forty colours
+  description: >-
+    Append new-colours.md's 15 tints to palette after today's 25, so Colour…
+    and New group… offer 40 (SPEC.md CAP-1, CAP-2).
+  invoke_dev_with: >-
+    Data and test change only: tabrail-colour and tabrail-groups read palette
+    as it is. spec-no-group-icon also edits tabrail-colour-test's greps;
+    whichever lands second rebases onto the other. Keep tabrail-colour-test
+    under 100 lines. Test on a tmux -L server only.

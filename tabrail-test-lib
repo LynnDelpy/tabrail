@@ -11,6 +11,7 @@ fails=0 spids=()
 check() { if eval "$2"; then echo "ok   $1"; else echo "FAIL $1"; fails=$((fails + 1)); fi; }
 t() { tmux -L "tabrail-$L" "$@"; }
 o() { tmux -L "tabrail-$L-o" "$@"; }
+sock() { echo "${TMUX_TMPDIR:-/tmp}/tmux-$(id -u)/tabrail-$L"; }   # its socket for TMUX=: never the user's tmux; writers still need it up
 settle() { sleep "${1:-1.5}"; }
 press() { o send-keys -t o -l $'\e[<0;'"$1;$2M"; o send-keys -t o -l $'\e[<0;'"$1;$2m"; }
 click() { press "$@"; settle; }

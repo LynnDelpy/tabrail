@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# Tests for dragging a group with its tree (drag.rs, drag/group.rs, groups.rs; tabrail-groups
+# move-group and nest) on throwaway tmux servers (tabrail-test-lib) with real SGR drags, the groups
+# file a symlink to a temp file: up onto a tab row, down onto a header left of its name and inside a
+# group, via a subgroup's header, nested at or right of a header's name (link and mode kept, both
+# sessions' sidebars), no sibling there, into its own tree or parent, onto Default's tab row and
+# header, into a folded group; a click still folds; the writer alone: refusals, a comment and a blank
+# line in a tree, files indented by hand. One line per check, exits 1 if one failed.
+L=treedrag
+source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
+mkdir "$T/real"; F=$T/real/groups.conf
+b=("egov      #283147  ★" "  St.Gallen  #2a3b2f  ✚" "    Archiv  #3b2a3a  ◆" "  Köniz  #3b2f2a  ▲"
+   "    Bern  #3b392a  ■" "  FMH  #2f2a3b  ✦" "# other customers" "4tw       #2a383b  ●" "  Sub  #403d4a  ♦"
+   "Notes     #2a3b2f  ◆")
+printf '%s\n' "${b[@]}" > "$F"; chmod 640 "$F"; ln -s "$F" "$T/groups.conf"
+sed -i '/@tabrail_reader/d' "$T/conf"   # no reader bar: not what this tests
+echo "set -g @tabrail_groups '$T/groups.conf'" >> "$T/conf"
+inner; t rename-window -t main:1 home
+for n in core sg arch kz fmh tw sub notes; do t new-window -d -n "$n" -c "$T/work"; done
+t new -d -s two -n x -c "$T/work"; for n in y z; do t new-window -d -t two -n "$n" -c "$T/work"; done
+o -f /dev/null new -d -s o -x 160 -y 46 "TMUX= tmux -L tabrail-$L attach -t main; sleep 600"
+o set -g status off; o new-window -d "TMUX= tmux -L tabrail-$L attach -t two; sleep 600"; settle 3
+# tabrail-tmux ensure gives a tab without a group one (Default here), possibly after a set below: wait
+for _ in {1..50}; do t list-windows -a -F '#{?#{@group},,x}' | grep -q x || break; sleep 0.2; done
+for g in core:egov sg:St.Gallen arch:Archiv kz:Köniz fmh:FMH tw:4tw sub:Sub notes:Notes; do
+  t set -w -t "main:${g%%:*}" @group "${g#*:}"
+done
+t set -w -t two:y @group Sub; t set -w -t two:z @group Köniz
+[[ -n $(side main:1) && -n $(side two) ]] || { echo "FAIL no sidebar on the test server"; exit 1; }
+nf=$'\uEB2C'   # head.rs START
+raw() { t capture-pane -p -t "$(side "${1:-main:1}")"; }   # a sidebar's rows, main's shown tab's by default
+bar() { raw "$1" | head -n -1 | sed "s/ *$nf\( +\)\{0,1\}$//" | tr '\n' '|' | sed 's/|*$//'; }   # no ▷ +
+y() { raw | grep -n -m1 -- "$1" | cut -d: -f1; }                           # the row with TEXT
+x() { local l; l=$(raw | grep -m1 -- "$1"); l=${l%%"$2"*}; echo $((${#l} + 1)); }   # column of $2 in it
+sgr() { o send-keys -t o:0 -l $'\e[<'"$1;$2;$3$4"; }                      # BUTTON COL ROW M|m
+# press on the header with TEXT, a motion, release at COL of the row with TEXT2
+drg() { local r to; r=$(y "$1") to=$(y "$2"); sgr 0 5 "$r" M; sgr 32 "$3" "$to" M; sgr 0 "$3" "$to" m; settle; }
+name() { x "$1" "${1##* }"; }                                               # where the header's name starts
+reset() { printf '%s\n' "${b[@]}" > "$F"; t set -g @sidebar_fold "${1:-}"; t set-buffer -b sidebar-refresh x; settle; }
+want() { local i; for i; do if [[ $i == [0-9] ]]; then echo "${b[i]}"; else echo "$i"; fi; done > "$T/want"; }
+is() { want "$@"; cmp -s "$T/want" "$F"; }                                # the file holds these lines
+safe() { [[ -L $T/groups.conf && $(stat -c %a "$F") == 640 && -z $(ls "$T/real" | grep new) ]]; }
+got() { grep -v '^#' "$F" | awk '{ print $1 }' | tr '\n' ' '; }           # the names in file order
+reset; drg "● 4tw" "   core" 20
+check "Up: 4tw's header released on egov's tab row: 4tw's tree above egov's line ($(got))" 'is 7 8 0 1 2 3 4 5 6 9'
+check "Up: session two's sidebar shows it too ($(bar two))" \
+  '[[ $(bar two) == "|▾ ● 4tw| ▾ ♦ Sub|    y||▾ ★ egov| ▾ ▲ Köniz|    z||▾ • Default| ❯ x" ]]'
+reset; drg "★ egov" "● 4tw" $(($(name "● 4tw") - 1))
+check "Down: egov released on 4tw's header left of its name: egov's tree below 4tw's ($(got))" 'is 6 7 8 0 1 2 3 4 5 9'
+reset; drg "● 4tw" "✚ St.Gallen" $(($(name "✚ St.Gallen") - 1))
+check "Via subgroup: 4tw on St.Gallen's header left of its name: above egov ($(got))" 'is 7 8 0 1 2 3 4 5 6 9'
+reset; drg "✚ St.Gallen" "    kz" 20
+check "Down inside egov: St.Gallen on Köniz's tab row: its tree below Köniz's ($(got))" 'is 0 3 4 1 2 5 6 7 8 9'
+reset; drg "● 4tw" "✚ St.Gallen" "$(name "✚ St.Gallen")"
+check "Nest: 4tw on St.Gallen's name: '    4tw' after Archiv, Sub 2 levels deeper, the rest unchanged ($(got))" \
+  'is 0 1 2 "    4tw       #2a383b  ●" "      Sub  #403d4a  ♦" 3 4 5 6 9 && safe'
+for w in home core tw; do
+  t select-window -t "main:$w"; settle 1.2; got=$(bar "main:$w" | sed 's/❯/ /')
+  check "Nest: $w's sidebar shows 4tw and Sub under St.Gallen, 2 and 3 in" \
+    '[[ $got == "|▾ ★ egov|   core| ▾ ✚ St.Gallen|    sg|  ▾ ◆ Archiv|     arch|  ▾ ● 4tw|     tw|   ▾ ♦ Sub|      sub|"* ]]'
+done
+t select-window -t main:1; settle
+check "Nest: session two's sidebar shows the new tree ($(bar two))" \
+  '[[ $(bar two) == "|▾ ★ egov| ▾ ✚ St.Gallen|  ▾ ● 4tw|   ▾ ♦ Sub|      y| ▾ ▲ Köniz|    z||▾ • Default| ❯ x" ]]'
+reset; drg "▲ Köniz" "   tw" 20; drg "▲ Köniz" "● 4tw" $(($(name "● 4tw") - 1)); drg "▲ Köniz" "   notes" 20
+check "No sibling: Köniz released on 4tw's tab row, 4tw's header left of its name, Notes' tab: identical" \
+  'is 0 1 2 3 4 5 6 7 8 9 && safe'
+reset; drg "★ egov" "✚ St.Gallen" "$(name "✚ St.Gallen")"; drg "★ egov" "◆ Archiv" 20
+check "Descendant: egov released right on St.Gallen's or Archiv's header: identical" 'is 0 1 2 3 4 5 6 7 8 9'
+reset; drg "▲ Köniz" "★ egov" "$(name "★ egov")"
+check "Own parent: Köniz right on egov's header: its tree egov's last subgroup ($(got))" 'is 0 1 2 5 3 4 6 7 8 9'
+reset; drg "● 4tw" "❯ home" 20
+check "Default: 4tw on Default's tab row: below the last top-level tree ($(got))" 'is 0 1 2 3 4 5 6 9 7 8'
+reset; drg "● 4tw" "• Default" "$(name "• Default")"
+check "Default: 4tw right on Default's header: identical" 'is 0 1 2 3 4 5 6 7 8 9'
+reset; drg "• Default" "● 4tw" 2; drg "• Default" "★ egov" 20
+check "Default dragged onto 4tw's header or egov's: identical" 'is 0 1 2 3 4 5 6 7 8 9'
+reset egov; f=$(bar)
+drg "● 4tw" "▸ ★ egov" "$(name "▸ ★ egov")"
+check "Folded: 4tw right on folded egov's header: nested into egov after its tree ($(got); $f)" \
+  '[[ $f == "|▸ ★ egov  5 tabs|"* ]] && is 0 1 2 3 4 5 "  4tw       #2a383b  ●" "    Sub  #403d4a  ♦" 6 9'
+reset; r=$(y "● 4tw"); sgr 0 "$(name "● 4tw")" "$r" M; sgr 0 "$(name "● 4tw")" "$r" m; settle
+check "a press and release on 4tw's header folds it, file identical" \
+  '[[ $(t show -gv @sidebar_fold) == 4tw ]] && is 0 1 2 3 4 5 6 7 8 9'
+tg() { t has-session 2>/dev/null || return 1; TMUX="$(sock),0,0" "$R/tabrail-groups" "$@"; }   # as the sidebar calls it
+tree() { tg tree | cut -f1,2 | tr '\t\n' ' |'; }
+reset; for a in "move-group Köniz 4tw" "move-group Default egov" "move-group egov egov" "move-group 4tw Nope" \
+                "nest egov Archiv" "nest egov egov" "nest 4tw Default" "nest Default egov" "nest Nope egov"; do tg $a; done
+check "the writer alone: a non-sibling, Default, its own tree, a missing group: identical" 'is 0 1 2 3 4 5 6 7 8 9 && safe'
+c=("egov #1 ★" "  St.Gallen #2 ✚" "  # customers" "" "  Köniz #3 ▲" "4tw #4 ●")   # a comment, a blank line inside
+printf '%s\n' "${c[@]}" > "$F"; tg move-group egov 4tw; printf '%s\n' "${c[5]}" "${c[@]:0:5}" > "$T/m"; cmp -s "$T/m" "$F"; m=$?
+printf '%s\n' "${c[@]}" > "$F"; tg nest egov 4tw
+check "a comment and a blank line in egov's tree move with it: below 4tw (move-group), under it (nest)" \
+  '(( m == 0 )) && cmp -s "$F" <(printf "%s\n" "${c[5]}" "  egov #1 ★" "    St.Gallen #2 ✚" "${c[2]}" "" "    Köniz #3 ▲")'
+printf '%s\n' "a #1 x" "    b #2 x" "    c #3 x" "        d #4 x" > "$F"; tg move-group c b; t1=$(tree); l1=$(sed -n 2p "$F")
+printf '%s\n' "a #1 x" $'\tx #2 x' $'\tb #2 x' $'\tc #3 x' $'\t\td #4 x' > "$F"; tg move-group c b; t2=$(tree); l2=$(sed -n 3p "$F")
+check "indented by hand, c above b: 4 spaces kept below a's 4-space child, 1 below a tab one, all a's ($t1 $t2)" \
+  '[[ $t1 == "0 a|1 c|2 d|1 b|" && $l1 == "    c #3 x" && $t2 == "0 a|1 x|1 c|2 d|1 b|" && $l2 == " c #3 x" ]]'
+exit $((fails > 0))

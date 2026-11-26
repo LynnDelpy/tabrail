@@ -12,15 +12,17 @@
 #                            a line with a tint and an icon not used yet; with PARENT right after
 #                            PARENT's subtree, one level deeper; TARGET a tab (@id) moves into the group, a
 #                            sidebar pane (pID for %ID) gets a new tab in it (tabrail-groups-new)
-#   move-group SRC ONTO      SRC's line goes above ONTO's line if that is higher up, else below it;
-#                            ONTO Default: below the last group line
+#   move-group SRC ONTO      SRC's tree goes above ONTO's line if that is higher up, else below ONTO's
+#                            tree; ONTO Default: below the last group line; siblings only
+#   nest SRC PARENT          SRC's tree goes below PARENT's tree, one level deeper (both: tabrail-groups-move)
 # Group lines as src/groups.rs reads them: not a comment (first non-blank character #), 3 fields or
 # more, the first of a name.
 D=$(dirname "$(readlink -f "$0")")
 CONF=$(tmux show -gv @tabrail_groups 2>/dev/null)   # the groups: the file tmux.conf names, else ours
 CONF=${CONF:-$D/groups.conf}
 ICONS=(◆ ▲ ● ■ ★ ✦ ♦ ✚)
-source "$D/tabrail-groups-new"   # new_group, sub_line
+source "$D/tabrail-groups-new"    # new_group, sub_line
+source "$D/tabrail-groups-move"   # move_group
 
 refresh() { tmux set-buffer -b sidebar-refresh x 2>/dev/null; true; }   # see tabrail-tmux
 
@@ -54,33 +56,13 @@ rename_group() {
   refresh
 }
 
-# Written through a symlink, mode kept, renamed into place if no line was lost or added
-move_group() {
-  local file new
-  file=$(readlink -f "$CONF") && new="$file.new.$$" || return 0
-  if awk -v s="$1" -v o="$2" '
-      NR == FNR { if (!/^[ \t]*#/ && NF >= 3) { last = FNR; if ($1 == o "" && !onto) onto = FNR
-                                          if ($1 == s "" && !src) { src = FNR; line = $0 } }
-                  next }
-      FNR == 1 && o == "Default" { onto = last }
-      FNR == src { next }
-      FNR == onto && onto < src { print line }
-      { print }
-      FNR == onto && onto > src { print line }
-      END { if (!src || !onto || src == onto) exit 1 }' "$file" "$file" 2>/dev/null > "$new" &&
-     cmp -s <(sort "$file") <(sort "$new") && chmod --reference="$file" "$new" && mv "$new" "$file"
-  then refresh
-  else rm -f "$new"; fi
-  return 0   # run-shell -b shows a failure in the pane
-}
-
 case $1 in
   tree) tree ;;
   folder) folder "$2" ;;
   rename-group) shift; rename_group "$@" ;;
   new-group) shift; new_group "$@" ;;
-  move-group) shift; move_group "$@" ;;
+  move-group|nest) move_group "$@" ;;
   *) echo "usage: tabrail-groups tree | folder GROUP | rename-group OLD NEW | new-group NAME TARGET [PARENT] |" \
-          "move-group SRC ONTO" >&2
+          "move-group SRC ONTO | nest SRC PARENT" >&2
      exit 2 ;;
 esac

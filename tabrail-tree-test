@@ -33,8 +33,8 @@ nested() { printf '%s\n' "${tree[@]}" > "$F"; grp core egov; grp sg St.Gallen; g
 
 grp core Website; grp sg Website; grp arch Infra; t set -g @sidebar_fold Infra; redraw
 check "flat: as main draws it ($(bar))" '[[ $(bar) == "|▾ ◆ Website|   core|   sg||▸ ▲ Infra  1 tab||▾ • Default| ❯ home" ]]'
-drg 6 2
-check "flat: Infra's row dragged onto Website's moves its line above (tabrail-groups), still a link, 640" \
+drg 6 3   # on Website's tab: its header's name (column 5) would nest Infra (tabrail-tree-drag-test)
+check "flat: Infra's row dragged onto Website's tab moves its line above (tabrail-groups), still a link, 640" \
   '[[ $(grep -v "^#" "$F" | head -1) == Infra* && -L $T/groups.conf && $(stat -c %a "$F") == 640 ]]'
 
 t set -g @sidebar_fold ''; nested
@@ -56,7 +56,7 @@ printf '%s\n' "   egov #283147 ★" "  St.Gallen #2a3b2f ✚" "    Archiv #3b2a3
 check "first group line indented: top-level, St.Gallen too, Archiv under St.Gallen ($(bar))" \
   '[[ $(bar) == "|▾ ★ egov|   core||▾ ✚ St.Gallen|   sg| ▾ ◆ Archiv|    arch||▾ • Default| ❯ home" ]]'
 printf '%s\n' "egov #1 ★" "  # customers of egov" "	St.Gallen #2 ✚" "	 Archiv #3 ◆" " Köniz #4 ✚" > "$F"
-got=$(TMUX="$(t display -p '#{socket_path}'),0,0" "$R/tabrail-groups" tree | tr '\t\n' ' |')
+got=$(TMUX="$(sock),0,0" "$R/tabrail-groups" tree | tr '\t\n' ' |')
 check "tabrail-groups tree: a tab or a space one column each, an indented # a comment ($got)" '[[ $got == "0 egov ★|1 St.Gallen ✚|2 Archiv ◆|1 Köniz ✚|" ]]'
 printf '%s\n' "${tree[@]}" > "$F"; for w in core sg arch; do grp "$w" Default; done
 t run-shell "$R/tabrail-timer start St.Gallen"; redraw

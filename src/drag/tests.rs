@@ -1,8 +1,8 @@
 //! drag.rs: a left press and release on a group's row, on its time or ▷ (head.rs's columns) or beside it;
-//! on its + in plus.rs.
+//! on its + in plus.rs, a group let go over another row in tree.rs.
 use super::left;
 use crate::draw::Row;
-use crate::{groups::Group, head};
+use crate::{groups::{read, Group}, head};
 use crate::input::Click;
 use crate::menu::Place;
 use std::collections::HashSet;
@@ -18,10 +18,12 @@ fn group(name: &str, fold: bool, time: Option<&str>) -> Row {
     Row::Group(name.into(), time, plus)
 }
 
-/// What a left press or release at column `col` of row `y` (holding `row`) sends to tmux.
+/// What a left press or release at column `col` of row `y` (holding `row`) sends to tmux; the groups
+/// Website and Infra, then Default.
 fn send(drag: &mut Option<(usize, usize, Row)>, (col, y): (usize, usize), row: &Row, release: bool,
         folded: &HashSet<String>) -> Vec<String> {
-    left(&Click { right: false, release, col, row: y }, Some(row), &[], folded, &P, drag)
+    let groups = read("Website #283147 ◆\nInfra #3b2f2a ▲\n");
+    left(&Click { right: false, release, col, row: y }, Some(row), &[], &groups, folded, &P, drag)
 }
 
 /// A press at column `down` and a release at `up` on row 4: the press sends nothing.
@@ -88,8 +90,9 @@ fn the_columns_count_as_at_the_press() {
 fn a_drag_from_the_time_moves_the_group() {
     let (mut drag, none) = (None, HashSet::new());
     assert!(send(&mut drag, (14, 4), &group("Website", false, Some("▶ 12m")), false, &none).is_empty());
-    let cmds = send(&mut drag, (14, 9), &group("Infra", false, Some("▶ 3m")), true, &none);
+    let cmds = send(&mut drag, (4, 9), &group("Infra", false, Some("▶ 3m")), true, &none); // left of its name
     assert_eq!(cmds, ["run-shell -b '/t/tabrail-groups move-group \"Website\" \"Infra\"'"]);
 }
 
 mod plus;
+mod tree;

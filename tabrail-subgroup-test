@@ -82,7 +82,7 @@ check "press on egov's +, release on its name: folds, no field" '[[ $f == egov &
 clk 5 "$e"; r=$(y "● 4tw"); c=$(x "● 4tw" +)
 sgr 0 "$c" "$r" M; sgr 32 20 "$(y "   core")" M; sgr 0 20 "$(y "   core")" m; settle
 check "press on 4tw's +, release on egov's tab row: a group drag, 4tw's line above egov's" '[[ $(head -1 "$F") == 4tw* ]]'
-tg() { TMUX="$(t display -p '#{socket_path}'),0,0" "$R/tabrail-groups" "$@"; }   # as tabrail-name calls it
+tg() { t has-session 2>/dev/null || return 1; TMUX="$(sock),0,0" "$R/tabrail-groups" "$@"; }   # as tabrail-name calls it
 cp "$F" "$T/before"; n=$(tabs); s=$(side main:1); tg new-group X "p${s#%}" Nope; tg new-group Y "p${s#%}" Default; settle
 check "a missing or a Default PARENT: file identical (cmp), no new tab" '[[ $(tabs) == "$n" ]] && cmp -s "$T/before" "$F" && safe'
 printf '%s\n' "egov #1 ★" " Köniz #4 ✚" "  Y #5 ◆" > "$F"; tg new-group New '' Köniz   # by hand: Köniz 1 in, Y 2

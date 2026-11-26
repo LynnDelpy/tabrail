@@ -1,5 +1,6 @@
 //! drag.rs: a left press and release on a group's + (head.rs's column, 25 at width 26) opens the name
-//! field for a subgroup of it; beside it, off it or with another group's row by the release, as before.
+//! field for a subgroup of it; beside it, off it or with another group's row by the release, as before;
+//! let go on another group's row, a group drag.
 use super::{click, folds, group, send};
 use crate::draw::Row;
 use std::collections::HashSet;
@@ -28,11 +29,14 @@ fn beside_or_off_the_plus_folds() {
 }
 
 #[test]
-fn a_drag_from_the_plus_moves_the_group() {
-    let (mut drag, none) = (None, HashSet::new());
-    assert!(send(&mut drag, (25, 4), &group("Website", false, None), false, &none).is_empty());
-    let cmds = send(&mut drag, (25, 9), &group("Infra", false, None), true, &none);
-    assert_eq!(cmds, ["run-shell -b '/t/tabrail-groups move-group \"Website\" \"Infra\"'"]);
+fn a_drag_from_the_plus_nests_or_moves_the_group() {
+    let none = HashSet::new();
+    for (up, verb) in [(25, "nest"), (5, "nest"), (4, "move-group")] { // on Infra's + or name, left of the name
+        let mut drag = None;
+        assert!(send(&mut drag, (25, 4), &group("Website", false, None), false, &none).is_empty());
+        let cmds = send(&mut drag, (up, 9), &group("Infra", false, None), true, &none);
+        assert_eq!(cmds, [format!("run-shell -b '/t/tabrail-groups {verb} \"Website\" \"Infra\"'")], "{up}");
+    }
 }
 
 #[test]

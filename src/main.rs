@@ -83,7 +83,7 @@ fn main() {
                 t.ask(&format!("last-pane -t {pane}"));
                 menu_open = Some(Instant::now());
             } else if !click.right {
-                for cmd in drag::left(&click, screen.rows.get(click.row), &tabs, &folded, &place, &mut drag) {
+                for cmd in drag::left(&click, screen.rows.get(click.row), &tabs, &groups, &folded, &place, &mut drag) {
                     t.ask(&cmd);
                 }
             }

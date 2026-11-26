@@ -11,7 +11,7 @@ source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
 F=$T/groups.conf; H=$(readlink -f "$T"); mkdir -p "$H/x/egov/stgallen/src"; : > "$F"
 sed -i '/@tabrail_reader/d' "$T/conf"   # no reader bar: not what this tests
 echo "set -g @tabrail_groups '$F'" >> "$T/conf"
-inner; S=$(t display -p '#{socket_path}'),0,0; settle
+inner; S=$(sock),0,0; settle
 of() { local d; for d; do TMUX=$S HOME=$H "$R/tabrail-tmux" group "$H/x/$d"; done | paste -sd' '; }   # ~ is $H
 nw() {   # New tab in GROUP (tabrail-act new): its folder and its group
   TMUX=$S HOME=$H "$R/tabrail-act" new "$1" main:1; settle

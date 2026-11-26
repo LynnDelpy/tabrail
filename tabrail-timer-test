@@ -29,7 +29,7 @@ pick() { o send-keys -t o:0 -l "$1"; settle; }                              # a 
 num() { grep -oE '[▶⏸] [0-9]+s' <<<"$1" | tr -dc 0-9; }                    # seconds a label shows
 line() { grep "^$1 " "$F"; }
 f() { line "$1" | cut -d' ' -f"$2"; }                                       # field N of GROUP's line
-run() { TMUX=$(t display -p '#{socket_path}'),0,0 "$R/tabrail-timer" "$@"; }   # as a menu item would
+run() { TMUX=$(sock),0,0 "$R/tabrail-timer" "$@"; }   # as a menu item would
 bad='[[;](0|22|49)m'                                                       # reset, bold off, tint off
 up
 

@@ -3,7 +3,9 @@
 # opened in or below, at any level (equal ones: the first line); prefix M, a drag or the right-click
 # menu moves it. Tabs in none: Default. The sidebar shows the groups in line order; the menu's "New
 # group…" adds lines here, "New subgroup…" (or a click on a header's +) one indented under the
-# group's subtree, dragging a group's row in the sidebar reorders them. Columns: name (one
+# group's subtree. Dragging a group's row in the sidebar moves its line and its subgroups' lines:
+# let go at or right of another group's header name, it nests under that group; left of the name or
+# on a tab's row, it keeps its level, next to a sibling. Default never moves. Columns: name (one
 # word), tint behind the group's row (#rrggbb; a group menu's "Colour…" sets it to one of the palette
 # file's), icon, folders (optional; a new tab of the group opens in the first, without any in the
 # first of its nearest ancestor that has folders, else home).

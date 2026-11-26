@@ -2,8 +2,8 @@
 //! @tabrail_groups): a group per line that is no comment (its first non-blank character #) and has 3
 //! columns or more (name, tint, icon, folders). A group's parent is the nearest group line above it
 //! with less leading whitespace (a space or a tab counts one each), so an indented line with none above
-//! is top-level. The one reader of the tree on this side: draw.rs walks it, drag.rs will move whole
-//! subtrees by it.
+//! is top-level. The one reader of the tree on this side: draw.rs walks it, drag.rs finds by it where a
+//! dragged group goes.
 use std::ops::Range;
 
 pub struct Group {
@@ -38,6 +38,32 @@ pub fn subtree(groups: &[Group], i: usize) -> Range<usize> {
     let depth = groups[i].depth;
     let end = groups[i + 1..].iter().position(|g| g.depth <= depth).map_or(groups.len(), |n| i + 1 + n);
     i + 1..end
+}
+
+/// The index of the group named `name`: its first line.
+pub fn find(groups: &[Group], name: &str) -> Option<usize> {
+    groups.iter().position(|g| g.name == name)
+}
+
+/// Group `i`'s parent: the nearest group above it that is shallower; none for a top-level one or Default.
+pub fn parent(groups: &[Group], i: usize) -> Option<usize> {
+    (0..i).rev().find(|&j| groups[j].depth < groups[i].depth)
+}
+
+/// `of` or its ancestor that is a sibling of `src` (has its parent: top-level groups and Default are
+/// siblings); none if there is none or that is `src` itself, `of` being in `src`'s tree.
+pub fn sibling<'a>(groups: &'a [Group], src: &str, of: &str) -> Option<&'a str> {
+    let (s, mut i) = (find(groups, src)?, find(groups, of)?);
+    while parent(groups, i) != parent(groups, s) {
+        i = parent(groups, i)?;
+    }
+    (i != s).then(|| groups[i].name.as_str())
+}
+
+/// Whether `src` may become a subgroup of `into`: neither is Default, `into` is not in `src`'s tree.
+pub fn nests(groups: &[Group], src: &str, into: &str) -> bool {
+    let (Some(s), Some(i)) = (find(groups, src), find(groups, into)) else { return false };
+    src != "Default" && into != "Default" && !(s..subtree(groups, s).end).contains(&i)
 }
 
 #[cfg(test)]

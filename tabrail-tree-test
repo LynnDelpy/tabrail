@@ -32,56 +32,55 @@ tree=("egov      #283147  ★" "  St.Gallen  #2a3b2f  ✚" "    Archiv  #3b2a3a 
 nested() { printf '%s\n' "${tree[@]}" > "$F"; grp core egov; grp sg St.Gallen; grp arch Archiv; redraw; }
 
 grp core Website; grp sg Website; grp arch Infra; t set -g @sidebar_fold Infra; redraw
-check "flat: as main draws it ($(bar))" '[[ $(bar) == "|▾ ◆ Website|   core|   sg||▸ ▲ Infra  1 tab||▾ • Default| ❯ home" ]]'
-drg 6 3   # on Website's tab: its header's name (column 5) would nest Infra (tabrail-tree-drag-test)
+check "flat: as main draws it ($(bar))" '[[ $(bar) == "|▾ Website|   core|   sg||▸ Infra  1 tab||▾ Default| ❯ home" ]]'
+drg 6 3   # on Website's tab: its header's name (from column 3) would nest Infra (tabrail-tree-drag-test)
 check "flat: Infra's row dragged onto Website's tab moves its line above (tabrail-groups), still a link, 640" \
   '[[ $(grep -v "^#" "$F" | head -1) == Infra* && -L $T/groups.conf && $(stat -c %a "$F") == 640 ]]'
 
 t set -g @sidebar_fold ''; nested
-want="|▾ ★ egov|   core| ▾ ✚ St.Gallen|    sg|  ▾ ◆ Archiv|     arch||▾ • Default| ❯ home"
+want="|▾ egov|   core| ▾ St.Gallen|    sg|  ▾ Archiv|     arch||▾ Default| ❯ home"
 check "nested: headers at columns 1, 2, 3, tabs in by their group's depth, one blank line after Archiv's tab" \
   '[[ $(bar) == "$want" ]]'
 click 20 7; at=$(t display -p -t main '#{window_name}'); t select-window -t main:1; settle
 check "a click on Archiv's tab row (row 7) goes to it ($at)" '[[ $at == arch ]]'
 click 5 2; f=$(t show -gv @sidebar_fold)
 check "egov's header clicked: folded, its tree's 3 tabs counted, then the blank line ($(bar))" \
-  '[[ $f == egov && $(bar) == "|▸ ★ egov  3 tabs||▾ • Default| ❯ home" ]]'
-t resize-pane -t "$(side main:1)" -x 28; settle 2   # at 26 the count does not fit beside St.Gallen's ▷ +
+  '[[ $f == egov && $(bar) == "|▸ egov  3 tabs||▾ Default| ❯ home" ]]'
 click 5 2; click 5 4; click 5 2; click 5 2
-check "St.Gallen folded, egov folded and unfolded: St.Gallen still folded, 2 tabs (width 28: $(bar))" \
-  '[[ $(bar) == "|▾ ★ egov|   core| ▸ ✚ St.Gallen  2 tabs||▾ • Default| ❯ home" ]]'
+check "St.Gallen folded, egov folded and unfolded: St.Gallen still folded, 2 tabs ($(bar))" \
+  '[[ $(bar) == "|▾ egov|   core| ▸ St.Gallen  2 tabs||▾ Default| ❯ home" ]]'
 t set -g @sidebar_fold ''; grp arch Default; redraw
-check "empty leaf: no Archiv header ($(bar))" '[[ $(bar) == "|▾ ★ egov|   core| ▾ ✚ St.Gallen|    sg||▾ • Default| ❯ home|   arch" ]]'
+check "empty leaf: no Archiv header ($(bar))" '[[ $(bar) == "|▾ egov|   core| ▾ St.Gallen|    sg||▾ Default| ❯ home|   arch" ]]'
 printf '%s\n' "   egov #283147 ★" "  St.Gallen #2a3b2f ✚" "    Archiv #3b2a3a ◆" > "$F"; grp arch Archiv; redraw
 check "first group line indented: top-level, St.Gallen too, Archiv under St.Gallen ($(bar))" \
-  '[[ $(bar) == "|▾ ★ egov|   core||▾ ✚ St.Gallen|   sg| ▾ ◆ Archiv|    arch||▾ • Default| ❯ home" ]]'
+  '[[ $(bar) == "|▾ egov|   core||▾ St.Gallen|   sg| ▾ Archiv|    arch||▾ Default| ❯ home" ]]'
 printf '%s\n' "egov #1 ★" "  # customers of egov" "	St.Gallen #2 ✚" "	 Archiv #3 ◆" " Köniz #4 ✚" > "$F"
 got=$(TMUX="$(sock),0,0" "$R/tabrail-groups" tree | tr '\t\n' ' |')
 check "tabrail-groups tree: a tab or a space one column each, an indented # a comment ($got)" '[[ $got == "0 egov ★|1 St.Gallen ✚|2 Archiv ◆|1 Köniz ✚|" ]]'
 printf '%s\n' "${tree[@]}" > "$F"; for w in core sg arch; do grp "$w" Default; done
 t run-shell "$R/tabrail-timer start St.Gallen"; redraw
 check "a timer on tab-less St.Gallen under tab-less egov: both headers, its time ($(bar))" \
-  '[[ $(bar) == "|▾ ★ egov| ▾ ✚ St.Gallen ▶ "* ]]'
+  '[[ $(bar) == "|▾ egov| ▾ St.Gallen ▶ "* ]]'
 t run-shell "$R/tabrail-timer reset St.Gallen"
 
 nested; c=$(t list-clients -f '#{!:#{client_control_mode}}' -F '#{client_name}')
 t run-shell -b "$R/tabrail-move $(win main:core) '$c'"; settle 2; p=$(o capture-pane -p -t o)
 check "Move to group…: the tree in order, St.Gallen under egov, indented" \
-  '[[ $p == *"1. ★ egov  1 tab · current"*"2.  ✚ St.Gallen  1 tab"*"3.   ◆ Archiv  1 tab"*"4. • Default"* ]]'
+  '[[ $p == *"1. egov  1 tab · current"*"2.  St.Gallen  1 tab"*"3.   Archiv  1 tab"*"4. Default  1 tab"* ]]'
 o send-keys -t o 3; settle
 for w in home core sg arch; do
   t select-window -t "main:$w"; settle 1.2; got=$(bar "main:$w" | sed 's/❯/ /')
   check "core moved into Archiv: $w's sidebar shows it under Archiv's header, 2 in" \
-    '[[ $got == "|▾ ★ egov| ▾ ✚ St.Gallen|    sg|  ▾ ◆ Archiv|     core|     arch||▾ • Default|   home" ]]'
+    '[[ $got == "|▾ egov| ▾ St.Gallen|    sg|  ▾ Archiv|     core|     arch||▾ Default|   home" ]]'
 done
 t select-window -t main:1; settle
-check "parent without tabs: egov's header, then St.Gallen's" '[[ $(bar) == "|▾ ★ egov| ▾ ✚ St.Gallen|    sg|"* ]]'
+check "parent without tabs: egov's header, then St.Gallen's" '[[ $(bar) == "|▾ egov| ▾ St.Gallen|    sg|"* ]]'
 
-cp "$F" "$T/before"; menu "✚ St.Gallen"; keys r 1.5; key C-u 0.3; keys SG; key Enter 2
+cp "$F" "$T/before"; menu "[▾▸] St.Gallen"; keys r 1.5; key C-u 0.3; keys SG; key Enter 2
 d=$(diff "$T/before" "$F" | grep '^[<>]' | tr '\n' '|')
 check "Rename group from the menu, St.Gallen to SG: only the name changed, indent and spacing kept ($d)" \
   '[[ $d == "<   St.Gallen  #2a3b2f  ✚|>   SG  #2a3b2f  ✚|" ]]'
 check "rename: still a link, 640, no temp file; sg's tab in SG, shown one in" \
   '[[ -L $T/groups.conf && $(stat -c %a "$F") == 640 && -z $(ls "$T/real" | grep new) &&
-     $(t show -wv -t main:sg @group) == SG && $(bar) == "|▾ ★ egov| ▾ ✚ SG|    sg|"* ]]'
+     $(t show -wv -t main:sg @group) == SG && $(bar) == "|▾ egov| ▾ SG|    sg|"* ]]'
 exit $((fails > 0))

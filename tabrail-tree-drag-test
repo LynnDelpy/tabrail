@@ -41,45 +41,45 @@ want() { local i; for i; do if [[ $i == [0-9] ]]; then echo "${b[i]}"; else echo
 is() { want "$@"; cmp -s "$T/want" "$F"; }                                # the file holds these lines
 safe() { [[ -L $T/groups.conf && $(stat -c %a "$F") == 640 && -z $(ls "$T/real" | grep new) ]]; }
 got() { grep -v '^#' "$F" | awk '{ print $1 }' | tr '\n' ' '; }           # the names in file order
-reset; drg "● 4tw" "   core" 20
+reset; drg "[▾▸] 4tw" "   core" 20
 check "Up: 4tw's header released on egov's tab row: 4tw's tree above egov's line ($(got))" 'is 7 8 0 1 2 3 4 5 6 9'
 check "Up: session two's sidebar shows it too ($(bar two))" \
-  '[[ $(bar two) == "|▾ ● 4tw| ▾ ♦ Sub|    y||▾ ★ egov| ▾ ▲ Köniz|    z||▾ • Default| ❯ x" ]]'
-reset; drg "★ egov" "● 4tw" $(($(name "● 4tw") - 1))
+  '[[ $(bar two) == "|▾ 4tw| ▾ Sub|    y||▾ egov| ▾ Köniz|    z||▾ Default| ❯ x" ]]'
+reset; drg "[▾▸] egov" "[▾▸] 4tw" $(($(name "[▾▸] 4tw") - 1))
 check "Down: egov released on 4tw's header left of its name: egov's tree below 4tw's ($(got))" 'is 6 7 8 0 1 2 3 4 5 9'
-reset; drg "● 4tw" "✚ St.Gallen" $(($(name "✚ St.Gallen") - 1))
+reset; drg "[▾▸] 4tw" "[▾▸] St.Gallen" $(($(name "[▾▸] St.Gallen") - 1))
 check "Via subgroup: 4tw on St.Gallen's header left of its name: above egov ($(got))" 'is 7 8 0 1 2 3 4 5 6 9'
-reset; drg "✚ St.Gallen" "    kz" 20
+reset; drg "[▾▸] St.Gallen" "    kz" 20
 check "Down inside egov: St.Gallen on Köniz's tab row: its tree below Köniz's ($(got))" 'is 0 3 4 1 2 5 6 7 8 9'
-reset; drg "● 4tw" "✚ St.Gallen" "$(name "✚ St.Gallen")"
+reset; drg "[▾▸] 4tw" "[▾▸] St.Gallen" "$(name "[▾▸] St.Gallen")"
 check "Nest: 4tw on St.Gallen's name: '    4tw' after Archiv, Sub 2 levels deeper, the rest unchanged ($(got))" \
   'is 0 1 2 "    4tw       #2a383b  ●" "      Sub  #403d4a  ♦" 3 4 5 6 9 && safe'
 for w in home core tw; do
   t select-window -t "main:$w"; settle 1.2; got=$(bar "main:$w" | sed 's/❯/ /')
   check "Nest: $w's sidebar shows 4tw and Sub under St.Gallen, 2 and 3 in" \
-    '[[ $got == "|▾ ★ egov|   core| ▾ ✚ St.Gallen|    sg|  ▾ ◆ Archiv|     arch|  ▾ ● 4tw|     tw|   ▾ ♦ Sub|      sub|"* ]]'
+    '[[ $got == "|▾ egov|   core| ▾ St.Gallen|    sg|  ▾ Archiv|     arch|  ▾ 4tw|     tw|   ▾ Sub|      sub|"* ]]'
 done
 t select-window -t main:1; settle
 check "Nest: session two's sidebar shows the new tree ($(bar two))" \
-  '[[ $(bar two) == "|▾ ★ egov| ▾ ✚ St.Gallen|  ▾ ● 4tw|   ▾ ♦ Sub|      y| ▾ ▲ Köniz|    z||▾ • Default| ❯ x" ]]'
-reset; drg "▲ Köniz" "   tw" 20; drg "▲ Köniz" "● 4tw" $(($(name "● 4tw") - 1)); drg "▲ Köniz" "   notes" 20
+  '[[ $(bar two) == "|▾ egov| ▾ St.Gallen|  ▾ 4tw|   ▾ Sub|      y| ▾ Köniz|    z||▾ Default| ❯ x" ]]'
+reset; drg "[▾▸] Köniz" "   tw" 20; drg "[▾▸] Köniz" "[▾▸] 4tw" $(($(name "[▾▸] 4tw") - 1)); drg "[▾▸] Köniz" "   notes" 20
 check "No sibling: Köniz released on 4tw's tab row, 4tw's header left of its name, Notes' tab: identical" \
   'is 0 1 2 3 4 5 6 7 8 9 && safe'
-reset; drg "★ egov" "✚ St.Gallen" "$(name "✚ St.Gallen")"; drg "★ egov" "◆ Archiv" 20
+reset; drg "[▾▸] egov" "[▾▸] St.Gallen" "$(name "[▾▸] St.Gallen")"; drg "[▾▸] egov" "[▾▸] Archiv" 20
 check "Descendant: egov released right on St.Gallen's or Archiv's header: identical" 'is 0 1 2 3 4 5 6 7 8 9'
-reset; drg "▲ Köniz" "★ egov" "$(name "★ egov")"
+reset; drg "[▾▸] Köniz" "[▾▸] egov" "$(name "[▾▸] egov")"
 check "Own parent: Köniz right on egov's header: its tree egov's last subgroup ($(got))" 'is 0 1 2 5 3 4 6 7 8 9'
-reset; drg "● 4tw" "❯ home" 20
+reset; drg "[▾▸] 4tw" "❯ home" 20
 check "Default: 4tw on Default's tab row: below the last top-level tree ($(got))" 'is 0 1 2 3 4 5 6 9 7 8'
-reset; drg "● 4tw" "• Default" "$(name "• Default")"
+reset; drg "[▾▸] 4tw" "[▾▸] Default" "$(name "[▾▸] Default")"
 check "Default: 4tw right on Default's header: identical" 'is 0 1 2 3 4 5 6 7 8 9'
-reset; drg "• Default" "● 4tw" 2; drg "• Default" "★ egov" 20
+reset; drg "[▾▸] Default" "[▾▸] 4tw" 2; drg "[▾▸] Default" "[▾▸] egov" 20
 check "Default dragged onto 4tw's header or egov's: identical" 'is 0 1 2 3 4 5 6 7 8 9'
 reset egov; f=$(bar)
-drg "● 4tw" "▸ ★ egov" "$(name "▸ ★ egov")"
+drg "[▾▸] 4tw" "▸ egov" "$(name "▸ egov")"
 check "Folded: 4tw right on folded egov's header: nested into egov after its tree ($(got); $f)" \
-  '[[ $f == "|▸ ★ egov  5 tabs|"* ]] && is 0 1 2 3 4 5 "  4tw       #2a383b  ●" "    Sub  #403d4a  ♦" 6 9'
-reset; r=$(y "● 4tw"); sgr 0 "$(name "● 4tw")" "$r" M; sgr 0 "$(name "● 4tw")" "$r" m; settle
+  '[[ $f == "|▸ egov  5 tabs|"* ]] && is 0 1 2 3 4 5 "  4tw       #2a383b  ●" "    Sub  #403d4a  ♦" 6 9'
+reset; r=$(y "[▾▸] 4tw"); sgr 0 "$(name "[▾▸] 4tw")" "$r" M; sgr 0 "$(name "[▾▸] 4tw")" "$r" m; settle
 check "a press and release on 4tw's header folds it, file identical" \
   '[[ $(t show -gv @sidebar_fold) == 4tw ]] && is 0 1 2 3 4 5 6 7 8 9'
 tg() { t has-session 2>/dev/null || return 1; TMUX="$(sock),0,0" "$R/tabrail-groups" "$@"; }   # as the sidebar calls it

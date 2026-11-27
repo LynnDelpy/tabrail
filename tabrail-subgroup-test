@@ -39,47 +39,47 @@ added() { diff "$T/before" "$F" | grep '^[<>]' | tr '\n' '|'; }            # the
 back() { t select-window -t main:1; settle; }                             # a new tab took the screen
 safe() { [[ -L $T/groups.conf && $(stat -c %a "$F") == 640 && -z $(ls "$T/real" | grep new) ]]; }
 
-w=$(t display -p -t "$(side main:1)" '#{pane_width}'); d=$(raw | grep -- "• Default")
-check "the + one in from the edge of every header but Default's ($(x "★ egov" +) of $w), the ▷ two left of it" \
-  '[[ $(x "★ egov" +) == $((w - 1)) && $(x "★ egov" ▷) == $((w - 3)) && $(raw | grep -c "▷ +$") == 5 && $d == *"▷" ]]'
+w=$(t display -p -t "$(side main:1)" '#{pane_width}'); d=$(raw | grep -- "[▾▸] Default")
+check "the + one in from the edge of every header but Default's ($(x "[▾▸] egov" +) of $w), the ▷ two left of it" \
+  '[[ $(x "[▾▸] egov" +) == $((w - 1)) && $(x "[▾▸] egov" ▷) == $((w - 3)) && $(raw | grep -c "▷ +$") == 5 && $d == *"▷" ]]'
 check "session two: its tab in Bern, no such line yet, not shown ($(bar two))" '[[ $(bar two) != *Bern* ]]'
 
-cp "$F" "$T/before"; n=$(tabs); menu "★ egov"; m=$(shown); keys s 1.5; p=$(shown); keys Bern; key Enter 2; back
+cp "$F" "$T/before"; n=$(tabs); menu "[▾▸] egov"; m=$(shown); keys s 1.5; p=$(shown); keys Bern; key Enter 2; back
 check "egov's menu: New subgroup… right after New group…, its field titled New subgroup of egov" \
   '[[ $m == *"New group…"*"New subgroup…"*"Rename group"* && $p == *"New subgroup of egov"* ]]'
 check "one line, '  Bern' with an unused tint and icon, after egov's subtree, above the comment ($(added))" \
   '[[ $(added) == ">   Bern    #3b392a  ■|" && $(sed -n 5p "$F") == "  Bern  "* ]] && safe'
 check "a new tab in Bern ($n -> $(tabs) in main), shown under egov after Köniz's ($(bar))" \
-  '[[ $(tabs) == $((n + 1)) && $(in_ Bern) == 2 && $(bar) == *"| ▾ ▲ Köniz|    kz| ▾ ■ Bern|    "*"||▾ ● 4tw|"* ]]'
+  '[[ $(tabs) == $((n + 1)) && $(in_ Bern) == 2 && $(bar) == *"| ▾ Köniz|    kz| ▾ Bern|    "*"||▾ 4tw|"* ]]'
 check "session two's sidebar shows Bern under egov, no restart ($(bar two))" \
-  '[[ $(bar two) == "|▾ ★ egov| ▾ ■ Bern|    bern||▾ • Default| ❯ home" ]]'
+  '[[ $(bar two) == "|▾ egov| ▾ Bern|    bern||▾ Default| ❯ home" ]]'
 
-cp "$F" "$T/before"; n=$(tabs); plus "★ egov"; p=$(shown); keys Zug; key Enter 2; back
+cp "$F" "$T/before"; n=$(tabs); plus "[▾▸] egov"; p=$(shown); keys Zug; key Enter 2; back
 check "a click on egov's +: the same field in the terminal clicked, '  Zug' after Bern, a tab in it ($(added))" \
   '[[ $p == *"New subgroup of egov"* && $(added) == ">   Zug     #2f2a3b  ✦|" && $(sed -n 6p "$F") == "  Zug  "* &&
      $(tabs) == $((n + 1)) && $(in_ Zug) == 1 ]] && safe'
-cp "$F" "$T/before"; plus "✚ St.Gallen"; p=$(shown); keys Alt; key Enter 2; back
+cp "$F" "$T/before"; plus "[▾▸] St.Gallen"; p=$(shown); keys Alt; key Enter 2; back
 check "St.Gallen's + (depth 1): '    Alt' after Archiv, 4 spaces in ($(added))" \
   '[[ $p == *"New subgroup of St.Gallen"* && $(added) == ">     Alt   #403d4a  ♦|" && $(sed -n 4p "$F") == "    Alt "* ]]'
-check "Alt shown under St.Gallen, 2 in ($(bar))" '[[ $(bar) == *"| ▾ ✚ St.Gallen|    sg|  ▾ ◆ Archiv|     arch|  ▾ ♦ Alt|     "* ]]'
+check "Alt shown under St.Gallen, 2 in ($(bar))" '[[ $(bar) == *"| ▾ St.Gallen|    sg|  ▾ Archiv|     arch|  ▾ Alt|     "* ]]'
 
-cp "$F" "$T/before"; n=$(tabs); plus "★ egov"; keys Nope; a=$(shown); key Escape 2
-menu "★ egov"; keys s 1.5; keys '   '; b=$(shown); key Enter 2
+cp "$F" "$T/before"; n=$(tabs); plus "[▾▸] egov"; keys Nope; a=$(shown); key Escape 2
+menu "[▾▸] egov"; keys s 1.5; keys '   '; b=$(shown); key Enter 2
 check "Esc in the +'s field, a blank name in the menu's: file identical (cmp), no new tab" \
   '[[ $a == *"New subgroup of egov"*Nope* && $b == *"New subgroup of egov"* && $(tabs) == "$n" ]] && cmp -s "$T/before" "$F"'
-k=$(in_ Köniz); plus "✚ St.Gallen"; keys Köniz; key Enter 2; back
+k=$(in_ Köniz); plus "[▾▸] St.Gallen"; keys Köniz; key Enter 2; back
 check "Köniz, a group already (egov's): no line, a new tab in Köniz ($k -> $(in_ Köniz))" \
   '[[ $(tabs) == $((n + 1)) && $(in_ Köniz) == $((k + 1)) ]] && cmp -s "$T/before" "$F"'
 
-menu "• Default"; m=$(shown); keys q 0.5; menu "   core"; tm=$(shown); keys q 0.5
+menu "[▾▸] Default"; m=$(shown); keys q 0.5; menu "   core"; tm=$(shown); keys q 0.5
 r=$(sgr 2 5 40 M; sgr 2 5 40 m; settle 0.7; shown); keys q 0.5
 check "no New subgroup… for Default, a tab or empty space; no + on Default's row" \
   '[[ $m == *Fold* && $tm == *"Move to group…"* && $r == *"New group…"* && "$m$tm$r" != *subgroup* && $d != *+* ]]'
-e=$(y "★ egov"); clk 5 "$e"; f=$(t show -gv @sidebar_fold)
-check "a click on egov's name folds it as before ($(bar))" '[[ $f == egov && $(bar) == "|▸ ★ egov  "*" tabs||▾ ● 4tw"* ]]'
-clk 5 "$e"; clk "$(x "★ egov" +)" "$e" 5 "$e"; f=$(t show -gv @sidebar_fold)
+e=$(y "[▾▸] egov"); clk 5 "$e"; f=$(t show -gv @sidebar_fold)
+check "a click on egov's name folds it as before ($(bar))" '[[ $f == egov && $(bar) == "|▸ egov  "*" tabs||▾ 4tw"* ]]'
+clk 5 "$e"; clk "$(x "[▾▸] egov" +)" "$e" 5 "$e"; f=$(t show -gv @sidebar_fold)
 check "press on egov's +, release on its name: folds, no field" '[[ $f == egov && $(shown) != *"New subgroup of"* ]]'
-clk 5 "$e"; r=$(y "● 4tw"); c=$(x "● 4tw" +)
+clk 5 "$e"; r=$(y "[▾▸] 4tw"); c=$(x "[▾▸] 4tw" +)
 sgr 0 "$c" "$r" M; sgr 32 20 "$(y "   core")" M; sgr 0 20 "$(y "   core")" m; settle
 check "press on 4tw's +, release on egov's tab row: a group drag, 4tw's line above egov's" '[[ $(head -1 "$F") == 4tw* ]]'
 tg() { t has-session 2>/dev/null || return 1; TMUX="$(sock),0,0" "$R/tabrail-groups" "$@"; }   # as tabrail-name calls it

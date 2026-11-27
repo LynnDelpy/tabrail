@@ -8,8 +8,9 @@
 # on a tab's row, it keeps its level, next to a sibling. A group menu's "Move into group…" moves them
 # under another group (not Default or its own subgroups) or back to the top level. Default never
 # moves. Columns: name (one word), tint behind the group's row (#rrggbb; a group menu's "Colour…"
-# sets it to one of the palette file's), icon, folders (optional; a new tab of the group opens in the
-# first, without any in the first of its nearest ancestor that has folders, else home).
+# sets it to one of the palette file's), icon (required, any one word; not shown), folders (optional;
+# a new tab of the group opens in the first, without any in the first of its nearest ancestor that
+# has folders, else home).
 # A line indented under another makes a subgroup, any depth deep: its parent is the nearest group line
 # above it with less leading whitespace (a space or a tab counts one). The sidebar shows the tree, each
 # level one column further right; folding a group hides its subgroups too. Below, a tab opened in

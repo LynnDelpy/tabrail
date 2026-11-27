@@ -31,7 +31,7 @@ fn beside_or_off_the_plus_folds() {
 #[test]
 fn a_drag_from_the_plus_nests_or_moves_the_group() {
     let none = HashSet::new();
-    for (up, verb) in [(25, "nest"), (5, "nest"), (4, "move-group")] { // on Infra's + or name, left of the name
+    for (up, verb) in [(25, "nest"), (5, "nest"), (2, "move-group")] { // on Infra's + or name, left of the name
         let mut drag = None;
         assert!(send(&mut drag, (25, 4), &group("Website", false, None), false, &none).is_empty());
         let cmds = send(&mut drag, (up, 9), &group("Infra", false, None), true, &none);
@@ -52,9 +52,9 @@ fn a_tab_row_default_and_a_dirty_name() {
     // a name clean() changes: no toggle (no timer items in its menu) and no + (it cannot pass through
     // tmux's command strings), so it folds as a click on its name does; Default has no + either
     let (dirty, bare, default) = (group("Q'a", false, Some("▶ 12m")), group("Q'a", false, None), group("Default", false, None));
-    for (row, col) in [(&dirty, 9), (&dirty, 25), (&bare, 23), (&bare, 25), (&default, 25)] {
+    for (row, col) in [(&dirty, 7), (&dirty, 25), (&bare, 23), (&bare, 25), (&default, 25)] {
         assert!(matches!(row, Row::Group(_, _, None)), "{col}");
         assert_eq!(click(row, col, col, false), click(row, 5, 5, false), "{col}");
     }
-    assert!(click(&dirty, 9, 9, false)[0].starts_with("set -g @sidebar_fold "));
+    assert!(click(&dirty, 7, 7, false)[0].starts_with("set -g @sidebar_fold "));
 }

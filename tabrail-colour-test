@@ -27,25 +27,25 @@ menu() {   # right-click the row holding TEXT, menu open
 }
 keys() { o send-keys -t o:0 -l "$1"; settle "${2:-1}"; }
 key() { o send-keys -t o:0 "$1"; settle "${2:-1.5}"; }
-swatches() { grep -c "│ [ ❯]  ◆ Website " <<<"$1"; }                    # picker rows for Website
+swatches() { grep -c "│ [ ❯]  Website " <<<"$1"; }                    # picker rows for Website
 row() { t capture-pane -ep -t "$(side "$1")" | grep -m1 -- "$2"; }         # a sidebar's row, escapes
 notemp() { [[ -z $(ls "$T/real" | grep new) ]]; }
 
-menu "▾ ◆ Website"; m=$(shown); keys q 0.5
+menu "▾ Website"; m=$(shown); keys q 0.5
 check "Website's menu: Colour… right after Rename group" '[[ $m == *"Rename group"*"Colour…"*Fold* ]]'
-menu "• Default"; m=$(shown); keys q 0.5
+menu "[▾▸] Default"; m=$(shown); keys q 0.5
 check "Default's menu: no Colour…" '[[ $m == *Fold* && $m != *Colour* ]]'
-menu "■ Q'a"; m=$(shown); keys q 0.5
+menu "[▾▸] Q'a"; m=$(shown); keys q 0.5
 check "a name clean() changes (Q'a): no Colour…, no New subgroup…, no Move into group…" \
   '[[ $m == *Fold* && $m != *Colour* && $m != *subgroup* && $m != *"Move into group"* ]]'
 
-menu "▾ ◆ Website"; keys g; keys Ops; key Enter 2
+menu "▾ Website"; keys g; keys Ops; key Enter 2
 check "New group…: the first palette colour unused, #3B2F2A taken as Brown ($(grep ^Ops "$F"))" \
   '[[ $(grep ^Ops "$F") == "Ops       #2a3b2f  "* ]]'
 t kill-window -t "$(t list-windows -t main -F '#{window_id} #{@group}' | awk '$2 == "Ops" { print $1 }')"
 sed -i '/^Ops/d' "$F"; cp "$F" "$T/orig"; t select-window -t main:1; settle
 
-menu "▾ ◆ Website"; keys c 1.5; p=$(shown); e=$(o capture-pane -ep -t o:0)
+menu "▾ Website"; keys c 1.5; p=$(shown); e=$(o capture-pane -ep -t o:0)
 check "picker: title, 25 swatch rows, Blue alone marked current" \
   '[[ $p == *"Colour for Website?"* && $(swatches "$p") == 25 && $(grep -c "· current" <<<"$p") == 1 &&
      $p == *" Blue · current"* ]]'
@@ -54,7 +54,7 @@ keys web; p=$(shown)
 check "typing the group's own name (web): no swatch row" '[[ $p == *"Colour for Website?"* && $(swatches "$p") == 0 ]]'
 key C-u 0.3; keys te; p=$(shown)
 check "te: five rows, the three teal ones first" \
-  '[[ $(swatches "$p") == 5 && $(grep "│ [ ❯]  ◆ Website " <<<"$p" | head -3 | grep -c " Teal") == 3 ]]'
+  '[[ $(swatches "$p") == 5 && $(grep "│ [ ❯]  Website " <<<"$p" | head -3 | grep -c " Teal") == 3 ]]'
 key C-u 0.3; keys 'teal d'; p=$(shown)
 check "teal d: one row, Teal deep" '[[ $(swatches "$p") == 1 && $p == *"Teal deep"* ]]'
 key Enter
@@ -64,27 +64,27 @@ check "only Website's line changed" '[[ $d == "< Website   #283147  ◆  $T/web|
 check "the groups file still a symlink, mode 640, no temp file" '[[ -L $T/groups.conf && $(stat -c %a "$F") == 640 ]] && notemp'
 for w in 1 2 3 4; do
   t select-window -t main:$w; settle 1.2
-  check "tab $w's sidebar: Website on 48;2;65;89;96" '[[ $(row main:$w "◆ Website") == *"48;2;65;89;96m"* ]]'
+  check "tab $w's sidebar: Website on 48;2;65;89;96" '[[ $(row main:$w "[▾▸] Website") == *"48;2;65;89;96m"* ]]'
 done
 t select-window -t main:1; settle
 
-cp "$F" "$T/before"; menu "▾ ▲ Infra"; keys c 1.5; p=$(shown); keys pl; key Escape
+cp "$F" "$T/before"; menu "▾ Infra"; keys c 1.5; p=$(shown); keys pl; key Escape
 check "Infra's #3B2F2A marks Brown; Esc: file identical, popup gone" \
   '[[ $p == *" Brown · current"* && $(shown) != *"Colour for"* ]] && cmp -s "$T/before" "$F"'
-sed -i 's/#3B2F2A/#123456/' "$F"; menu "▾ ▲ Infra"; keys c 1.5; p=$(shown); keys plum; key Enter
+sed -i 's/#3B2F2A/#123456/' "$F"; menu "▾ Infra"; keys c 1.5; p=$(shown); keys plum; key Enter
 check "a hand-written tint marks no row; picking Plum still works" \
   '[[ $p == *"Colour for Infra?"* && $p != *"· current"* && $(grep ^Infra "$F") == "Infra	#3b2a3a	▲	$T/infra" ]]'
 
-cp "$F" "$T/before"; menu "▾ ◆ Website"; keys c 1.5; keys olive
+cp "$F" "$T/before"; menu "▾ Website"; keys c 1.5; keys olive
 sed -i 's/^Website /Webcite /' "$F"; cp "$F" "$T/renamed"; key Enter
 check "the group renamed while the picker is open: file untouched, no temp" 'cmp -s "$T/renamed" "$F" && notemp'
 cp "$T/before" "$F"; t set-buffer -b sidebar-refresh x; settle
 
-menu "▾ ◆ Website"; keys c 1.5; p=$(shown); keys 'teal d'; key Enter
+menu "▾ Website"; keys c 1.5; p=$(shown); keys 'teal d'; key Enter
 check "Teal deep marked current; picking it again writes nothing" '[[ $p == *" Teal deep · current"* ]] && cmp -s "$T/before" "$F"'
 
 o kill-server; sleep 0.5; outer 50 20
-menu "▾ ◆ Website"; keys c 1.5; p=$(shown)
+menu "▾ Website"; keys c 1.5; p=$(shown)
 check "a 50x20 client: the popup fits (both borders), fzf scrolls" \
   '[[ $(head -1 <<<"$p") == "╭"*"Colour for Website?"*"╮" && $(tail -1 <<<"$p") == "╰"*"╯" && $(swatches "$p") -lt 25 ]]'
 key Escape

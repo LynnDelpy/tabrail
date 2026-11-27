@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Tests for Alt+0 (tabrail-jump, tabrail.tmux's M-0) on throwaway tmux servers (tabrail-test-lib), real
+# M-0 keys sent to the outer server, stand-in Claudes (exec -a claude sleep 1d) with @claude and
+# @claude_waits set by hand: waiting before done, each oldest first, from an idle tab (a waiting tab
+# running a shell never) and from one in the order, wrapping; two presses at once; sidebars alike but for
+# ❯; no or a non-numeric @claude_waits last, ties by index (9 before 10); claude in a pane not active, in
+# a reader or a slot pane not counted, behind an active sidebar counted; another session's older Claude
+# at the same index never; only the current tab (the others busy) or none left: no select-window; no
+# pane in a mode, no `returned`; run-shell of the helper silent, exit 0.
+# One line per check, exits 1 if one failed.
+L=jump
+source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
+sed -i '/@tabrail_reader/d' "$T/conf"   # no reader bar: not what this tests
+printf '%s\n' 'set -g default-shell /bin/bash' \
+  "set-hook -g after-select-window[60] 'set -gF @selects \"#{e|+:#{@selects},1}\"'" >> "$T/conf"   # exec -a; selects
+state() {   # tab NAME of SESSION (main): @claude STATE, @claude_waits WAITS (empty: unset)
+  local w=${4:-main}:=$1
+  t set -w -t "$w" @claude "$2"
+  if [[ -n $3 ]]; then t set -w -t "$w" @claude_waits "$3"; else t set -wu -t "$w" @claude_waits; fi
+}
+stand() { t new-window -d -n "$1" -c "$T/work" 'exec -a claude sleep 1d'; state "$@"; }   # a stand-in tab
+cur() { t display -p -t main: '#{window_name}'; }
+go() { t select-window -t "main:=$1"; settle 0.5; t set -g @selects 0; }   # selects counted from here
+jump() {   # from tab NAME, N presses of Alt+0 one at a time: the tab after each
+  local i r=(); go "$1"
+  for ((i = 0; i < $2; i++)); do o send-keys -t o M-0; settle 0.6; r+=("$(cur)"); done; echo "${r[*]}"
+}
+bar() { t capture-pane -p -t "$(side "main:=$1")" | sed 's/❯/ /' | grep -v '[0-9]:[0-9][0-9] '; }   # no clock
+mark() {   # a stand-in Claude in tab NAME's new active pane, marked OPTION
+  local id; id=$(t split-window -t "main:=$1" -c "$T/work" -P -F '#{pane_id}' 'exec -a claude sleep 1d')
+  t set -p -t "$id" "$2" 1
+}
+client() { t list-clients -f '#{!:#{client_control_mode}}' -F '#{session_name}'; }   # not a sidebar's
+panes() { t list-panes -t "main:=$1" -F "#{pane_active}#{pane_current_command}$2" | tr '\n' ' '; }
+alone() {   # tab NAME waiting since 100, the oldest, else idle: 4 presses from shell
+  state "$1" waiting 100; jump shell 4; state "$1" idle
+}
+
+inner; t rename-window -t main:1 shell
+stand A done 1000; stand B waiting 1200; stand C done 1100
+t new-window -d -n D -c "$T/work"; state D waiting 900   # @claude left on a shell
+o -f /dev/null new -d -s o -x 160 -y 46 "TMUX= tmux -L tabrail-$L attach -t main; sleep 600"
+o set -g status off; settle 3
+
+s=$(jump shell 4)
+check "4 presses from shell: B A C B, D never, 4 selects ($s)" '[[ $s == "B A C B" && $(t show -gv @selects) == 4 ]]'
+s=$(jump A 1)
+check "from A, in the order: C ($s)" '[[ $s == C ]]'
+go shell; o send-keys -t o M-0 M-0; settle 1.5
+check "two presses at once from shell: A ($(cur))" '[[ $(cur) == A ]]'
+go shell; settle; b=$(bar shell); o send-keys -t o M-0; settle; a=$(bar B)
+check "a press: the sidebar the same but for ❯ (on B)" '[[ $(cur) == B && $b == *" B "* && $b == "$a" ]]'
+
+stand E waiting; stand F waiting 5x; t move-window -s main:=E -t main:9; t move-window -s main:=F -t main:10
+s=$(jump shell 4); state E idle; state F idle
+check "no @claude_waits (E, 9) and 5x (F, 10): after B, 9 before 10, then A ($s)" '[[ $s == "B E F A" ]]'
+
+stand G idle; t split-window -t main:=G -c "$T/work"   # claude first, a shell active
+t new-window -d -n R -c "$T/work"; t new-window -d -n S -c "$T/work"; stand H idle
+t new -d -s two -n X -c "$T/work" 'exec -a claude sleep 1d'; state X waiting 1 two; settle 2
+mark R @reader; mark S @reader_slot; settle   # the slot after every ensure: it removes slots
+t select-pane -t "$(side main:=H)"   # H's sidebar active, claude its only own pane
+s=$(alone G)
+check "claude in G's first pane, a shell active: not counted ($s)" \
+  '[[ $s == "B A C B" && $(panes G) == *"0claude "* && $(panes G) != *"1claude"* ]]'
+s=$(alone R)
+check "claude active in a pane marked @reader: not counted ($s)" \
+  '[[ $s == "B A C B" && $(panes R "#{@reader}") == *"1claude1 "* ]]'
+s=$(alone S)
+check "claude active in a pane marked @reader_slot: not counted ($s)" \
+  '[[ $s == "B A C B" && $(panes S "#{@reader_slot}") == *"1claude1 "* ]]'
+s=$(alone H)
+check "claude in H, its sidebar the active pane: counted, first ($s)" \
+  '[[ $s == "H B A C" && $(t display -p -t main:=H "#{@sidebar}") == 1 ]]'
+s=$(jump shell 4)
+check "session two's Claude, index 1 as shell, waiting since 1: never, main kept ($s)" \
+  '[[ $s == "B A C B" && $(t display -p -t two:=X "#{window_index}") == 1 && $(client) == main ]]'
+
+state A thinking 1000; state C writing 1100; s=$(jump B 1)
+check "only B left, A and C busy: stays on B, no select-window ($s)" '[[ $s == B && $(t show -gv @selects) == 0 ]]'
+state B idle; s=$(jump shell 1)
+check "none left: stays on shell, no select-window ($s)" '[[ $s == shell && $(t show -gv @selects) == 0 ]]'
+check "after every press: no pane in a mode, no returned" \
+  '[[ $(t list-panes -a -F "#{pane_in_mode}" | sort -u) == 0 && $(o capture-pane -p -t o) != *returned* ]]'
+
+state B waiting 1200; go shell
+sid=$(t display -p -t main '#{session_id}'); wid=$(t display -p -t main: '#{window_id}')
+out=$({ t run-shell "$R/tabrail-jump '$sid' '$wid'"; echo "rc=$?"
+        t run-shell "$R/tabrail-jump '\$99' '@99'"; echo "rc=$?"; } | tr '\n' ' ')
+check "run-shell of the helper: silent, exit 0, on to B; a session that is gone too ($out)" \
+  '[[ $out == "rc=0 rc=0 " && $(cur) == B ]]'
+exit $((fails > 0))

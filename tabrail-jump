@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Alt+0 (tabrail.tmux): go to the Claude tab of this session that has waited longest for you. The
+# order: every tab whose Claude is waiting, then every one whose Claude is done, each by @claude_waits
+# (when it began to wait, epoch seconds) oldest first, unset or not a number last, ties by window
+# index; only tabs whose content pane runs claude, picked as model.rs picks it (sidebar, reader and
+# slot panes skipped, the first left, the active one wins). Goes to the tab after the current one in
+# that order, after the last back to the first, or to the first when the current one is not in it.
+# Called as  tabrail-jump SESSION_ID WINDOW_ID;  prints nothing and exits 0, as run-shell shows output
+# and a failure in the pane. One tmux call to look, at most one to move.
+session=$1 current=$2
+
+f='#{window_id}	#{window_index}	#{@sidebar}	#{@reader}	#{@reader_slot}	#{pane_active}'
+f+='	#{pane_current_command}	#{@claude}	#{@claude_waits}'
+mapfile -t order < <(
+  tmux list-panes -s -t "$session" -F "$f" 2>/dev/null | awk -F '\t' '
+    $3 == "1" || $4 == "1" || $5 == "1" { next }   # sidebar, reader, slot
+    ($2 in pane) && $6 != "1" { next }              # the first content pane, the active one wins
+    { pane[$2] = $0 }
+    END {
+      for (i in pane) {
+        split(pane[i], p, "\t")
+        if (p[7] != "claude" || (p[8] != "waiting" && p[8] != "done")) continue
+        tier = p[8] == "waiting" ? 0 : 1
+        waits = p[9] ~ /^[0-9]+$/ ? p[9] : "999999999999"
+        print tier, waits, p[2], p[1]
+      }
+    }' | sort -k1,1n -k2,2n -k3,3n | cut -d' ' -f4)
+
+next=${order[0]}
+for i in "${!order[@]}"; do
+  [[ ${order[i]} == "$current" ]] && next=${order[(i + 1) % ${#order[@]}]}
+done
+[[ -n $next && $next != "$current" ]] && tmux select-window -t "$session:$next" 2>/dev/null
+exit 0

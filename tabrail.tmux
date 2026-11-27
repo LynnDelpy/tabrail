@@ -31,6 +31,9 @@ set-hook -g after-select-layout[50] {
 }
 # prefix M: move this tab to another group
 bind M run-shell -b "#{@tabrail_dir}/tabrail-move '#{window_id}' '#{client_name}'"
+# Alt+0: the Claude waiting longest (tabrail-jump); no -b: quick presses queue in order, each holding
+# this client's keys until it returns
+bind -n M-0 run-shell "#{@tabrail_dir}/tabrail-jump '#{session_id}' '#{window_id}'"
 
 # Every new tab gets a sidebar; a tab is closed when only its sidebar (and the reader pane) is left.
 # A command of 10 s or more that finished out of sight leaves ✓ until you look (needs OSC 133 marks

@@ -1,25 +1,29 @@
-//! drag.rs: a left press and release on a group's row, on its time or ▷ (head.rs's columns) or beside it.
+//! drag.rs: a left press and release on a group's row, on its time or ▷ (head.rs's columns) or beside it;
+//! on its + in plus.rs, a group let go over another row in tree.rs.
 use super::left;
 use crate::draw::Row;
-use crate::{groups::Group, head};
+use crate::{groups::{read, Group}, head};
 use crate::input::Click;
 use crate::menu::Place;
 use std::collections::HashSet;
 
-const P: Place<'static> = Place { pane: "%1", helper: "/t/tabrail-act", mover: "", namer: "", timer: "/t/tabrail-timer",
-                                  colourer: "", grouper: "/t/tabrail-groups" };
+const P: Place<'static> = Place { pane: "%1", helper: "/t/tabrail-act", mover: "", namer: "/t/tabrail-name", timer: "/t/tabrail-timer",
+                                  colourer: "", nester: "", grouper: "/t/tabrail-groups" };
 const TOGGLE: &str = "run-shell -b \"/t/tabrail-timer toggle 'Website'\"";
 
 /// `name`'s header row at width 26 with three tabs, `fold`ed or not, as draw makes it.
 fn group(name: &str, fold: bool, time: Option<&str>) -> Row {
     let g = Group { name: name.into(), tint: "#283147".into(), icon: "◆".into(), depth: 0 };
-    Row::Group(name.into(), head::row(&g, fold, 3, time.map(|t| (t.to_string(), "busy")), 26).1)
+    let (_, time, plus) = head::row(&g, fold, 3, time.map(|t| (t.to_string(), "busy")), 26);
+    Row::Group(name.into(), time, plus)
 }
 
-/// What a left press or release at column `col` of row `y` (holding `row`) sends to tmux.
+/// What a left press or release at column `col` of row `y` (holding `row`) sends to tmux; the groups
+/// Website and Infra, then Default.
 fn send(drag: &mut Option<(usize, usize, Row)>, (col, y): (usize, usize), row: &Row, release: bool,
         folded: &HashSet<String>) -> Vec<String> {
-    left(&Click { right: false, release, col, row: y }, Some(row), &[], folded, &P, drag)
+    let groups = read("Website #283147 ◆\nInfra #3b2f2a ▲\n");
+    left(&Click { right: false, release, col, row: y }, Some(row), &[], &groups, folded, &P, drag)
 }
 
 /// A press at column `down` and a release at `up` on row 4: the press sends nothing.
@@ -38,9 +42,9 @@ fn folds(fold: bool) -> [String; 2] {
 #[test]
 fn the_time_is_columns_13_to_17() {
     // ▾ ◆ Website ▶ 12m: ▾=1, ◆=3, Website=5-11, space 12, ▶ 12m=13-17; folded the count comes after
-    assert!(matches!(group("Website", false, Some("▶ 12m")), Row::Group(_, Some((13, 17)))));
-    assert!(matches!(group("Website", true, Some("▶ 12m")), Row::Group(_, Some((13, 17)))));
-    assert!(matches!(group("Website", false, None), Row::Group(_, Some((25, 25))))); // ▷ one in from the edge
+    assert!(matches!(group("Website", false, Some("▶ 12m")), Row::Group(_, Some((13, 17)), _)));
+    assert!(matches!(group("Website", true, Some("▶ 12m")), Row::Group(_, Some((13, 17)), _)));
+    assert!(matches!(group("Website", false, None), Row::Group(_, Some((23, 23)), _))); // ▷ two left of the +
 }
 
 #[test]
@@ -51,7 +55,7 @@ fn press_and_release_on_the_time_toggle_it_folded_or_not() {
             assert_eq!(click(&row, down, up, fold), [TOGGLE], "{down}-{up}, folded {fold}");
         }
         assert_eq!(click(&group("Website", fold, Some("⏸ 12m")), 14, 14, fold), [TOGGLE]); // resume
-        assert_eq!(click(&group("Website", fold, None), 25, 25, fold), [TOGGLE]); // never timed: the ▷ starts
+        assert_eq!(click(&group("Website", fold, None), 23, 23, fold), [TOGGLE]); // never timed: the ▷ starts
     }
 }
 
@@ -63,7 +67,7 @@ fn beside_the_time_folds_as_before() {
         for (down, up) in [(12, 12), (18, 18), (5, 5), (22, 22), (13, 5), (5, 13), (17, 18), (12, 13)] {
             assert_eq!(click(&row, down, up, fold), folds(fold), "{down}-{up}, folded {fold}");
         }
-        for (down, up) in [(13, 13), (24, 24), (26, 26), (25, 5), (5, 25)] { // no time: where one goes, beside and off the ▷
+        for (down, up) in [(13, 13), (22, 22), (24, 24), (23, 5), (5, 23)] { // no time: where one goes, beside and off the ▷
             assert_eq!(click(&group("Website", fold, None), down, up, fold), folds(fold), "{down}-{up}, no time");
         }
     }
@@ -86,15 +90,9 @@ fn the_columns_count_as_at_the_press() {
 fn a_drag_from_the_time_moves_the_group() {
     let (mut drag, none) = (None, HashSet::new());
     assert!(send(&mut drag, (14, 4), &group("Website", false, Some("▶ 12m")), false, &none).is_empty());
-    let cmds = send(&mut drag, (14, 9), &group("Infra", false, Some("▶ 3m")), true, &none);
+    let cmds = send(&mut drag, (4, 9), &group("Infra", false, Some("▶ 3m")), true, &none); // left of its name
     assert_eq!(cmds, ["run-shell -b '/t/tabrail-groups move-group \"Website\" \"Infra\"'"]);
 }
 
-#[test]
-fn a_tab_row_and_a_dirty_name() {
-    assert_eq!(click(&Row::Tab("@3".into()), 24, 24, false), ["select-window -t @3"]);
-    // no toggle, as no timer items in its menu: folds as a click on its name does; without a time no ▷ at 25
-    let (dirty, bare) = (group("Q'a", false, Some("▶ 12m")), group("Q'a", false, None));
-    for (row, col) in [(&dirty, 9), (&bare, 25)] { assert_eq!(click(row, col, col, false), click(row, 5, 5, false)); }
-    assert!(click(&dirty, 9, 9, false)[0].starts_with("set -g @sidebar_fold "));
-}
+mod plus;
+mod tree;

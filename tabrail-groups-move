@@ -1,0 +1,55 @@
+# shellcheck shell=bash
+# tabrail-groups move-group SRC ONTO and nest SRC PARENT, sourced by tabrail-groups (CONF, refresh).
+# Both move SRC's tree: its line, the group lines after it that are deeper (its subgroups, as
+# src/groups.rs reads the tree) and the comment and blank lines among them.
+#   move-group  among siblings only (one parent's; top-level groups and Default are siblings): above
+#               ONTO's line if that is higher up, else after the last line of ONTO's tree; ONTO
+#               Default: after the last group line. Never Default itself.
+#   nest        after the last line of PARENT's tree, one level deeper: its last subgroup, also when
+#               PARENT is SRC's parent already; PARENT empty: top-level, after the last group line but
+#               its own (a top-level SRC whose tree holds it stays). Never Default, into Default, SRC or
+#               its subgroups.
+# The moved group lines get 2 spaces per level, the rest of each line kept; the top one no deeper
+# than the sibling above its new place and no shallower than the one below it, deeper than its parent
+# (so that the parent rule reads the tree so in a file indented by hand too), its subgroups 2 more per
+# level. Every other line stays as it was. Nothing for a SRC or ONTO without a line; else written
+# through a symlink, mode kept, renamed into place if the lines but for leading whitespace stayed.
+
+bare() { sed 's/^[ \t]*//' "$1" | sort; }   # the lines without their leading whitespace, sorted
+
+move_group() {   # move-group|nest SRC ONTO
+  local file new
+  file=$(readlink -f "$CONF") && new="$file.new.$$" || return 0
+  if awk -v m="$1" -v s="$2" -v o="$3" '
+      function last_of(x,   y, e) {   # the last group line of the tree of x, the moved tree left out
+        e = x; for (y = x + 1; y <= NR; y++) if (g[y] && (y < a || y > z)) { if (dep[y] <= dep[x]) break; e = y }
+        return e }
+      { line[NR] = $0 }
+      !/^[ \t]*#/ && NF >= 3 { match($0, /^[ \t]*/); while (n && ind[st[n]] >= RLENGTH) n--
+        g[NR] = 1; ind[NR] = RLENGTH; dep[NR] = n; par[NR] = n ? st[n] : 0; st[++n] = NR; last = NR
+        if ($1 == s "" && !a) a = NR
+        if ($1 == o "" && !b) b = NR }
+      END { if (!a || s == "Default") exit 1
+            z = last_of(a)   # SRC tree: lines a to z; it goes after line at, at depth d, its parent p
+            if (m == "nest" && o == "") { if (!par[a] && last <= z) exit 1
+                                          p = 0; d = 0; for (y = 1; y <= NR; y++) if (g[y] && (y < a || y > z)) at = y }
+            else if (m == "nest") { if (!b || o == "Default" || (b >= a && b <= z)) exit 1
+                                    p = b; at = last_of(b); d = dep[b] + 1 }
+            else if (o == "Default") { if (par[a] || last <= z) exit 1
+                                       p = 0; at = last; d = 0 }
+            else { if (!b || b == a || par[b] != par[a]) exit 1
+                   p = par[a]; at = b < a ? b - 1 : last_of(b); d = dep[a] }
+            hi = -1; lo = p ? ind[p] + 1 : 0   # the indents of the siblings above and below
+            for (y = 1; y <= at; y++) if (g[y] && par[y] == p && (y < a || y > z)) hi = ind[y]
+            for (y = at + 1; y <= NR; y++) if (g[y] && (y < a || y > z)) { if (ind[y] > lo) lo = ind[y]; break }
+            x = 2 * d; if (x < lo) x = lo; if (hi >= 0 && x > hi) x = hi
+            for (k = 0; k <= NR; k++) {
+              if (k && (k < a || k > z)) print line[k]
+              if (k == at) for (y = a; y <= z; y++)
+                print (g[y] ? sprintf("%" (x + 2 * (dep[y] - dep[a])) "s", "") substr(line[y], ind[y] + 1) : line[y]) } }
+      ' "$file" 2>/dev/null > "$new" && cmp -s <(bare "$file") <(bare "$new") &&
+     chmod --reference="$file" "$new" && mv "$new" "$file"
+  then refresh
+  else rm -f "$new"; fi
+  return 0   # run-shell -b shows a failure in the pane
+}

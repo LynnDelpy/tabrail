@@ -18,9 +18,9 @@ inner; t rename-window -t main:1 home
 for n in core sg arch; do t new-window -d -n "$n" -c "$T/work"; done
 o -f /dev/null new -d -s o -x 160 -y 46 "TMUX= tmux -L tabrail-$L attach -t main; sleep 600"
 o set -g status off; settle 3
-nf=$''   # head.rs START, dropped with the spaces before it
+nf=$'\uEB2C'   # head.rs START, dropped with the spaces before it and the + after it
 # a sidebar's rows (main:1's by default) joined by |, without the clock and the empty rows below
-bar() { t capture-pane -p -t "$(side "${1:-main:1}")" | head -n -1 | sed "s/ *$nf//" | tr '\n' '|' | sed 's/|*$//'; }
+bar() { t capture-pane -p -t "$(side "${1:-main:1}")" | head -n -1 | sed "s/ *$nf\( +\)\{0,1\}$//" | tr '\n' '|' | sed 's/|*$//'; }
 grp() { t set -w -t "main:$1" @group "$2"; }
 redraw() { t set-buffer -b sidebar-refresh x; settle; }
 sgr() { o send-keys -t o -l $'\e[<'"$1;5;$2$3"; }   # BUTTON (0 left, 32 a drag) at column 5, ROW, M|m
@@ -33,8 +33,8 @@ nested() { printf '%s\n' "${tree[@]}" > "$F"; grp core egov; grp sg St.Gallen; g
 
 grp core Website; grp sg Website; grp arch Infra; t set -g @sidebar_fold Infra; redraw
 check "flat: as main draws it ($(bar))" '[[ $(bar) == "|▾ ◆ Website|   core|   sg||▸ ▲ Infra  1 tab||▾ • Default| ❯ home" ]]'
-drg 6 2
-check "flat: Infra's row dragged onto Website's moves its line above (tabrail-groups), still a link, 640" \
+drg 6 3   # on Website's tab: its header's name (column 5) would nest Infra (tabrail-tree-drag-test)
+check "flat: Infra's row dragged onto Website's tab moves its line above (tabrail-groups), still a link, 640" \
   '[[ $(grep -v "^#" "$F" | head -1) == Infra* && -L $T/groups.conf && $(stat -c %a "$F") == 640 ]]'
 
 t set -g @sidebar_fold ''; nested
@@ -46,8 +46,9 @@ check "a click on Archiv's tab row (row 7) goes to it ($at)" '[[ $at == arch ]]'
 click 5 2; f=$(t show -gv @sidebar_fold)
 check "egov's header clicked: folded, its tree's 3 tabs counted, then the blank line ($(bar))" \
   '[[ $f == egov && $(bar) == "|▸ ★ egov  3 tabs||▾ • Default| ❯ home" ]]'
+t resize-pane -t "$(side main:1)" -x 28; settle 2   # at 26 the count does not fit beside St.Gallen's ▷ +
 click 5 2; click 5 4; click 5 2; click 5 2
-check "St.Gallen folded, egov folded and unfolded: St.Gallen still folded, 2 tabs ($(bar))" \
+check "St.Gallen folded, egov folded and unfolded: St.Gallen still folded, 2 tabs (width 28: $(bar))" \
   '[[ $(bar) == "|▾ ★ egov|   core| ▸ ✚ St.Gallen  2 tabs||▾ • Default| ❯ home" ]]'
 t set -g @sidebar_fold ''; grp arch Default; redraw
 check "empty leaf: no Archiv header ($(bar))" '[[ $(bar) == "|▾ ★ egov|   core| ▾ ✚ St.Gallen|    sg||▾ • Default| ❯ home|   arch" ]]'
@@ -55,7 +56,7 @@ printf '%s\n' "   egov #283147 ★" "  St.Gallen #2a3b2f ✚" "    Archiv #3b2a3
 check "first group line indented: top-level, St.Gallen too, Archiv under St.Gallen ($(bar))" \
   '[[ $(bar) == "|▾ ★ egov|   core||▾ ✚ St.Gallen|   sg| ▾ ◆ Archiv|    arch||▾ • Default| ❯ home" ]]'
 printf '%s\n' "egov #1 ★" "  # customers of egov" "	St.Gallen #2 ✚" "	 Archiv #3 ◆" " Köniz #4 ✚" > "$F"
-got=$(TMUX="$(t display -p '#{socket_path}'),0,0" "$R/tabrail-groups" tree | tr '\t\n' ' |')
+got=$(TMUX="$(sock),0,0" "$R/tabrail-groups" tree | tr '\t\n' ' |')
 check "tabrail-groups tree: a tab or a space one column each, an indented # a comment ($got)" '[[ $got == "0 egov ★|1 St.Gallen ✚|2 Archiv ◆|1 Köniz ✚|" ]]'
 printf '%s\n' "${tree[@]}" > "$F"; for w in core sg arch; do grp "$w" Default; done
 t run-shell "$R/tabrail-timer start St.Gallen"; redraw

@@ -75,7 +75,7 @@ check "5 tab switches at once: the bar across the last one's bottom, one slot or
      $(t list-panes -a -f "#{@reader_slot}" -F "#{pane_width}x#{pane_height} #{pane_at_bottom}" | sort -u) == "160x4 1" ]]'
 t select-window -t :1; settle
 mkdir -p "$T/tmux-resurrect/scripts"; echo 'sleep 3' > "$T/tmux-resurrect/scripts/restore.sh"
-TMUX=$(t display -p '#{socket_path}'),0,0 bash "$T/tmux-resurrect/scripts/restore.sh" & settle 0.5
+TMUX=$(sock),0,0 bash "$T/tmux-resurrect/scripts/restore.sh" & settle 0.5
 t select-window -t :2; settle; d=$(at); wait $!; t select-window -t :3; settle; e=$(at); t select-window -t :1; settle
 check "while resurrect restores, a tab switch leaves the bar in place; after it, the bar follows" \
   '[[ $d == "1 "* && $e == "3 "* && $(at) == "1 "* ]]'

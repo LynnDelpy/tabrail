@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Move a group with its tree into another group or back to the top level (the group menu's "Move into
+# group…", src/menu.rs), picked with tabrail-pick in a popup: Top level, then the groups file's tree
+# (tabrail-groups tree) without GROUP and its subgroups or Default, indented one column per level,
+# GROUP's parent (Top level for a top-level one) marked · current. The pick goes to tabrail-groups
+# nest, the groups file's one writer here: the group's last subgroup (also when it is its parent
+# already), or Top level: after the last top-level tree, above Default. Called as
+# tabrail-nest GROUP CLIENT;  the popup runs  tabrail-nest --pick GROUP LISTFILE.
+D=$(dirname "$(readlink -f "$0")")
+
+if [[ $1 == --pick ]]; then
+  group=$2
+  parent=$("$D/tabrail-pick" -n "Move $group into which group?" < "$3"); rm -f "$3"
+  [[ -n $parent ]] || exit 0          # Esc
+  [[ $parent == / ]] && parent=       # Top level: no group's name is /
+  "$D/tabrail-groups" nest "$group" "$parent"   # a group renamed or gone meanwhile: no line, nothing
+  exit 0
+fi
+
+group=$1 client=$2
+# One line per row: its value (a name, / for Top level) and its label; nothing without GROUP's line
+listing() {
+  "$D/tabrail-groups" tree | awk -F'\t' -v g="$group" '
+    { dep[NR] = $1; name[NR] = $2; icon[NR] = $3; up[$1] = $2   # up[d] the last name at depth d
+      if ($2 == g "" && !at) { at = NR; par = $1 ? up[$1 - 1] : "/" } }
+    function row(value, label) {
+      printf "%s\t%s%s\n", value, label, value == par ? "  \033[2m· current\033[0m" : "" }
+    END { if (!at) exit 1
+          row("/", "Top level")
+          for (k = 1; k <= NR; k++) {
+            if (k == at) { while (k < NR && dep[k + 1] > dep[at]) k++; continue }   # GROUP and its tree
+            if (name[k] != "Default") row(name[k], sprintf("%" dep[k] "s%s %s", "", icon[k], name[k])) } }'
+}
+
+list=$(mktemp /tmp/tabrail-nest.XXXXXX)
+listing > "$list" || { rm -f "$list"; exit 0; }
+rows=$(( $(wc -l < "$list") + 4 ))   # the list, border (2), footer and its rule (2)
+read -r height width < <(tmux display -p -c "$client" '#{client_height} #{client_width}')
+# no larger than the terminal: fzf scrolls the rest
+tmux display-popup -c "$client" -B -E -w $(( width < 60 ? width : 60 )) -h $(( rows < height ? rows : height )) \
+  "$0" --pick "$group" "$list" || rm -f "$list"

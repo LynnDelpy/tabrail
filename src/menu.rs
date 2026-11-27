@@ -1,9 +1,10 @@
 //! Right-click menus: one per sidebar row (a tab: new tab, rename, duplicate, move to group, new
-//! group, close; a group: new tab, new group, rename, colour, fold, start or stop and reset its
-//! timer; empty space: new tab, new group), as tmux display-menu commands at the mouse. A menu only
-//! takes clicks when tmux opens it from a mouse key binding, so the sidebar keeps them as files
-//! ($XDG_RUNTIME_DIR/tabrail/SERVERPID-PANE-ROW.conf) and tmux.conf's right-button binding runs the
-//! one under the mouse. Item commands are tmux { } blocks; menus are rounded as set in tmux.conf.
+//! group, close; a group, menu/group.rs: new tab, new group, new subgroup, rename, move into group,
+//! colour, fold, start or stop and reset its timer; empty space: new tab, new group), as tmux
+//! display-menu commands at the mouse. A menu only takes clicks when tmux opens it from a mouse key
+//! binding, so the sidebar keeps them as files ($XDG_RUNTIME_DIR/tabrail/SERVERPID-PANE-ROW.conf) and
+//! tmux.conf's right-button binding runs the one under the mouse. Item commands are tmux { } blocks;
+//! menus are rounded as set in tmux.conf.
 use crate::{draw::Row, model::Tab, timer::Timers};
 use std::{collections::HashSet, env, fs, path::PathBuf};
 
@@ -11,6 +12,7 @@ pub struct Place<'a> {
     pub pane: &'a str,   // the sidebar's pane, for the session of a new tab
     pub helper: &'a str, // tabrail-act
     pub mover: &'a str,  // tabrail-move
+    pub nester: &'a str, // tabrail-nest
     pub namer: &'a str,  // tabrail-name
     pub timer: &'a str,  // tabrail-timer
     pub colourer: &'a str, // tabrail-colour
@@ -52,11 +54,11 @@ pub fn clean(s: &str) -> String {
 pub fn for_row(row: Option<&Row>, tabs: &[Tab], folded: &HashSet<String>, timers: &Timers, p: &Place) -> String {
     let h = p.helper;
     let new_tab = |group: &str| format!("'New tab' n {{ run-shell -b '{h} new {} {}' }}", clean(group), p.pane);
-    // names are typed in tabrail-name's popup: KIND TARGET CLIENT and the name it starts with
+    // names are typed in tabrail-name's popup: KIND TARGET CLIENT, the name it starts with and the
+    // sidebar's pane for a new tab (%12 written p12 as tabrail-groups new-group takes it)
     let namer = |kind: &str, target: &str, text: &str| format!("{{ run-shell -b \"{} {kind} '{target}' \
-                                                                '#{{client_name}}' '{text}'\" }}", p.namer);
-    // a new group: a tab (@id) moves into it, from elsewhere a new tab opens in it (the sidebar's pane,
-    // %12 written p12 as tabrail-groups new-group takes it)
+                                                                '#{{client_name}}' '{text}' {}\" }}", p.namer, p.pane.replace('%', "p"));
+    // a new group: a tab (@id) moves into it, from elsewhere a new tab opens in it (the sidebar's pane)
     let new_group = |target: &str| format!("'New group…' g {}", namer("new", &target.replace('%', "p"), ""));
     let (title, items) = match row {
         Some(Row::Tab(id)) => {
@@ -75,24 +77,14 @@ pub fn for_row(row: Option<&Row>, tabs: &[Tab], folded: &HashSet<String>, timers
                          {{ run-shell -b '#{{@tabrail_dir}}/tabrail-tmux close {id}' }} }}"),
             ])
         }
-        Some(Row::Group(raw, _)) => {
+        Some(Row::Group(raw, ..)) => {
             let name = clean(raw);
-            let mut items = vec![new_tab(&name), new_group(p.pane)];
-            if name != "Default" { // Colour… as the timer below: a cleaned name is another group's line
-                items.push(format!("'Rename group' r {}", namer("group", &name, &name)));
-                items.extend((name == *raw).then(|| format!("'Colour…' c {{ run-shell -b \"{} '{name}' '#{{client_name}}'\" }}", p.colourer)));
-            }
-            let fold = if folded.contains(&name) { "Unfold" } else { "Fold" };
-            items.push(format!("{fold} f {{ run-shell -b '{h} fold {name}' }}"));
-            if name == *raw { // a cleaned name would key another group's timer
-                let timer = |verb: &str| format!("{{ run-shell -b \"{} {verb} '{name}'\" }}", p.timer);
-                let (label, verb) = if timers.running(&name) == Some(true) { ("Stop", "stop") } else { ("Start", "start") };
-                items.extend(["''".into(), format!("'{label} timer' t {}", timer(verb))]);
-                items.extend(timers.running(&name).map(|_| format!("'Reset timer' 0 {}", timer("reset"))));
-            }
+            let items = group::items(raw, vec![new_tab(&name), new_group(p.pane)], &namer, folded, timers, p);
             (name, items)
         }
         _ => ("Tabs".into(), vec![new_tab("Default"), new_group(p.pane)]),
     };
     format!("display-menu -x M -y M -T '#[align=centre] {title} ' {}\n", items.join(" "))
 }
+
+mod group;

@@ -1,5 +1,5 @@
-//! groups.rs: depths by the parent rule, and subtrees.
-use super::{read, subtree};
+//! groups.rs: depths by the parent rule, subtrees, parents, siblings and where a group may nest.
+use super::{nests, parent, read, sibling, subtree};
 
 /// (name, depth) per group read from `conf`, Default included.
 fn tree(conf: &str) -> Vec<(String, usize)> {
@@ -54,4 +54,35 @@ fn a_subtree_runs_to_the_next_group_as_shallow() {
     assert_eq!(subtree(&g, 5), 6..6); // Default, last
     let g = read("a #1 x\n  b #2 x\n");
     assert_eq!(subtree(&g, 0), 1..2); // up to Default
+}
+
+const TREE: &str = "egov #1 ★\n  St.Gallen #2 ✚\n    Archiv #3 ◆\n  Köniz #4 ✚\n4tw #5 ■\n  Bern #6 ●\n";
+
+#[test]
+fn a_parent_is_the_nearest_shallower_group_above() {
+    let g = read(TREE);
+    let p: Vec<Option<usize>> = (0..g.len()).map(|i| parent(&g, i)).collect();
+    assert_eq!(p, [None, Some(0), Some(1), Some(0), None, Some(4), None]); // Default, last: none
+}
+
+#[test]
+fn the_sibling_is_the_group_or_its_ancestor_with_the_same_parent() {
+    let g = read(TREE);
+    for (src, of, want) in [("4tw", "egov", Some("egov")), ("4tw", "Archiv", Some("egov")), ("egov", "Bern", Some("4tw")),
+                            ("4tw", "Default", Some("Default")), ("Köniz", "Archiv", Some("St.Gallen")),
+                            ("Köniz", "4tw", None), ("Köniz", "Bern", None), ("Köniz", "Default", None),
+                            ("Köniz", "egov", None), ("egov", "Archiv", None), ("egov", "egov", None), ("x", "egov", None)] {
+        assert_eq!(sibling(&g, src, of), want, "{src} over {of}");
+    }
+}
+
+#[test]
+fn a_group_nests_anywhere_but_in_its_own_tree_and_default() {
+    let g = read(TREE);
+    for (src, into, want) in [("4tw", "St.Gallen", true), ("Köniz", "egov", true), ("egov", "Bern", true),
+                              ("Archiv", "4tw", true), ("egov", "St.Gallen", false), ("egov", "Archiv", false),
+                              ("egov", "egov", false), ("4tw", "Default", false), ("Default", "egov", false),
+                              ("4tw", "nope", false)] {
+        assert_eq!(nests(&g, src, into), want, "{src} into {into}");
+    }
 }

@@ -240,3 +240,21 @@ status: open
 - source_spec: `_bmad-output/specs/spec-nested-groups/stories/2-longest-folder-wins.md`
   summary: `tabrail-tmux group()` ignores the groups file's last line when it has no trailing newline (`while read` drops it).
   evidence: low. src/groups.rs reads it, so the group shows but takes no tabs by folder; same before. Fix: `|| [[ -n $name ]]` on the loop.
+- source_spec: `_bmad-output/specs/spec-nested-groups/stories/3-create-subgroups.md`
+  summary: New subgroup… or `+` on a folded group (and New tab on a folded group) opens a tab the sidebar hides under the fold; nothing unfolds the parent chain.
+  evidence: medium. `tabrail-act new` never touches `@sidebar_fold` and draw.rs skips a folded subtree; New tab in a folded group behaved so before nesting. Fix: drop the group and its ancestors from `@sidebar_fold` in `new`.
+- source_spec: `_bmad-output/specs/spec-nested-groups/stories/3-create-subgroups.md`
+  summary: drag.rs's timer-toggle and fold arms act on the pressed group even when a redraw put another group on the release row; only the new `+` arm checks `same(&src)`.
+  evidence: low. Needs a redraw between press and release that shifts rows; `drag/tests` pins folding the pressed group there. Fix: `&& same(&src)` on both arms, deciding that a shifted release does nothing.
+- source_spec: `_bmad-output/specs/spec-nested-groups/stories/3-create-subgroups.md`
+  summary: New group… and New subgroup… accept a name starting with `#` (written as a comment line: tab orphaned, each retry adds one) or with characters `clean()` drops (a group with no timer, Colour…, `+`).
+  evidence: low. `new_group` only turns spaces into `-`; the top-level path behaved so before. Fix: refuse a leading `#`, trim, and refuse or clean `clean()`'s characters in `new_group`.
+- source_spec: `_bmad-output/specs/spec-nested-groups/stories/3-create-subgroups.md`
+  summary: The `+` popup's terminal choice (non-control client on the tab's window, last active first) is untested with two terminals on one window; equal `client_activity` seconds tie.
+  evidence: low. `tabrail-subgroup-test` attaches one client per window, so `sort -rn | head -1` vs `head -1` both pass; preferring `#{m:*focused*,#{client_flags}}` would break the tie.
+- source_spec: `_bmad-output/specs/spec-nested-groups/stories/4-drag-groups-with-their-tree.md`
+  summary: A group moved up lands between ONTO and the comment or blank lines right above ONTO, and a comment right above SRC stays behind; blank separators between top-level trees shift.
+  evidence: low. `at = b - 1` in tabrail-groups-move; the single-line move-group before nesting inserted at the same place. Fix: treat the run of comment and blank lines directly above a group line as part of it, for ONTO and SRC.
+- source_spec: `_bmad-output/specs/spec-nested-groups/stories/4-drag-groups-with-their-tree.md`
+  summary: Nesting a group into a folded group (matrix row Folded) makes it vanish into the fold; nothing unfolds the new parent.
+  evidence: low. Same cause as the story-3 entry for New subgroup… on a folded group: nothing removes the target and its ancestors from `@sidebar_fold`.

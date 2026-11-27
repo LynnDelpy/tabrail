@@ -4,8 +4,12 @@
 #   tabrail-name tab WINDOW CLIENT NAME     rename the tab
 #   tabrail-name group GROUP CLIENT NAME    rename the group (tabrail-groups rename-group)
 #   tabrail-name new TARGET CLIENT          a new group (tabrail-groups new-group; TARGET @id or pID)
-# The popup runs  tabrail-name --ask KIND TARGET NAME,  each an argument of its own, so the typed name
-# never goes through a tmux or shell command string.
+#   tabrail-name sub GROUP CLIENT '' PANE   a new subgroup of GROUP with a new tab in PANE's session
+#                                           (tabrail-groups new-group NAME PANE GROUP; PANE pID for %ID)
+# The menus pass the sidebar's pane as PANE to every kind. CLIENT empty (a click on a header's +,
+# src/drag.rs: the sidebar's control client has no screen for a popup): the terminal showing PANE's
+# tab, the last active if several. The popup runs  tabrail-name --ask KIND TARGET NAME PANE,  each an
+# argument of its own, so the typed name never goes through a tmux or shell command string.
 D=$(dirname "$(readlink -f "$0")")
 
 if [[ $1 == --ask ]]; then
@@ -14,6 +18,7 @@ if [[ $1 == --ask ]]; then
     tab) title='Rename tab' ;;
     group) title='Rename group' ;;
     new) title='New group' ;;
+    sub) title="New subgroup of $target" ;;
   esac
   name=$("$D/tabrail-pick" -q "$4" "$title")
   [[ -n ${name//[[:space:]]/} ]] || exit 0   # Esc, or an empty or blank field: nothing changes
@@ -21,9 +26,17 @@ if [[ $1 == --ask ]]; then
     tab) tmux rename-window -t "$target" -- "$name" ;;
     group) "$D/tabrail-groups" rename-group "$target" "$name" ;;
     new) "$D/tabrail-groups" new-group "$name" "$target" ;;
+    sub) "$D/tabrail-groups" new-group "$name" "$5" "$target" ;;
   esac
   exit 0
 fi
 
+client=$3
+if [[ -z $client ]]; then
+  win=$(tmux display -p -t "%${5#p}" '#{window_id}') || exit 0
+  client=$(tmux list-clients -f "#{&&:#{!:#{client_control_mode}},#{==:#{window_id},$win}}" \
+    -F '#{client_activity} #{client_name}' | sort -rn | head -1 | cut -d' ' -f2-)
+fi
+[[ -n $client ]] || exit 0   # the tab no longer shown anywhere: no popup
 # border (2), field, footer and its rule
-tmux display-popup -c "$3" -B -E -w 60 -h 5 "$0" --ask "$1" "$2" "$4"
+tmux display-popup -c "$client" -B -E -w 60 -h 5 "$0" --ask "$1" "$2" "$4" "$5"

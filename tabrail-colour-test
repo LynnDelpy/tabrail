@@ -2,10 +2,10 @@
 # Tests for a group's colour (tabrail-colour, palette, the group menu's Colour…, New group…'s tint) on
 # throwaway tmux servers (tabrail-test-lib), the groups file a symlink to a temp copy: Colour… in the
 # menus (not Default's, not a name clean() changes), New group… takes the first palette colour no group
-# uses (in any case), the picker's swatches and current mark, its search on colour names alone, the
-# pick in column 2 alone (link and mode kept), every sidebar redrawn, Esc, a hand-written tint, the
-# group renamed while the picker is open, the same tint again, a 50x20 client. One line per check,
-# exits 1 if one failed.
+# uses (in any case; Mustard once the old 25 are), the picker's 40 swatches and current mark, its search
+# on colour names alone (old and new), the pick in column 2 alone (link and mode kept), every sidebar
+# redrawn, Esc, a hand-written tint, the group renamed while the picker is open, the same tint again, a
+# 50x20 client. One line per check, exits 1 if one failed.
 L=colour
 source "$(dirname "$(readlink -f "$0")")/tabrail-test-lib"
 mkdir "$T/web" "$T/infra" "$T/dirty" "$T/real"
@@ -30,6 +30,11 @@ key() { o send-keys -t o:0 "$1"; settle "${2:-1.5}"; }
 swatches() { grep -c "│ [ ❯]  Website " <<<"$1"; }                    # picker rows for Website
 row() { t capture-pane -ep -t "$(side "$1")" | grep -m1 -- "$2"; }         # a sidebar's row, escapes
 notemp() { [[ -z $(ls "$T/real" | grep new) ]]; }
+newops() {   # New group… Ops from Website's menu: ops its groups-file line; then its tab and line gone
+  menu "▾ Website"; keys g; keys Ops; key Enter 2; ops=$(grep ^Ops "$F")
+  t kill-window -t "$(t list-windows -t main -F '#{window_id} #{@group}' | awk '$2 == "Ops" { print $1 }')"
+  sed -i '/^Ops/d' "$F"; t select-window -t main:1; settle
+}
 
 menu "▾ Website"; m=$(shown); keys q 0.5
 check "Website's menu: Colour… right after Rename group" '[[ $m == *"Rename group"*"Colour…"*Fold* ]]'
@@ -39,15 +44,14 @@ menu "[▾▸] Q'a"; m=$(shown); keys q 0.5
 check "a name clean() changes (Q'a): no Colour…, no New subgroup…, no Move into group…" \
   '[[ $m == *Fold* && $m != *Colour* && $m != *subgroup* && $m != *"Move into group"* ]]'
 
-menu "▾ Website"; keys g; keys Ops; key Enter 2
-check "New group…: the first palette colour unused, #3B2F2A taken as Brown ($(grep ^Ops "$F"))" \
-  '[[ $(grep ^Ops "$F") == "Ops       #2a3b2f  "* ]]'
-t kill-window -t "$(t list-windows -t main -F '#{window_id} #{@group}' | awk '$2 == "Ops" { print $1 }')"
-sed -i '/^Ops/d' "$F"; cp "$F" "$T/orig"; t select-window -t main:1; settle
+newops
+check "New group…: the first palette colour unused, #3B2F2A taken as Brown ($ops)" '[[ $ops == "Ops       #2a3b2f  "* ]]'
+cp "$F" "$T/orig"; head -25 "$R/palette" | awk '{ print "Old" NR, $1, "●" }' >> "$F"; newops; cp "$T/orig" "$F"
+check "New group…, the old 25 all in use: #4f4821, Mustard ($ops)" '[[ $ops == "Ops       #4f4821  "* ]]'
 
 menu "▾ Website"; keys c 1.5; p=$(shown); e=$(o capture-pane -ep -t o:0)
-check "picker: title, 25 swatch rows, Blue alone marked current" \
-  '[[ $p == *"Colour for Website?"* && $(swatches "$p") == 25 && $(grep -c "· current" <<<"$p") == 1 &&
+check "picker: title, 40 swatch rows, Blue alone marked current" \
+  '[[ $p == *"Colour for Website?"* && $(swatches "$p") == 40 && $(grep -c "· current" <<<"$p") == 1 &&
      $p == *" Blue · current"* ]]'
 check "swatches: the tint under the header's bold #cdd6f4" '[[ $e == *"48;2;65;89;96m"* && $e == *"38;2;205;214;244m"* ]]'
 keys web; p=$(shown)
@@ -82,11 +86,14 @@ cp "$T/before" "$F"; t set-buffer -b sidebar-refresh x; settle
 
 menu "▾ Website"; keys c 1.5; p=$(shown); keys 'teal d'; key Enter
 check "Teal deep marked current; picking it again writes nothing" '[[ $p == *" Teal deep · current"* ]] && cmp -s "$T/before" "$F"'
+menu "▾ Website"; keys c 1.5; keys mustard; p=$(shown); key Enter
+check "mustard: one row, Mustard; Enter writes #4f4821 into column 2" \
+  '[[ $(swatches "$p") == 1 && $p == *" Mustard"* && $(grep ^Website "$F") == "Website   #4f4821  ◆  $T/web" ]]'
 
-o kill-server; sleep 0.5; outer 50 20
+cp "$F" "$T/before"; o kill-server; sleep 0.5; outer 50 20
 menu "▾ Website"; keys c 1.5; p=$(shown)
 check "a 50x20 client: the popup fits (both borders), fzf scrolls" \
-  '[[ $(head -1 <<<"$p") == "╭"*"Colour for Website?"*"╮" && $(tail -1 <<<"$p") == "╰"*"╯" && $(swatches "$p") -lt 25 ]]'
+  '[[ $(head -1 <<<"$p") == "╭"*"Colour for Website?"*"╮" && $(tail -1 <<<"$p") == "╰"*"╯" && $(swatches "$p") -lt 40 ]]'
 key Escape
 check "a 50x20 client, Esc: file identical" 'cmp -s "$T/before" "$F"'
 exit $((fails > 0))
